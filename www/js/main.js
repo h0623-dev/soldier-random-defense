@@ -2,6 +2,7 @@
 import { BRANCHES, CLASS_IDS, CLASS_INFO } from './data.js';
 import * as C from './core.js';
 import { draw } from './render.js';
+import { insigUrl, hasArt } from './sprites.js';
 import { Monetize } from './monetize.js';
 import { initLayout } from './layout.js';
 import { Sound } from './sound.js';
@@ -119,20 +120,38 @@ const ACT = {
       <button class="wide sec" data-act="mute" data-arg="menu">소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
       <button class="wide sec" data-act="quit">포기하고 나가기</button>`);
   },
+  // 조합 도감: 그림으로 보는 조합 결과 · 병과와 병기 · 계급장 · 히든 계급 · 지역 보스
   codex() {
-    const b = g.branch, name = k => b.types[k][0], key = (a, c) => C.typeKey(C.combineTypes([a, a], [c, c]));
+    const b = g.branch, name = k => b.types[k][0];
+    const uimg = (k, cls = 'ui') => `<img class="${cls}" src="img/units/${b.id}_${k.replace('+', '-')}.webp" alt="${name(k)}" onerror="this.style.visibility='hidden'">`;
+    const chips = k => k.split('+').map(c => `<span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span>`).join('');
+    const mixes = []; CLASS_IDS.forEach((a, i) => CLASS_IDS.slice(i + 1).forEach(c => mixes.push([a, c, C.typeKey(C.combineTypes([a, a], [c, c]))])));
+    const eimg = (file, n) => `<img class="ui" src="img/${file}.webp" alt="" ${n > 1 && file === 'enemy_boss' ? `style="filter:hue-rotate(${(n - 1) * 36}deg)"` : ''}>`;
     show(`<h2>${b.name} 조합 도감</h2>
-      <table><tr><th>+</th>${CLASS_IDS.map(c => `<th>${name(c)}</th>`).join('')}</tr>
-      ${CLASS_IDS.map(a => `<tr><th>${name(a)}</th>${CLASS_IDS.map(c => `<td>${name(key(a, c))}</td>`).join('')}</tr>`).join('')}</table>
+      <p class="sub">같은 계급 두 유닛을 합치면 한 계급 위 유닛이 됩니다</p>
+      <h3>기본 병과 4종 — 신병 소집으로 나옵니다</h3>
+      <div class="cx4">${CLASS_IDS.map(c => `<div class="ucard">${uimg(c)}<b>${name(c)}</b><small>${chips(c)} ${CLASS_INFO[c].role}</small></div>`).join('')}</div>
+      <h3>같은 병과끼리 → 같은 병과</h3>
+      <div class="rcp">${uimg(CLASS_IDS[0], 'ui s')}<i>+</i>${uimg(CLASS_IDS[0], 'ui s')}<i>→</i>${uimg(CLASS_IDS[0])}<span><b>${name(CLASS_IDS[0])}</b><small>한 계급 위</small></span></div>
+      <h3>다른 병과끼리 → 혼성 병과 6종</h3>
+      ${mixes.map(([a, c, k]) => `<div class="rcp">${uimg(a, 'ui s')}<i>+</i>${uimg(c, 'ui s')}<i>→</i>${uimg(k)}<span><b>${name(k)}</b><small>${chips(k)}<br>${name(a)} + ${name(c)}</small></span></div>`).join('')}
       <div class="list" style="margin-top:10px">
-      <p>같은 계급 두 유닛을 합치면 한 계급 위가 됩니다. 재료의 병과 4칸을 세어 <b>3칸 이상이면 그 병과</b>, 아니면 <b>가장 많은 두 병과의 혼성</b>이 됩니다. 동률이면 먼저 고른 유닛의 병과가 우선합니다.</p></div>
-      <h2>병과 · 병기</h2><table><tr><th>병과</th><th>${b.ranks[0]}~</th><th>${b.ranks[b.tiers[0]]}~</th><th>${b.ranks[b.tiers[1]]}~</th></tr>
-      ${Object.entries(b.types).map(([k, [n, w]]) => `<tr><th>${n}<br><small>${k.split('+').map(c => CLASS_INFO[c].short).join('·')}</small></th>${w.map(x => `<td>${x}</td>`).join('')}</tr>`).join('')}</table>
-      <h2>계급</h2><div class="chips">${b.ranks.map((r, i) => `<span class="chip">Lv${i + 1} ${r}</span>`).join('')}</div>
-      ${b.hidden.length ? `<h2>히든 계급</h2><div class="list">${b.hidden.map(h => meta.found[h.id]
-        ? `<p><b>${h.name}</b> (${b.ranks[h.level]}급) — ${h.text}<br><small>${h.how}</small></p>`
-        : `<p><b>???</b> — 아직 발견하지 못했습니다<br><small>${h.recipe ? '어떤 조합에서 나타납니다' : '신병 소집에서 드물게 나타납니다'}</small></p>`).join('')}
-        <p><small>히든 계급을 조합 재료로 쓰면 일반 계급으로 진급하고 능력은 사라집니다.</small></p></div>` : ''}
+      <p>혼성 병과끼리도 계속 조합됩니다. 재료 두 유닛의 병과 4칸을 세어 <b>3칸 이상이면 그 병과</b>, 아니면 <b>가장 많은 두 병과의 혼성</b>이 됩니다. 동률이면 먼저 고른 유닛의 병과가 우선합니다.</p></div>
+      <h2>병과 · 병기</h2>
+      ${Object.entries(b.types).map(([k, [n, w]]) => `<div class="wcard">${uimg(k)}<div><b>${n}</b> ${chips(k)}
+        <p><em>${b.ranks[0]}~</em> ${w[0]}</p><p><em>${b.ranks[b.tiers[0]]}~</em> ${w[1]}</p><p><em>${b.ranks[b.tiers[1]]}~</em> ${w[2]}</p></div></div>`).join('')}
+      <h2>계급 · 계급장</h2>
+      <div class="ranks">${b.ranks.map((r, i) => `<div class="rk t${i >= b.tiers[1] ? 2 : i >= b.tiers[0] ? 1 : 0}"><img src="${insigUrl(b.insig[i])}" alt=""><b>${r}</b><small>Lv${i + 1}</small></div>`).join('')}</div>
+      ${b.hidden.length ? `<h2>히든 계급</h2>${b.hidden.map(h => meta.found[h.id]
+        ? `<div class="wcard hid"><div class="hbadge"><img src="${insigUrl(h.insig)}" alt=""><b>${h.name}</b></div><div><b>${h.name}</b> <small>${b.ranks[h.level]}급</small><p>${h.text}</p><p><em>얻는 법</em> ${h.how}</p></div></div>`
+        : `<div class="wcard hid"><div class="hbadge"><b>?</b></div><div><b>???</b><p>아직 발견하지 못했습니다</p><p><em>단서</em> ${h.recipe ? '어떤 조합에서 나타납니다' : '신병 소집에서 드물게 나타납니다'}</p></div></div>`).join('')}
+        <div class="list"><p>히든 계급을 조합 재료로 쓰면 일반 계급으로 진급하고 능력은 사라집니다.</p></div>` : ''}
+      <h2>작전 지역 · 보스</h2>
+      ${C.AREAS.map((a, i) => `<div class="wcard${i === g.area ? ' now' : ''}">${eimg(hasArt('enemy_boss' + (i + 1)) ? 'enemy_boss' + (i + 1) : 'enemy_boss', i + 1)}
+        <div><b>${a.boss.name}</b> <small>${(i + 1) * 10}단계 · ${a.name}${i === g.area ? ' · 현재 지역' : ''}</small><p>${a.boss.text}</p></div></div>`).join('')}
+      <h2>적</h2>
+      <div class="cx4">${[['enemy_normal', '적 보병', '기본'], ['enemy_fast', '드론', '빠름 · 3의 배수 단계'], ['enemy_armor', '장갑차', '단단함 · 5의 배수 단계'], [hasArt('enemy_elite') ? 'enemy_elite' : 'enemy_armor', '정예 표적', '특수 임무']]
+        .map(([f, n, t]) => `<div class="ucard">${eimg(f, 0)}<b>${n}</b><small>${t}</small></div>`).join('')}</div>
       <button class="wide" data-act="resume">전장으로</button>`);
   },
   result() {

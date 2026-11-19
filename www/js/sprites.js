@@ -126,6 +126,20 @@ function insigShape(c, shape, x, y) {
     c.fillStyle = '#c9a23a'; c.beginPath(); c.arc(x, y, 1.4, 0, 7); c.fill(); }
   else star(c, x, y, 4.8);
 }
+// 도감 등 HTML 화면에서 쓸 계급장 그림 (data URL, 한 번 만들어 두고 다시 쓴다)
+const insigUrls = {};
+export function insigUrl(insig) {
+  const key = insig.join('');
+  if (!insigUrls[key]) {
+    const [shape, n] = insig, step = shape === 'bar' ? 5.2 : 8.6, w = (n - 1) * step + 13, k = 4;
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(w * k); cv.height = 15 * k;
+    const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0);
+    c.fillStyle = 'rgba(12,16,10,.92)'; rr(c, 0, 0, w, 15, 7.5); c.fill();
+    for (let i = 0; i < n; i++) insigShape(c, shape, 6.5 + i * step, 7.5);
+    insigUrls[key] = cv.toDataURL();
+  }
+  return insigUrls[key];
+}
 export function drawTag(c, o) {
   const { type, tier, rank, hidden, insig } = o, pure = type[0] === type[1];
   c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -211,6 +225,7 @@ export function loadArt() {
 const unitArt = (branchId, type) => (fullBranch.has(branchId)
   ? art[`units/${branchId}_${type[0] === type[1] ? type[0] : type.join('-')}`] : null) || null;
 export const enemyArt = kind => art['enemy_' + kind] || null;
+export const hasArt = name => !!art[name];     // 그림 파일이 준비됐는지 (도감에서 <img> 주소를 고를 때 쓴다)
 
 // ── 그림 캐시: 같은 그림은 한 번만 그려 두고 복사한다 ───────────
 const cache = new Map();

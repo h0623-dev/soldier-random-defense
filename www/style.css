@@ -58,3 +58,24 @@ th { background: #232c1e; } .chips { display: flex; flex-wrap: wrap; gap: 0.4rem
 
 /* 세로가 짧은 화면: 정보창의 안내 문구를 숨기고 버튼을 낮춘다 */
 #app.short #info .hint { display: none; } #app.short #info { padding: 0.5rem 1rem; } #app.short #info .row { margin-top: 0.3rem; } #app.short #info .row button { padding: 0.6rem; } #app.short .big { padding: 0.7rem 0.4rem; } #app.short .sm { padding: 0.45rem 0.2rem; }
+
+/* 조합 도감 (그림 중심) */
+.panel h3 { font-size: 1.4rem; margin: 1.4rem 0 0.6rem; color: #c5cdb8; font-weight: 700; }
+.ui { width: 6.4rem; height: 6.4rem; object-fit: contain; flex: none; } .ui.s { width: 4.8rem; height: 4.8rem; }
+.cx4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+.ucard { background: #232c1e; border-radius: 1rem; padding: 0.6rem 0.3rem 0.8rem; text-align: center; min-width: 0; }
+.ucard .ui { width: 100%; max-width: 7.2rem; height: auto; aspect-ratio: 1; }
+.ucard b { display: block; font-size: 1.3rem; } .ucard small { display: block; font-size: 1.05rem; color: #9aa68c; line-height: 1.35; margin-top: 0.2rem; }
+.rcp { display: flex; align-items: center; gap: 0.4rem; background: #232c1e; border-radius: 1rem; padding: 0.4rem 0.8rem; margin-bottom: 0.6rem; }
+.rcp i { font-style: normal; font-weight: 800; font-size: 1.8rem; color: #ffd45e; flex: none; }
+.rcp span { min-width: 0; margin-left: 0.4rem; } .rcp b { display: block; font-size: 1.5rem; } .rcp small { font-size: 1.1rem; color: #9aa68c; }
+.wcard { display: flex; align-items: center; gap: 1rem; background: #232c1e; border-radius: 1rem; padding: 0.6rem 1rem; margin-bottom: 0.6rem; border: 2px solid transparent; }
+.wcard.now { border-color: #ffd45e; } .wcard.hid { border-color: #7a6a2c; }
+.wcard > div { min-width: 0; } .wcard b { font-size: 1.5rem; } .wcard small { font-size: 1.1rem; color: #9aa68c; }
+.wcard p { margin: 0.25rem 0 0; font-size: 1.25rem; color: #c5cdb8; line-height: 1.35; } .wcard em { font-style: normal; font-size: 1.05rem; color: #ffd45e; margin-right: 0.3rem; }
+.chip { display: inline-block; font-weight: 800; }
+.ranks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.rk { background: #232c1e; border-radius: 0.9rem; padding: 0.6rem 0.4rem; text-align: center; border: 2px solid #3d4a34; min-width: 0; }
+.rk.t1 { border-color: #cfd6dc; } .rk.t2 { border-color: #ffd45e; }
+.rk img { height: 1.9rem; max-width: 100%; display: block; margin: 0 auto 0.3rem; } .rk b { font-size: 1.35rem; } .rk small { font-size: 1.05rem; color: #9aa68c; margin-left: 0.3rem; }
+.hbadge { width: 6.4rem; flex: none; text-align: center; } .hbadge img { height: 2rem; max-width: 100%; display: block; margin: 0 auto 0.3rem; } .hbadge b { font-size: 1.8rem; color: #ffd45e; }
