@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b2118">
+<title>군인 랜덤 디펜스</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header id="hud">
+    <div class="stat"><small>웨이브</small><b id="h-wave">0/100</b></div>
+    <div class="stat"><small id="h-next-label">다음</small><b id="h-next">-</b></div>
+    <div class="stat"><small>적</small><b id="h-enemy">0/50</b></div>
+    <div class="stat gold"><small>군자금</small><b id="h-gold">0</b></div>
+    <button id="b-speed" class="mini">×1</button>
+    <button id="b-menu" class="mini">≡</button>
+  </header>
+  <canvas id="field" width="720" height="700"></canvas>
+  <section id="info"></section>
+  <footer id="actions">
+    <button id="b-summon" class="big"><span>신병 소집</span><small id="c-summon"></small></button>
+    <button id="b-camp" class="big alt"><span id="t-camp">훈련소 강화</span><small id="c-camp"></small></button>
+    <button id="b-codex" class="big ghost"><span>조합 도감</span><small>계급 · 병과</small></button>
+  </footer>
+</div>
+<div id="overlay"></div>
+<div id="toast"></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
