@@ -1,0 +1,126 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#14180f;font-family:"Noto Sans KR","Noto Sans CJK KR",sans-serif}
+svg{display:block}
+</style></head><body>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820">
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe3f2"/><stop offset=".7" stop-color="#eef6e4"/><stop offset="1" stop-color="#f7f1d8"/></linearGradient>
+  <radialGradient id="burst" cx=".5" cy=".55" r=".75"><stop offset="0" stop-color="#fff3a6"/><stop offset=".55" stop-color="#ffb52e"/><stop offset="1" stop-color="#f0641e"/></radialGradient>
+  <filter id="paper" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="4" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 .45  0 0 0 0 .38  0 0 0 0 .25  0 0 0 .09 0"/></filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="7"/></filter>
+  <filter id="wob"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="8" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="3.5"/></filter>
+  <clipPath id="cA"><rect x="30" y="30" width="655" height="760" rx="26"/></clipPath>
+  <clipPath id="cB"><rect x="715" y="30" width="655" height="760" rx="26"/></clipPath>
+</defs>
+
+<!-- ───────────── 시안 A: 수채 애니메이션풍 ───────────── -->
+<g clip-path="url(#cA)">
+  <rect x="30" y="30" width="655" height="760" fill="url(#sky)"/>
+  <g fill="#fff" opacity=".85" filter="url(#soft)"><ellipse cx="170" cy="150" rx="110" ry="34"/><ellipse cx="240" cy="125" rx="70" ry="30"/><ellipse cx="560" cy="210" rx="120" ry="30"/><ellipse cx="500" cy="190" rx="60" ry="26"/></g>
+  <path d="M30 600 Q200 520 380 580 T685 560 V790 H30Z" fill="#a9cf8a"/>
+  <path d="M30 650 Q230 590 420 640 T685 630 V790 H30Z" fill="#8fbd74"/>
+  <g fill="#7aa962"><path d="M90 640q6-26 12 0zM118 646q5-20 10 0zM560 628q6-26 12 0zM590 634q5-18 10 0zM470 655q5-20 10 0z"/></g>
+  <g fill="#fff8d6"><circle cx="150" cy="676" r="5"/><circle cx="182" cy="700" r="4"/><circle cx="540" cy="672" r="5"/><circle cx="612" cy="690" r="4"/></g>
+  <g filter="url(#wob)" stroke="#5b4630" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+    <ellipse cx="357" cy="688" rx="120" ry="16" fill="#5d8a4a" opacity=".45" stroke="none"/>
+    <!-- 등 뒤 소총 -->
+    <g transform="rotate(-62 430 380)"><rect x="330" y="372" width="210" height="13" rx="5" fill="#4a4a44"/><rect x="318" y="368" width="62" height="22" rx="8" fill="#9a6b43"/></g>
+    <!-- 다리 · 전투화 -->
+    <path d="M312 560 q-8 60 -4 96 h52 q4-50 2-96z" fill="#7f9661"/><path d="M362 560 q-2 50 4 96 h52 q2-56-8-96z" fill="#7f9661"/>
+    <path d="M300 650 h66 v26 q0 12-14 12 h-52 q-14 0-14-12 0-16 14-26z" fill="#5b4a3a"/><path d="M360 650 h66 q14 10 14 26 0 12-14 12 h-52 q-14 0-14-12z" fill="#5b4a3a"/>
+    <!-- 몸통 -->
+    <path d="M290 440 q68-36 136 0 q14 70 4 132 h-144 q-12-62 4-132z" fill="#8ea56d"/>
+    <path d="M300 520 q58 16 116 0 l2 26 q-60 16 -120 0z" fill="#6f8552" stroke-width="2.6"/>
+    <rect x="345" y="518" width="26" height="24" rx="5" fill="#d8c27a" stroke-width="2.6"/>
+    <path d="M330 450 l28 30 l28 -30" fill="#a9bd87"/>
+    <rect x="382" y="470" width="30" height="24" rx="5" fill="#7b9160" stroke-width="2.6"/>
+    <path d="M300 432 L404 560" stroke="#8a6a44" stroke-width="9" fill="none"/>
+    <!-- 팔 -->
+    <path d="M292 444 q-34 30 -30 96 q16 12 34 0 q0-44 14-70z" fill="#8ea56d"/><path d="M424 444 q34 30 30 96 q-16 12 -34 0 q0-44 -14-70z" fill="#8ea56d"/>
+    <circle cx="279" cy="548" r="17" fill="#f6d7b8"/><circle cx="437" cy="548" r="17" fill="#f6d7b8"/>
+    <!-- 머리 -->
+    <path d="M262 318 q-6 90 96 96 q102-6 96-96 q-10-80-96-80 q-86 0-96 80z" fill="#f8dcc0"/>
+    <path d="M270 300 q14 30 8 54 M446 300 q-14 30 -8 54" fill="none" stroke="#4a3626" stroke-width="7"/>
+    <ellipse cx="300" cy="364" rx="20" ry="12" fill="#f4a9a0" opacity=".65" stroke="none"/><ellipse cx="416" cy="364" rx="20" ry="12" fill="#f4a9a0" opacity=".65" stroke="none"/>
+    <ellipse cx="320" cy="336" rx="8.5" ry="13" fill="#3a2a1e" stroke="none"/><ellipse cx="396" cy="336" rx="8.5" ry="13" fill="#3a2a1e" stroke="none"/>
+    <circle cx="323" cy="331" r="3.2" fill="#fff" stroke="none"/><circle cx="399" cy="331" r="3.2" fill="#fff" stroke="none"/>
+    <path d="M306 312 q14-8 28-2 M382 310 q14-6 28 2" fill="none" stroke-width="3"/>
+    <path d="M340 374 q18 14 36 0" fill="none" stroke-width="3"/>
+    <path d="M356 350 q4 6 0 10" fill="none" stroke-width="2.4"/>
+    <!-- 철모 -->
+    <path d="M240 300 q0-104 118-104 q118 0 118 104 q-118 -26 -236 0z" fill="#7a9160"/>
+    <path d="M240 300 q118-26 236 0 l4 16 q-122-28 -244 0z" fill="#627a4a"/>
+    <path d="M286 226 q30-22 70-24" fill="none" stroke="#a9bd87" stroke-width="7" opacity=".8"/>
+    <path d="M262 312 q4 70 60 98 M454 312 q-4 70 -60 98" fill="none" stroke="#6b5338" stroke-width="5"/>
+    <!-- 들꽃 -->
+    <g transform="translate(452 528)"><path d="M0 0 q-6 -30 6 -52" fill="none" stroke="#5f8a4a" stroke-width="3"/><g fill="#fff" stroke-width="2"><circle cx="6" cy="-62" r="7"/><circle cx="-4" cy="-54" r="7"/><circle cx="16" cy="-54" r="7"/><circle cx="6" cy="-46" r="7"/></g><circle cx="6" cy="-54" r="5" fill="#f2c94c" stroke-width="2"/></g>
+  </g>
+  <rect x="30" y="30" width="655" height="760" filter="url(#paper)" fill="#fff"/>
+</g>
+<rect x="30" y="30" width="655" height="760" rx="26" fill="none" stroke="#e9e3c8" stroke-width="5"/>
+<g><rect x="54" y="52" width="356" height="62" rx="16" fill="#fffdf2" opacity=".94"/><text x="74" y="94" font-size="31" font-weight="800" fill="#4c5b3a">시안 A · 수채 애니메이션풍</text></g>
+<g font-size="21" fill="#42503a" font-weight="600"><rect x="54" y="708" width="607" height="64" rx="14" fill="#fffdf2" opacity=".9"/><text x="72" y="736">부드러운 갈색 선 · 낮은 채도 · 점 눈과 홍조</text><text x="72" y="762">따뜻하고 순한 인상, 자연 풍경 배경과 어울림</text></g>
+
+<!-- ───────────── 시안 B: 소년만화풍 ───────────── -->
+<g clip-path="url(#cB)">
+  <rect x="715" y="30" width="655" height="760" fill="url(#burst)"/>
+  <g fill="#fff" opacity=".42" transform="translate(1042 450)">
+    <path d="M0 0L-520 -330L-520 -250Z M0 0L-470 -520L-380 -520Z M0 0L-150 -520L-60 -520Z M0 0L170 -520L260 -520Z M0 0L470 -520L520 -440Z M0 0L520 -180L520 -90Z M0 0L520 170L520 260Z M0 0L330 420L240 420Z M0 0L-40 420L-130 420Z M0 0L-400 420L-470 380Z M0 0L-520 150L-520 60Z"/>
+  </g>
+  <g stroke="#15110d" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <ellipse cx="1042" cy="700" rx="170" ry="20" fill="#7a2a08" opacity=".5" stroke="none"/>
+    <!-- 다리 (넓게 벌린 자세) · 큰 전투화 -->
+    <path d="M990 560 L930 660 L990 676 L1040 590Z" fill="#4f8a35"/><path d="M1052 590 L1104 676 L1162 656 L1100 556Z" fill="#4f8a35"/>
+    <path d="M935 590 L1000 604 M1090 606 L1150 588" fill="none" stroke-width="4"/>
+    <path d="M906 652 L996 672 L990 712 L886 712 Q872 690 906 652Z" fill="#2b2622"/><path d="M1098 672 L1186 648 Q1222 688 1206 712 L1104 712Z" fill="#2b2622"/>
+    <path d="M896 700 H992 M1102 700 H1204" stroke="#f4f0e6" stroke-width="5"/>
+    <!-- 몸통 -->
+    <path d="M952 430 Q1042 392 1132 430 L1118 584 Q1042 612 966 584Z" fill="#5fa53f"/>
+    <path d="M1084 420 L1132 430 L1118 584 L1078 596 Q1104 510 1084 420Z" fill="#3f7a2c" stroke="none"/>
+    <path d="M952 430 Q1042 392 1132 430 L1118 584 Q1042 612 966 584Z" fill="none"/>
+    <path d="M962 540 Q1042 566 1122 540 L1119 574 Q1042 600 965 574Z" fill="#2b2622"/>
+    <rect x="1022" y="544" width="40" height="34" rx="5" fill="#ffd23c"/>
+    <path d="M1004 420 L1042 468 L1080 420" fill="#f4f0e6"/>
+    <path d="M1042 468 V540" fill="none" stroke-width="4"/>
+    <rect x="1068" y="456" width="42" height="30" fill="#4a8a33" stroke-width="5"/>
+    <!-- 왼팔: 엄지 척 -->
+    <path d="M956 436 L890 486 L912 540 L972 500Z" fill="#5fa53f"/>
+    <path d="M880 470 q-34-4 -40 30 q-4 34 30 40 q30 4 40-26 q8-30 -30-44z" fill="#ffd9b0"/>
+    <path d="M858 478 q-10-34 8-44 q18-6 20 20 l2 26z" fill="#ffd9b0"/>
+    <path d="M850 512 h34 M852 526 h30" fill="none" stroke-width="4"/>
+    <!-- 오른팔: 소총을 어깨에 걸침 -->
+    <g transform="rotate(-24 1150 380)"><rect x="1010" y="352" width="300" height="20" rx="4" fill="#33302c"/><rect x="988" y="346" width="84" height="34" rx="6" fill="#a8622c"/><rect x="1128" y="372" width="22" height="46" rx="4" fill="#33302c"/><rect x="1290" y="346" width="12" height="16" fill="#33302c" stroke-width="4"/></g>
+    <path d="M1116 428 L1146 366 L1200 392 L1166 478Z" fill="#5fa53f"/>
+    <path d="M1150 330 q34-10 46 20 q10 32 -20 46 q-32 10 -46-18 q-10-32 20-48z" fill="#ffd9b0"/>
+    <path d="M1146 352 h36 M1148 368 h36" fill="none" stroke-width="4"/>
+    <!-- 머리 -->
+    <path d="M938 300 Q928 418 1042 424 Q1156 418 1146 300 Q1136 208 1042 208 Q948 208 938 300Z" fill="#ffd9b0"/>
+    <path d="M1100 232 Q1146 262 1146 320 Q1146 400 1070 422 Q1126 372 1100 232Z" fill="#f0b98a" stroke="none"/>
+    <path d="M938 300 Q928 418 1042 424 Q1156 418 1146 300 Q1136 208 1042 208 Q948 208 938 300Z" fill="none"/>
+    <path d="M946 290 l-14 44 l26 -18 l-8 40 l28 -30 M1138 290 l14 44 l-26 -18 l8 40 l-28 -30" fill="#1d1a17" stroke-width="5"/>
+    <!-- 눈 · 눈썹 -->
+    <ellipse cx="996" cy="322" rx="27" ry="31" fill="#fff"/><ellipse cx="1088" cy="322" rx="27" ry="31" fill="#fff"/>
+    <circle cx="1002" cy="326" r="12" fill="#15110d" stroke="none"/><circle cx="1082" cy="326" r="12" fill="#15110d" stroke="none"/>
+    <circle cx="1006" cy="320" r="4" fill="#fff" stroke="none"/><circle cx="1086" cy="320" r="4" fill="#fff" stroke="none"/>
+    <path d="M962 284 L1024 296 M1122 284 L1060 296" fill="none" stroke-width="9"/>
+    <!-- 큰 웃음 -->
+    <path d="M972 368 Q1042 392 1112 368 Q1104 418 1042 420 Q980 418 972 368Z" fill="#fff"/>
+    <path d="M980 388 Q1042 408 1104 388 M1010 376 V414 M1042 380 V419 M1074 376 V414" fill="none" stroke-width="3.5"/>
+    <path d="M1118 344 l16 8 M1122 356 l14 2" fill="none" stroke-width="4"/>
+    <!-- 철모 (비스듬히) -->
+    <g transform="rotate(-8 1042 250)">
+      <path d="M912 296 Q912 164 1042 164 Q1172 164 1172 296 Q1042 262 912 296Z" fill="#4f8a35"/>
+      <path d="M1110 178 Q1172 214 1172 296 Q1140 286 1104 280 Q1140 232 1110 178Z" fill="#35661f" stroke="none"/>
+      <path d="M912 296 Q912 164 1042 164 Q1172 164 1172 296 Q1042 262 912 296Z" fill="none"/>
+      <path d="M902 296 Q1042 258 1182 296 L1186 320 Q1042 284 898 320Z" fill="#2f5a1c"/>
+      <path d="M1042 196 l9 20 22 2 -17 14 6 22 -20 -12 -20 12 6 -22 -17 -14 22 -2z" fill="#ffd23c" stroke-width="5"/>
+      <path d="M950 232 q26 -36 66 -46" fill="none" stroke="#a6e07e" stroke-width="9"/>
+    </g>
+    <!-- 효과 -->
+    <g fill="#fff" stroke-width="5"><path d="M820 300 l10 26 28 4 -22 16 8 28 -24 -16 -24 16 8 -28 -22 -16 28 -4z"/><path d="M1270 520 l7 18 20 3 -15 11 5 20 -17 -11 -17 11 5 -20 -15 -11 20 -3z"/></g>
+  </g>
+</g>
+<rect x="715" y="30" width="655" height="760" rx="26" fill="none" stroke="#15110d" stroke-width="7"/>
+<g><rect x="739" y="52" width="300" height="62" rx="8" fill="#15110d"/><text x="759" y="94" font-size="31" font-weight="800" fill="#ffd23c">시안 B · 소년만화풍</text></g>
+<g font-size="21" fill="#fff" font-weight="700"><rect x="739" y="708" width="607" height="64" rx="8" fill="#15110d" opacity=".92"/><text x="757" y="736">굵은 검은 선 · 높은 채도 · 큰 눈과 큰 웃음</text><text x="757" y="762">힘차고 과장된 동작, 집중선·별 효과와 어울림</text></g>
+</svg></body></html>
