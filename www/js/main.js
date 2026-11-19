@@ -15,8 +15,8 @@ const UPGRADES = [
 let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 1, paused = true, last = 0, infoKey = '';
 
 function loadMeta() {
-  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
-  catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {} }; }
+  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {}, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
+  catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {} }; }
 }
 const saveMeta = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch { /* 저장 불가 환경 */ } };
 const fmt = n => { n = Math.floor(n); if (n < 1e4) return String(n);
@@ -68,6 +68,7 @@ const ACT = {
       <p><b>1. 신병 소집</b> — 군자금으로 무작위 병과의 유닛을 뽑습니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 계급</b>의 다른 유닛을 누르면 한 계급 위 유닛으로 진급합니다. 두 병과에 따라 결과 병과가 달라집니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 계급이 올라갑니다.</p>
+      <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
       <p><b>패배</b> — 전장의 적이 ${C.CFG.enemyLimit}명을 넘거나, 보스를 ${C.CFG.bossTime}초 안에 잡지 못하면 패배합니다.</p>
       ${CLASS_IDS.map(c => `<p><span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span> ${CLASS_INFO[c].role}</p>`).join('')}
@@ -88,6 +89,10 @@ const ACT = {
       <h2>병과 · 병기</h2><table><tr><th>병과</th><th>${b.ranks[0]}~</th><th>${b.ranks[b.tiers[0]]}~</th><th>${b.ranks[b.tiers[1]]}~</th></tr>
       ${Object.entries(b.types).map(([k, [n, w]]) => `<tr><th>${n}<br><small>${k.split('+').map(c => CLASS_INFO[c].short).join('·')}</small></th>${w.map(x => `<td>${x}</td>`).join('')}</tr>`).join('')}</table>
       <h2>계급</h2><div class="chips">${b.ranks.map((r, i) => `<span class="chip">Lv${i + 1} ${r}</span>`).join('')}</div>
+      ${b.hidden.length ? `<h2>히든 계급</h2><div class="list">${b.hidden.map(h => meta.found[h.id]
+        ? `<p><b>${h.name}</b> (${b.ranks[h.level]}급) — ${h.text}<br><small>${h.how}</small></p>`
+        : `<p><b>???</b> — 아직 발견하지 못했습니다<br><small>${h.recipe ? '어떤 조합에서 나타납니다' : '신병 소집에서 드물게 나타납니다'}</small></p>`).join('')}
+        <p><small>히든 계급을 조합 재료로 쓰면 일반 계급으로 진급하고 능력은 사라집니다.</small></p></div>` : ''}
       <button class="wide" data-act="resume">전장으로</button>`);
   },
   result() {
@@ -113,9 +118,10 @@ canvas.addEventListener('pointerdown', e => {
   if (C.canMerge(g, ui.sel, i)) { ui.target = i; return; }
   ui.sel = i; ui.target = null;
 });
+function found(u) { if (u.hidden && !meta.found[u.hidden]) { meta.found[u.hidden] = 1; saveMeta(); } }
 function doMerge() {
   const u = C.merge(g, ui.sel, ui.target); if (!u) return;
-  toast(`${C.unitName(g.branch, u)} 진급!`); ui.sel = u.slot; ui.target = null;
+  toast(u.hidden ? `히든 조합! ${C.unitName(g.branch, u)} 등장` : `${C.unitName(g.branch, u)} 진급!`); found(u); ui.sel = u.slot; ui.target = null;
 }
 $('info').addEventListener('click', e => {
   const a = e.target.dataset.do; if (!a || !g) return;
@@ -125,6 +131,7 @@ $('info').addEventListener('click', e => {
 });
 $('b-summon').onclick = () => { if (!g) return; const u = C.summon(g);
   if (!u) toast(g.units.includes(null) ? '군자금이 부족합니다' : '배치할 칸이 없습니다 — 조합하세요');
+  else if (u.hidden) { toast(`히든 계급! ${C.unitName(g.branch, u)} 소집`); found(u); }
   else if (u.level > g.camp) toast(`행운! ${C.unitName(g.branch, u)} 소집`); };
 $('b-camp').onclick = () => { if (g && C.upgradeCamp(g)) toast(`훈련소 Lv${g.camp + 1} — ${g.branch.ranks[g.camp]}부터 소집`); };
 $('b-codex').onclick = () => g && ACT.codex();
@@ -144,12 +151,15 @@ function renderInfo() {
   const key = [A && A.id, B && B.id, g.wave].join('|'); if (key === infoKey) return; infoKey = key;
   const el = $('info');
   if (A && B) {
-    const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type };
+    const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type, hidden: p.hidden }, h = C.hiddenDef(b, p.hidden);
     el.innerHTML = `<p class="pv">${C.unitName(b, A)} + ${C.unitName(b, B)}<br>→ <b>${C.unitName(b, nu)}</b> (${C.unitWeapon(b, nu)})</p>
       <p>${statLine(C.unitStats(b, p.level, p.type, meta))}</p>
+      ${h ? `<p class="hint">★ 히든 조합 — ${h.text}</p>` : ''}${A.hidden || B.hidden ? '<p class="hint">⚠ 히든 계급의 능력은 조합하면 사라집니다</p>' : ''}
       <div class="row"><button class="ok" data-do="merge">조합</button><button class="no" data-do="cancel">취소</button></div>`;
   } else if (A) {
-    el.innerHTML = `<h3>${C.unitName(b, A)}<em>Lv${A.level + 1} · ${C.unitWeapon(b, A)}</em></h3><p>${statLine(A.stats)}</p>
+    const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean);
+    el.innerHTML = `<h3>${C.unitName(b, A)}<em>${h ? `히든 · ${b.ranks[A.level]}급` : `Lv${A.level + 1}`} · ${C.unitWeapon(b, A)}</em></h3><p>${statLine(A.stats)}</p>
+      ${h ? `<p class="hint">★ ${h.text}</p>` : ''}${up.length ? `<p class="hint">히든 계급 지원: ${up.join(' · ')}</p>` : ''}
       <p class="hint">${A.level < C.maxLevel(b) ? '노란 테두리 유닛을 누르면 조합, 빈 칸을 누르면 이동' : '최고 계급입니다'}</p>
       <div class="row"><button class="sell" data-do="sell">전역(판매) +${fmt(C.unitValue(b, A.level) * C.CFG.sellRate)}</button></div>`;
   } else {

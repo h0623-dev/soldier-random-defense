@@ -97,11 +97,26 @@ export function summon(g) {
   g.gold -= cost;
   const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.06 ? 2 : r < 0.28 ? 1 : 0));
   const c = CLASS_IDS[Math.floor(g.rand() * 4)];
+  // 히든 계급 뽑기
+  for (const h of g.branch.hidden) if (h.draw && g.camp >= h.drawCamp[0] && g.camp <= h.drawCamp[1] && g.rand() < h.draw)
+    return placeUnit(g, slot, h.level, [c, c], h.id);
   return placeUnit(g, slot, level, [c, c]);
 }
-function placeUnit(g, slot, level, type) {
-  const u = { id: g.uid++, slot, level, type, cd: 0.2, haste: 0, stats: unitStats(g.branch, level, type, g.meta), flash: 0.5 };
+function placeUnit(g, slot, level, type, hidden = null) {
+  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0,
+    stats: unitStats(g.branch, level, type, g.meta), flash: 0.5 };
+  if (hidden) g.log.push({ t: 'hidden', id: hidden });
   g.units[slot] = u; g.auraDirty = true; return u;
+}
+export const hiddenDef = (branch, id) => (id ? branch.hidden.find(h => h.id === id) : null) || null;
+// 히든 조합 판정: 재료 두 유닛(일반 계급)이 히든 계급 바로 아래이고 조건을 만족하면 히든 계급 id
+export function hiddenRecipe(branch, A, B) {
+  if (A.hidden || B.hidden) return null;
+  for (const h of branch.hidden) {
+    if (!h.recipe || A.level !== h.level - 1) continue;
+    if (h.recipe === 'allDiff' && new Set([...A.type, ...B.type]).size === 4) return h.id;
+  }
+  return null;
 }
 export function upgradeCamp(g) {
   const cost = campCost(g.branch, g.camp);
@@ -114,12 +129,13 @@ export function canMerge(g, a, b) {
 }
 export function mergePreview(g, a, b) {
   if (!canMerge(g, a, b)) return null;
-  return { level: g.units[a].level + 1, type: combineTypes(g.units[a].type, g.units[b].type) };
+  const A = g.units[a], B = g.units[b];
+  return { level: A.level + 1, type: combineTypes(A.type, B.type), hidden: hiddenRecipe(g.branch, A, B) };
 }
 // a = 먼저 고른 유닛(주재료), b = 결과가 놓일 자리
 export function merge(g, a, b) {
   const p = mergePreview(g, a, b); if (!p || g.over) return null;
-  g.units[a] = null; return placeUnit(g, b, p.level, p.type);
+  g.units[a] = null; return placeUnit(g, b, p.level, p.type, p.hidden);
 }
 export function moveUnit(g, a, b) {
   if (!g.units[a] || a === b) return false;
@@ -131,7 +147,8 @@ export function sell(g, a) {
   const v = Math.floor(unitValue(g.branch, u.level) * CFG.sellRate);
   g.units[a] = null; g.gold += v; g.auraDirty = true; return v;
 }
-export const unitName = (branch, u) => `${branch.ranks[u.level]} ${branch.types[typeKey(u.type)][0]}`;
+export const rankName = (branch, u) => (hiddenDef(branch, u.hidden) || {}).name || branch.ranks[u.level];
+export const unitName = (branch, u) => `${rankName(branch, u)} ${branch.types[typeKey(u.type)][0]}`;
 export const unitWeapon = (branch, u) =>
   branch.types[typeKey(u.type)][1][u.level >= branch.tiers[1] ? 2 : u.level >= branch.tiers[0] ? 1 : 0];
 
@@ -162,13 +179,17 @@ export function step(g, dt) {
         slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
     }
   }
-  // 의무 계열 오라
+  // 의무 계열 · 히든 계급 오라 (같은 종류는 겹치지 않고 가장 큰 값만 적용)
   if (g.auraDirty) {
     for (const u of g.units) if (u) {
-      u.haste = 0; const p = SLOTS[u.slot];
-      for (const m of g.units) if (m && m !== u && m.stats.haste > 0) {
+      u.haste = u.dmgUp = u.rangeUp = 0; const p = SLOTS[u.slot];
+      for (const m of g.units) if (m && m !== u) {
+        const h = hiddenDef(g.branch, m.hidden);
+        if (!(m.stats.haste > 0) && !h) continue;
         const q = SLOTS[m.slot];
-        if (Math.hypot(p.x - q.x, p.y - q.y) <= CFG.auraRadius) u.haste = Math.max(u.haste, m.stats.haste);
+        if (Math.hypot(p.x - q.x, p.y - q.y) > CFG.auraRadius) continue;
+        u.haste = Math.max(u.haste, m.stats.haste);
+        if (h) { u.dmgUp = Math.max(u.dmgUp, h.aura.dmg || 0); u.rangeUp = Math.max(u.rangeUp, h.aura.range || 0); }
       }
     }
     g.auraDirty = false;
@@ -184,12 +205,12 @@ export function step(g, dt) {
     if (!u) continue;
     u.flash -= dt; u.cd -= dt * (1 + u.haste);
     if (u.cd > 0) continue;
-    const p = SLOTS[u.slot], st = u.stats, r2 = st.range * st.range;
+    const p = SLOTS[u.slot], st = u.stats, r2 = (st.range * (1 + u.rangeUp)) ** 2;
     let target = null;
     for (const e of g.enemies) if (!e.dead && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2) { target = e; break; }
     if (!target) { u.cd = 0.05; continue; }
     u.cd = st.cd;
-    const crit = st.crit && g.rand() < st.crit, dmg = st.dmg * (crit ? 2.5 : 1);
+    const crit = st.crit && g.rand() < st.crit, dmg = st.dmg * (1 + u.dmgUp) * (crit ? 2.5 : 1);
     const victims = st.splash > 0
       ? g.enemies.filter(e => !e.dead && (e.x - target.x) ** 2 + (e.y - target.y) ** 2 <= st.splash * st.splash)
       : [target];

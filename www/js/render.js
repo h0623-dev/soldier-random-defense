@@ -1,6 +1,6 @@
 // 전장 캔버스 그리기 (임시 도형 그래픽 — 정식 그림 자산으로 교체 예정)
 import { CLASS_INFO } from './data.js';
-import { FIELD, TRACK, SLOTS, typeKey, canMerge } from './core.js';
+import { FIELD, TRACK, SLOTS, typeKey, canMerge, rankName } from './core.js';
 
 const ENEMY = { normal: ['#c94a3f', 11], fast: ['#e0a13a', 8], armor: ['#8d5a4a', 15], boss: ['#7b1f2b', 26] };
 
@@ -28,7 +28,9 @@ export function draw(ctx, g, ui) {
   if (sel) {
     const p = SLOTS[sel.slot];
     ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(p.x, p.y, sel.stats.range, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, sel.stats.range * (1 + sel.rangeUp), 0, 7); ctx.fill(); ctx.stroke();
+    if (sel.hidden) { ctx.strokeStyle = '#ffd45e'; ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 150, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
     if (sel.stats.haste > 0) { ctx.strokeStyle = CLASS_INFO.med.color; ctx.setLineDash([6, 6]);
       ctx.beginPath(); ctx.arc(p.x, p.y, 150, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   }
@@ -66,13 +68,15 @@ function unit(ctx, b, u, selected) {
   ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(0, 0, R - 8, 0, 7); ctx.fill();
   ctx.strokeStyle = selected ? '#fff' : ['#1a1f16', '#cfd6dc', '#ffd45e'][tier]; ctx.lineWidth = selected ? 5 : 3;
   ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
-  const rank = b.ranks[u.level];
+  if (u.hidden) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 3; ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.arc(0, 0, R + 6, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+  const rank = rankName(b, u);
   ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.font = `800 ${rank.length > 3 ? 13 : 16}px sans-serif`; ctx.fillText(rank, 0, -5);
   ctx.font = '700 11px sans-serif'; ctx.fillStyle = '#ffe9a6';
   const k = typeKey(u.type); ctx.fillText(k.split('+').map(c => CLASS_INFO[c].short).join('·'), 0, 13);
   ctx.fillStyle = '#10140e'; rr(ctx, 14, -R - 4, 30, 17, 8); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = '700 11px sans-serif'; ctx.fillText('Lv' + (u.level + 1), 29, -R + 5);
+  ctx.fillStyle = '#fff'; ctx.font = '700 11px sans-serif'; ctx.fillText(u.hidden ? '히든' : 'Lv' + (u.level + 1), 29, -R + 5);
   ctx.restore();
 }
 function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
