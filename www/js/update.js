@@ -19,6 +19,8 @@ export const buildInfo = { bundled: 0, live: 0, version: '' };
 
 // onReady(remote): 새 버전을 다 받았을 때 호출된다 (다음 실행 또는 새로고침부터 적용)
 export async function checkUpdate(onReady) {
+  // 개발용 서버(http://)에서는 받지 않는다 — 고치는 중인 파일 대신 배포된 버전이 실행되는 것을 막는다. 시험하려면 주소에 ?update=1
+  if (location.protocol === 'http:' && !/[?&]update=1/.test(location.search)) return 'off';
   if (!('caches' in window) || !('serviceWorker' in navigator)) return 'unsupported';
   try { await navigator.serviceWorker.register('sw.js'); } catch { return 'unsupported'; }
   const bundled = await getJson('version.json') || {};

@@ -83,6 +83,7 @@ const ACT = {
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
+      <p><b>작전 지역</b> — 10단계마다 다음 지역으로 이동합니다. 지역마다 맵 모양과 배경이 다르고, 마지막 단계에 그 지역의 보스가 나옵니다. 유닛은 그대로 따라갑니다.</p>
       <p><b>패배</b> — 전장의 적이 ${C.CFG.enemyLimit}명을 넘거나, 보스를 ${C.CFG.bossTime}초 안에 잡지 못하면 패배합니다.</p>
       ${CLASS_IDS.map(c => `<p><span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span> ${CLASS_INFO[c].role}</p>`).join('')}
       </div><button class="wide sec" data-act="${g ? 'menu' : 'title'}">뒤로</button>`);
@@ -150,7 +151,7 @@ const ACT = {
 canvas.addEventListener('pointerdown', e => {
   if (!g || g.over) return;
   const r = canvas.getBoundingClientRect(), x = (e.clientX - r.left) * C.FIELD.w / r.width, y = (e.clientY - r.top) * C.FIELD.h / r.height;
-  const i = C.SLOTS.findIndex(s => Math.abs(s.x - x) <= C.CELL.w / 2 && Math.abs(s.y - y) <= C.CELL.h / 2);
+  const i = g.map.slots.findIndex(s => Math.abs(s.x - x) <= C.CELL.w / 2 && Math.abs(s.y - y) <= C.CELL.h / 2);
   if (i < 0) { ui.sel = ui.target = null; return; }
   if (ui.sel == null || !g.units[ui.sel]) { ui.sel = g.units[i] ? i : null; ui.target = null; return; }
   if (i === ui.sel) { ui.sel = ui.target = null; return; }
@@ -215,6 +216,7 @@ function renderInfo() {
     const w = g.wave ? C.waveInfo(g.wave) : null;
     const nw = g.wave < C.CFG.maxWave ? C.waveInfo(g.wave + 1) : null;
     el.innerHTML = `<h3>${b.name}<em>${b.trait.text}</em></h3>
+      <p class="hint">작전 지역 ${g.area + 1}/${C.AREAS.length} · ${C.AREAS[g.area].name} — 보스: ${C.AREAS[g.area].boss.name} (${(g.area + 1) * 10}단계)</p>
       <p>${w ? `${g.wave}단계 — ${w.name}` : '곧 적이 진입합니다. 신병을 소집해 방어선을 만드세요.'}</p>
       ${nw ? `<p>다음 ${g.wave + 1}단계 — ${nw.name} ${nw.count}기${nw.kind === 'boss' ? ` · ${C.CFG.bossTime}초 안에 격파` : ''}</p>` : ''}
       <p class="hint">유닛을 눌러 선택 → 같은 계급 유닛을 눌러 조합</p>`;
@@ -254,7 +256,8 @@ function frame(now) {
   // 소리: 사격음은 프레임당 몇 개만, 웨이브 시작·보스 등장은 기록을 보고 낸다
   for (const s of g.sfx.splice(0)) Sound.play(s);
   for (; logAt < g.log.length; logAt++) { const l = g.log[logAt];
-    if (l.t === 'wave') Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave');
+    if (l.t === 'wave') { Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); if (l.wave % 10 === 0) toast(`보스 출현 — ${l.name}`); }
+    else if (l.t === 'area') { toast(`작전 지역 ${l.area + 1}/${C.AREAS.length} — ${C.AREAS[l.area].name}`); Sound.play('hidden'); infoKey = ''; }
     else if (l.t === 'mission') { toast(`임무 완수: ${l.text} · 보급품 +${l.sup}`); Sound.play('camp'); }
     else if (l.t === 'eliteKill') { toast(`특수 임무 성공! 보급품 +${C.CFG.eliteSupply}`); Sound.play('merge'); }
     else if (l.t === 'eliteFail') { toast('특수 임무 실패 — 표적이 빠져나갔습니다'); Sound.play('deny'); } }

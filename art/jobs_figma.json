@@ -294,5 +294,47 @@
    "file": "art/raw_figma/police_med-sig.png",
    "prompt": "Super-deformed chibi sticker-style game mascot, full body, a young Korean police officer. Huge round head almost half of the total height, only 2 heads tall, short stubby body, small hands, chunky boots. Simple cute face: thick angled black eyebrows, large round solid-black eyes with one tiny white highlight, small confident smile. Wearing a navy blue police cap with one simple plain gold five-pointed star on the front (only a star: no eagle, no wings, no flower, no emblem) and a light blue police shirt with navy blue trousers. Holding a leash with a small cute brown police dog sitting beside. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture, no tiny lines. Standing with legs apart, facing forward. Single character, centered, plain solid pure white background, no ground shadow, no text, no real military or police insignia, no national flags, original character design."
   }
+ ],
+ "boss": [
+  {
+   "file": "art/raw_figma/enemy_boss2.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a big chunky teal military hovercraft landing craft with a fat black rubber skirt, a small cabin, one big fan at the back and a short gun, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss3.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a big chunky sand-yellow self-propelled artillery vehicle on black tracks with one very long thick cannon barrel raised, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss4.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a big chunky white and light-blue armored snow crawler vehicle with wide black tracks, a snow plow blade at the front and a small turret, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss5.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a big chunky dark gray attack helicopter with a huge round cockpit, short stubby tail, spinning rotor on top and two small rocket pods, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss6.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a big chunky dark green armored car with six black wheels and a big flamethrower nozzle shooting a small orange flame, fuel tanks on the back, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss7.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a big chunky dark brown rocket launcher truck with eight black wheels and a large box of red-tipped rockets tilted upward on the back, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss8.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a huge round navy-blue flying drone carrier with four big rotors, a glowing orange core and three tiny drones attached under it, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss9.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a big chunky dark olive bomber airplane with fat round body, short wide wings, two propeller engines and a small bomb under each wing, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_boss10.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a huge intimidating steel-gray walking mech robot tank with two thick legs, a boxy body, a red glowing visor, a big cannon arm and a gold star on the chest, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  },
+  {
+   "file": "art/raw_figma/enemy_elite.png",
+   "prompt": "Super-deformed chibi sticker-style game boss enemy, a chunky purple and black elite armored assault vehicle with four big black wheels, spikes on the front bumper, a twin-barrel turret and a purple glowing antenna, with angry cartoon eyes. Very thick uniform black outlines, clean vector cartoon look, flat cel colors with minimal shading, very few details, no fine texture. Side view facing right. Single subject, whole subject visible, centered, plain solid pure white background, no ground shadow, no text, no real military insignia, no national flags, original design."
+  }
  ]
 }

@@ -3,36 +3,65 @@ import { CLASS_IDS, branchById } from './data.js';
 
 // ── 전장 ─────────────────────────────────────────────────
 // 가로 7칸 × 세로 9칸(칸 100×100)의 세로로 긴 전장. 적은 발판 덩어리 사이로 꺾이며 도는 닫힌 길을 계속 돈다.
-// 유닛은 길 옆의 발판(높이가 있는 블록) 위에 선다. 발판은 크기가 다른 덩어리 4개, 모두 25칸.
-//   행0  ━━━━━━━━━━━━━┓      R = 길, 숫자 = 발판 덩어리
-//   행1  R 1 1 1 1 1 R
-//   행2  R 1 1 1 1 1 R
-//   행3  R · R R R R R
-//   행4  R 2 R 3 3 3 3
-//   행5  R 2 R 3 3 3 3
-//   행6  R · R R R R R
-//   행7  R 4 4 4 4 4 R
-//   행8  R R R R R R R
+// 유닛은 길 옆의 발판(높이가 있는 블록) 위에 선다. 발판은 어느 맵이든 25칸.
+// 맵은 글자 격자로 적는다:  R 길 · P 발판 · D 장식 · . 빈 땅.  길은 한 줄로 이어진 닫힌 고리여야 한다(검사함).
 export const FIELD = { w: 720, h: 900 };
 export const CELL = { w: 100, h: 100 };
-const cellX = c => 60 + c * CELL.w, cellY = r => 50 + r * CELL.h;
-const ROUTE = [[0, 0], [0, 6], [3, 6], [3, 2], [6, 2], [6, 6], [8, 6], [8, 0]];     // 길이 꺾이는 칸 [행, 열], 마지막에서 처음으로 이어진다
-const PADS = [[1, 1, 5], [2, 1, 5], [4, 1, 1], [5, 1, 1], [4, 3, 6], [5, 3, 6], [7, 1, 5]];   // 발판 [행, 첫 열, 끝 열]
-export const DECOR = [[3, 1], [6, 1]];                                             // 길도 발판도 아닌 칸 (장식)
-export const PATH = ROUTE.map(([r, c]) => ({ x: cellX(c), y: cellY(r) }));
-const SEG = PATH.map((p, i) => { const q = PATH[(i + 1) % PATH.length];
-  return { p, len: Math.abs(q.x - p.x) + Math.abs(q.y - p.y), dx: Math.sign(q.x - p.x), dy: Math.sign(q.y - p.y) }; });
-export const PATH_LEN = SEG.reduce((n, g) => n + g.len, 0);
-export const SLOTS = [];       // 위쪽 줄부터 차례로 (그릴 때 아래 줄이 위 줄을 가리도록)
-for (const [r, a, b] of PADS) for (let c = a; c <= b; c++) SLOTS.push({ x: cellX(c), y: cellY(r), r, c });
-SLOTS.sort((p, q) => p.r - q.r || p.c - q.c);
-export const decorPos = DECOR.map(([r, c]) => ({ x: cellX(c), y: cellY(r) }));
+export const SLOT_COUNT = 25;
+const flipH = rows => rows.map(r => [...r].reverse().join('')), flipV = rows => [...rows].reverse();
+const L_S = ['RRRRRRR', 'RPPPPPR', 'RPPPPPR', 'RDRRRRR', 'RPRPPPP', 'RPRPPPP', 'RDRRRRR', 'RPPPPPR', 'RRRRRRR'];      // ㄹ자로 꺾이는 길
+const L_NOTCH = ['RRRDRRR', 'RPRPRPR', 'RPRPRPR', 'RPRPRPR', 'RPRRRPR', 'RPPPPPR', 'RPPPPPR', 'RPPDPPR', 'RRRRRRR'];  // 위에서 파고드는 길
+const L_SIDE = ['RRRRRRR', 'RPPPPPR', 'RRRRRPR', 'DPPPRPR', 'RRRRRPR', 'RPPPPPR', 'RPPPPPR', 'RPPDPPR', 'RRRRRRR'];   // 옆에서 파고드는 길
+const L_ZIG = ['RRRRRRR', 'RPPPPPR', 'RRRPPPR', 'DPRPPPR', 'RRRPRRR', 'RPPPRPD', 'RPPPRRR', 'RPPPPPR', 'RRRRRRR'];    // 양쪽에서 엇갈려 파고드는 길
+
+// 작전 지역 10곳: 10단계마다 다음 지역으로 넘어간다. 지역마다 맵 모양·배경이 다르고 마지막 단계에 그 지역의 보스가 나온다.
+export const AREAS = [
+  { name: '초원 훈련장', theme: 'meadow', layout: L_S, boss: { name: '지휘 전차', speed: 48 } },
+  { name: '해안 교두보', theme: 'beach', layout: L_NOTCH, boss: { name: '상륙 공기부양정', speed: 58 } },
+  { name: '사막 보급로', theme: 'desert', layout: L_SIDE, boss: { name: '중자주포', speed: 42 } },
+  { name: '설원 고지', theme: 'snow', layout: L_ZIG, boss: { name: '설상 중장갑차', speed: 46 } },
+  { name: '폐허 도심', theme: 'city', layout: flipH(L_S), boss: { name: '공격 헬기', speed: 60, fly: true } },
+  { name: '밀림 강변', theme: 'jungle', layout: flipV(L_NOTCH), boss: { name: '화염방사 장갑차', speed: 50 } },
+  { name: '화산 지대', theme: 'volcano', layout: flipH(L_SIDE), boss: { name: '다연장 로켓차', speed: 44 } },
+  { name: '군항 부두', theme: 'harbor', layout: flipH(L_ZIG), boss: { name: '드론 모함', speed: 52, fly: true } },
+  { name: '전방 비행장', theme: 'airfield', layout: flipV(L_S), boss: { name: '전략 폭격기', speed: 56, fly: true } },
+  { name: '적 사령부', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', speed: 40 } },
+];
+export const areaOfWave = wave => Math.min(AREAS.length - 1, Math.max(0, Math.floor((wave - 1) / 10)));
+
+function buildMap(rows, name) {
+  const road = new Set(), slots = [], decor = [], key = (r, c) => r * 10 + c;
+  rows.forEach((line, r) => [...line].forEach((ch, c) => {
+    const at = { x: 60 + c * CELL.w, y: 50 + r * CELL.h, r, c };
+    if (ch === 'R') road.add(key(r, c)); else if (ch === 'P') slots.push(at); else if (ch === 'D') decor.push(at);
+  }));
+  const nb = k => [k + 1, k + 10, k - 1, k - 10].filter(n => road.has(n));
+  if (slots.length !== SLOT_COUNT) throw new Error(`${name}: 발판 ${slots.length}칸 (25칸이어야 함)`);
+  for (const k of road) if (nb(k).length !== 2) throw new Error(`${name}: 길이 한 줄로 이어지지 않음 (${Math.floor(k / 10)}행 ${k % 10}열)`);
+  // 왼쪽 위 길 칸에서 오른쪽으로 출발해 한 바퀴 따라가며 꺾이는 지점을 모은다
+  const start = Math.min(...road), cells = [start];
+  for (let prev = -1, cur = start; ;) { const next = cur === start && prev < 0 ? (road.has(start + 1) ? start + 1 : nb(start)[0]) : nb(cur).find(n => n !== prev);
+    if (next === start) break; cells.push(next); prev = cur; cur = next; }
+  if (cells.length !== road.size) throw new Error(`${name}: 길이 하나의 고리가 아님`);
+  const pt = k => ({ x: 60 + (k % 10) * CELL.w, y: 50 + Math.floor(k / 10) * CELL.h });
+  const path = cells.filter((k, i) => { const a = cells[(i + cells.length - 1) % cells.length], b = cells[(i + 1) % cells.length]; return b - k !== k - a; }).map(pt);
+  const segs = path.map((p, i) => { const q = path[(i + 1) % path.length];
+    return { p, len: Math.abs(q.x - p.x) + Math.abs(q.y - p.y), dx: Math.sign(q.x - p.x), dy: Math.sign(q.y - p.y) }; });
+  const len = segs.reduce((n, g) => n + g.len, 0);
+  slots.sort((p, q) => p.r - q.r || p.c - q.c);       // 위쪽 줄부터 (그릴 때 아래 줄이 위 줄을 가리도록)
+  // 길 위의 거리 s → 위치와 진행 방향
+  const pathPos = s => { s = ((s % len) + len) % len;
+    for (const g of segs) { if (s < g.len) return { x: g.p.x + g.dx * s, y: g.p.y + g.dy * s, dx: g.dx, dy: g.dy }; s -= g.len; }
+    return { x: path[0].x, y: path[0].y, dx: 1, dy: 0 }; };
+  return { slots, decor, path, len, pathPos, padSet: new Set(slots.map(t => key(t.r, t.c))) };
+}
+export const MAPS = AREAS.map(a => buildMap(a.layout, a.name));
 
 export const CFG = {
   maxWave: 100, enemyLimit: 50, bossTime: 55, waveGap: 24, prepTime: 8,
   growth: 1.9,          // 계급 1단계(정규화)당 전투력 배수
   baseDmg: 10, summonBase: 20, summonGrowth: 1.75, campBase: 110, campGrowth: 1.95,
-  hpBase: 26, hpGrowth: 1.137, bountyBase: 2.2, bountyGrowth: 1.098,
+  hpBase: 26, hpGrowth: 1.131, bountyBase: 2.2, bountyGrowth: 1.098,
   startGold: 100, sellRate: 0.4, auraRadius: 150,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
   upBase: 80, upGrowth: 1.55, upStep: 0.08,
@@ -41,13 +70,6 @@ export const CFG = {
   // 특수 임무(정예 표적): 직접 불러내는 추가 보스. 제한 시간 안에 잡으면 군자금·보급품
   eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
 };
-
-// 길 위의 거리 s → 위치와 진행 방향
-export function pathPos(s) {
-  s = ((s % PATH_LEN) + PATH_LEN) % PATH_LEN;
-  for (const g of SEG) { if (s < g.len) return { x: g.p.x + g.dx * s, y: g.p.y + g.dy * s, dx: g.dx, dy: g.dy }; s -= g.len; }
-  return { x: PATH[0].x, y: PATH[0].y, dx: 1, dy: 0 };
-}
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -100,7 +122,8 @@ export function unitStats(branch, level, type, meta = {}, up = null) {
 
 export function waveInfo(wave) {
   const hp = CFG.hpBase * CFG.hpGrowth ** (wave - 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (wave - 1);
-  if (wave % 10 === 0) return { kind: 'boss', name: '적 지휘 전차', count: 1, hp: hp * 42, speed: 48, bounty: bounty * 25, gap: 1 };
+  if (wave % 10 === 0) { const n = areaOfWave(wave), b = AREAS[n].boss;      // 지역마다 다른 보스 (체력 배수는 같고 속도·모습이 다르다)
+    return { kind: 'boss', boss: n + 1, fly: !!b.fly, name: b.name, count: 1, hp: hp * 42, speed: b.speed, bounty: bounty * 25, gap: 1 }; }
   if (wave % 5 === 0) return { kind: 'armor', name: '장갑차 부대', count: 14, hp: hp * 2.3, speed: 52, bounty: bounty * 1.5, gap: 0.85 };
   if (wave % 3 === 0) return { kind: 'fast', name: '드론 편대', count: 26, hp: hp * 0.6, speed: 105, bounty: bounty * 0.75, gap: 0.42 };
   return { kind: 'normal', name: '적 보병', count: 20, hp, speed: 70, bounty, gap: 0.6 };
@@ -111,7 +134,7 @@ export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true }
   const branch = branchById(branchId);
   return {
     branch, meta, rand: rng(seed), fx, time: 0, wave: 0, nextWave: CFG.prepTime,
-    gold: CFG.startGold + 40 * (meta.gold || 0), camp: 0, units: Array(SLOTS.length).fill(null),
+    gold: CFG.startGold + 40 * (meta.gold || 0), camp: 0, units: Array(SLOT_COUNT).fill(null), area: 0, map: MAPS[0],
     supply: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
   };
@@ -239,6 +262,11 @@ export const unitWeapon = (branch, u) =>
 
 function startWave(g) {
   g.wave++; const w = waveInfo(g.wave);
+  // 다음 작전 지역으로 이동: 맵이 바뀐다. 유닛은 같은 번호의 발판으로 옮겨 서고, 남은 적은 새 길의 같은 진행 비율 지점으로 옮긴다
+  const area = areaOfWave(g.wave);
+  if (area !== g.area) { const old = g.map; g.area = area; g.map = MAPS[area];
+    for (const e of g.enemies) e.s = (e.s % old.len) / old.len * g.map.len;
+    g.auraDirty = true; g.log.push({ t: 'area', area }); }
   g.spawn = { ...w, left: w.count, cd: 0 }; g.nextWave = CFG.waveGap;
   if (w.kind === 'boss') g.bossTimer = CFG.bossTime;
   g.gold += 10 + g.wave * 2; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
@@ -263,7 +291,7 @@ export function step(g, dt) {
     g.spawn.cd -= dt;
     if (g.spawn.cd <= 0) {
       const s = g.spawn; s.left--; s.cd += s.gap;
-      g.enemies.push({ id: g.uid++, s: 0, hp: s.hp, maxHp: s.hp, speed: s.speed, bounty: s.bounty, kind: s.kind,
+      g.enemies.push({ id: g.uid++, s: 0, hp: s.hp, maxHp: s.hp, speed: s.speed, bounty: s.bounty, kind: s.kind, boss: s.boss, fly: s.fly,
         slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
     }
   }
@@ -280,11 +308,11 @@ export function step(g, dt) {
   // 의무 계열 · 히든 계급 오라 (같은 종류는 겹치지 않고 가장 큰 값만 적용)
   if (g.auraDirty) {
     for (const u of g.units) if (u) {
-      u.haste = u.dmgUp = u.rangeUp = 0; const p = SLOTS[u.slot];
+      u.haste = u.dmgUp = u.rangeUp = 0; const p = g.map.slots[u.slot];
       for (const m of g.units) if (m && m !== u) {
         const h = hiddenDef(g.branch, m.hidden);
         if (!(m.stats.haste > 0) && !h) continue;
-        const q = SLOTS[m.slot];
+        const q = g.map.slots[m.slot];
         if (Math.hypot(p.x - q.x, p.y - q.y) > CFG.auraRadius) continue;
         u.haste = Math.max(u.haste, m.stats.haste);
         if (h) { u.dmgUp = Math.max(u.dmgUp, h.aura.dmg || 0); u.rangeUp = Math.max(u.rangeUp, h.aura.range || 0); }
@@ -296,14 +324,14 @@ export function step(g, dt) {
   for (const e of g.enemies) {
     e.slowT -= dt; e.vulnT -= dt;
     e.s += e.speed * (1 - (e.slowT > 0 ? e.slow : 0)) * dt;
-    const p = pathPos(e.s); e.x = p.x; e.y = p.y; e.left = p.dx < 0;
+    const p = g.map.pathPos(e.s); e.x = p.x; e.y = p.y; e.left = p.dx < 0;
   }
   // 아군 공격
   for (const u of g.units) {
     if (!u) continue;
     u.flash -= dt; u.fireT -= dt; u.cd -= dt * (1 + u.haste);
     if (u.cd > 0) continue;
-    const p = SLOTS[u.slot], st = u.stats, r2 = (st.range * (1 + u.rangeUp)) ** 2;
+    const p = g.map.slots[u.slot], st = u.stats, r2 = (st.range * (1 + u.rangeUp)) ** 2;
     let target = null;
     for (const e of g.enemies) if (!e.dead && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2) { target = e; break; }
     if (!target) { u.cd = 0.05; continue; }

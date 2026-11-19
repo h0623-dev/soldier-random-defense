@@ -59,6 +59,16 @@ assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]
   for (let i = 0; i < 12; i++) C.step(g, 0.05);                                 // 임무는 0.5초마다 확인한다
   assert.ok(g.done.el1, '임무(특수 임무 1회) 자동 완수');
 }
+// 3-3) 작전 지역: 맵 10개가 모두 유효(발판 25칸, 닫힌 길), 10단계마다 지역이 바뀌고 유닛은 유지, 지역마다 보스가 다름
+{
+  assert.equal(C.MAPS.length, 10); for (const m of C.MAPS) { assert.equal(m.slots.length, 25); assert.ok(m.len > 2000); }
+  assert.equal(new Set(C.AREAS.map(a => a.boss.name)).size, 10); assert.equal(new Set(C.AREAS.map(a => a.layout.join(''))).size, 10);
+  assert.equal(C.waveInfo(30).name, C.AREAS[2].boss.name); assert.equal(C.areaOfWave(10), 0); assert.equal(C.areaOfWave(11), 1); assert.equal(C.areaOfWave(100), 9);
+  const g = C.createGame({ branchId: 'navy', seed: 3, fx: false }); g.gold = 1e9; for (let i = 0; i < 25; i++) C.summon(g);
+  const ids = g.units.map(u => u.id).join(); g.wave = 10; g.nextWave = 0; g.enemies.push({ id: -1, s: 1800, hp: 1e30, maxHp: 1e30, speed: 0, bounty: 0, kind: 'normal', slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
+  C.step(g, 0.05); assert.equal(g.area, 1); assert.equal(g.map, C.MAPS[1]); assert.equal(g.units.map(u => u.id).join(), ids);
+  assert.ok(g.log.some(l => l.t === 'area' && l.area === 1));
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
