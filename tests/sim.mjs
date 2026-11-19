@@ -69,6 +69,21 @@ assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]
   C.step(g, 0.05); assert.equal(g.area, 1); assert.equal(g.map, C.MAPS[1]); assert.equal(g.units.map(u => u.id).join(), ids);
   assert.ok(g.log.some(l => l.t === 'area' && l.area === 1));
 }
+// 3-4) 소집 자리는 빈 발판 중 무작위, 보스 능력(기절·증원·피해 감소)
+{
+  const first = new Set();
+  for (let sd = 1; sd <= 40; sd++) { const g = C.createGame({ branchId: 'army', seed: sd, fx: false }); first.add(C.summon(g).slot); }
+  assert.ok(first.size > 8, `첫 소집 자리가 여러 곳이어야 함 (${first.size}곳)`);
+  const g = C.createGame({ branchId: 'army', seed: 9, fx: false }); g.gold = 1e12; for (let i = 0; i < 25; i++) C.summon(g);
+  assert.ok(!g.units.includes(null)); assert.equal(C.summon(g), null);
+  const boss = wave => { g.enemies = []; g.wave = wave - 1; g.area = C.areaOfWave(wave); g.map = C.MAPS[g.area]; g.nextWave = 0; g.over = null; for (const u of g.units) u.stunT = 0;
+    for (let i = 0; i < 40; i++) C.step(g, 0.05); const b = g.enemies.find(e => e.kind === 'boss'); b.hp = b.maxHp = 1e40; g.nextWave = 1e9; g.bossTimer = 1e9; return b; };
+  boss(30); let stunned = 0; for (let i = 0; i < 200; i++) { C.step(g, 0.05); stunned = Math.max(stunned, g.units.filter(u => u.stunT > 0).length); }
+  assert.equal(stunned, 4, '포격 보스는 유닛 4명을 기절시킨다');
+  boss(10); const k0 = g.kills; for (let i = 0; i < 200; i++) C.step(g, 0.05);
+  assert.ok(g.enemies.filter(e => e.kind === 'normal').length + g.kills - k0 >= 3, '지휘 전차는 호위병을 부른다');
+  for (const a of C.AREAS) assert.ok(a.boss.skill && a.boss.text, a.name + ' 보스 능력');
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;

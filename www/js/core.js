@@ -16,16 +16,16 @@ const L_ZIG = ['RRRRRRR', 'RPPPPPR', 'RRRPPPR', 'DPRPPPR', 'RRRPRRR', 'RPPPRPD',
 
 // 작전 지역 10곳: 10단계마다 다음 지역으로 넘어간다. 지역마다 맵 모양·배경이 다르고 마지막 단계에 그 지역의 보스가 나온다.
 export const AREAS = [
-  { name: '초원 훈련장', theme: 'meadow', layout: L_S, boss: { name: '지휘 전차', speed: 48 } },
-  { name: '해안 교두보', theme: 'beach', layout: L_NOTCH, boss: { name: '상륙 공기부양정', speed: 58 } },
-  { name: '사막 보급로', theme: 'desert', layout: L_SIDE, boss: { name: '중자주포', speed: 42 } },
-  { name: '설원 고지', theme: 'snow', layout: L_ZIG, boss: { name: '설상 중장갑차', speed: 46 } },
-  { name: '폐허 도심', theme: 'city', layout: flipH(L_S), boss: { name: '공격 헬기', speed: 60, fly: true } },
-  { name: '밀림 강변', theme: 'jungle', layout: flipV(L_NOTCH), boss: { name: '화염방사 장갑차', speed: 50 } },
-  { name: '화산 지대', theme: 'volcano', layout: flipH(L_SIDE), boss: { name: '다연장 로켓차', speed: 44 } },
-  { name: '군항 부두', theme: 'harbor', layout: flipH(L_ZIG), boss: { name: '드론 모함', speed: 52, fly: true } },
-  { name: '전방 비행장', theme: 'airfield', layout: flipV(L_S), boss: { name: '전략 폭격기', speed: 56, fly: true } },
-  { name: '적 사령부', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', speed: 40 } },
+  { name: '초원 훈련장', theme: 'meadow', layout: L_S, boss: { name: '지휘 전차', speed: 48, skill: { id: 'summon', label: '증원 호출', cd: 9, n: 3, kind: 'normal', hp: 0.6 }, text: '증원 호출 — 9초마다 호위병 3명을 부른다' } },
+  { name: '해안 교두보', theme: 'beach', layout: L_NOTCH, boss: { name: '상륙 공기부양정', speed: 58, skill: { id: 'dash', label: '고속 기동', cd: 8, dur: 2.5, cut: 0.5 }, text: '고속 기동 — 8초마다 2.5초간 빨라지고 받는 피해가 절반' } },
+  { name: '사막 보급로', theme: 'desert', layout: L_SIDE, boss: { name: '중자주포', speed: 42, skill: { id: 'stun', label: '포격', cd: 7, n: 4, dur: 3 }, text: '포격 — 7초마다 무작위 유닛 4명을 3초간 기절시킨다' } },
+  { name: '설원 고지', theme: 'snow', layout: L_ZIG, boss: { name: '설상 중장갑차', speed: 46, skill: { id: 'armor', cut: 0.3 }, text: '중장갑 — 체력이 절반 이상이면 받는 피해 30% 감소' } },
+  { name: '폐허 도심', theme: 'city', layout: flipH(L_S), boss: { name: '공격 헬기', speed: 60, fly: true, skill: { id: 'evade', p: 0.15 }, text: '회피 기동 — 공격의 15%를 피한다' } },
+  { name: '밀림 강변', theme: 'jungle', layout: flipV(L_NOTCH), boss: { name: '화염방사 장갑차', speed: 50, skill: { id: 'burn', label: '화염 방사', cd: 6, r: 260, dur: 3, slow: 0.5 }, text: '화염 방사 — 6초마다 주변 유닛의 공격 속도를 3초간 절반으로' } },
+  { name: '화산 지대', theme: 'volcano', layout: flipH(L_SIDE), boss: { name: '다연장 로켓차', speed: 44, skill: { id: 'stun', label: '일제 사격', cd: 10, n: 6, dur: 2.5 }, text: '일제 사격 — 10초마다 무작위 유닛 6명을 2.5초간 기절시킨다' } },
+  { name: '군항 부두', theme: 'harbor', layout: flipH(L_ZIG), boss: { name: '드론 모함', speed: 52, fly: true, skill: { id: 'summon', label: '드론 사출', cd: 7, n: 4, kind: 'fast', hp: 0.4 }, text: '드론 사출 — 7초마다 드론 4기를 내보낸다' } },
+  { name: '전방 비행장', theme: 'airfield', layout: flipV(L_S), boss: { name: '전략 폭격기', speed: 56, fly: true, skill: { id: 'bomb', label: '융단 폭격', cd: 9, r: 150, dur: 3 }, text: '융단 폭격 — 9초마다 한 구역의 유닛을 3초간 기절시킨다' } },
+  { name: '적 사령부', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', speed: 40, skill: { id: 'stun', label: '충격파', cd: 12, n: 5, dur: 2.5, regen: 0.004, rage: 0.3 }, text: '재생 장갑 · 충격파 — 체력을 조금씩 회복하고, 12초마다 유닛 5명을 기절시키며, 체력 30% 아래에서 빨라진다' } },
 ];
 export const areaOfWave = wave => Math.min(AREAS.length - 1, Math.max(0, Math.floor((wave - 1) / 10)));
 
@@ -59,9 +59,10 @@ export const MAPS = AREAS.map(a => buildMap(a.layout, a.name));
 
 export const CFG = {
   maxWave: 100, enemyLimit: 50, bossTime: 55, waveGap: 24, prepTime: 8,
+  bossHp: 36,           // 보스 체력 = 그 단계 일반 적의 몇 배 (보스마다 특수 능력이 있어 42에서 낮춤)
   growth: 1.9,          // 계급 1단계(정규화)당 전투력 배수
   baseDmg: 10, summonBase: 20, summonGrowth: 1.75, campBase: 110, campGrowth: 1.95,
-  hpBase: 26, hpGrowth: 1.131, bountyBase: 2.2, bountyGrowth: 1.098,
+  hpBase: 26, hpGrowth: 1.129, bountyBase: 2.2, bountyGrowth: 1.098,
   startGold: 100, sellRate: 0.4, auraRadius: 150,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
   upBase: 80, upGrowth: 1.55, upStep: 0.08,
@@ -123,7 +124,7 @@ export function unitStats(branch, level, type, meta = {}, up = null) {
 export function waveInfo(wave) {
   const hp = CFG.hpBase * CFG.hpGrowth ** (wave - 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (wave - 1);
   if (wave % 10 === 0) { const n = areaOfWave(wave), b = AREAS[n].boss;      // 지역마다 다른 보스 (체력 배수는 같고 속도·모습이 다르다)
-    return { kind: 'boss', boss: n + 1, fly: !!b.fly, name: b.name, count: 1, hp: hp * 42, speed: b.speed, bounty: bounty * 25, gap: 1 }; }
+    return { kind: 'boss', boss: n + 1, fly: !!b.fly, skill: b.skill, name: b.name, count: 1, hp: hp * CFG.bossHp, speed: b.speed, bounty: bounty * 25, gap: 1 }; }
   if (wave % 5 === 0) return { kind: 'armor', name: '장갑차 부대', count: 14, hp: hp * 2.3, speed: 52, bounty: bounty * 1.5, gap: 0.85 };
   if (wave % 3 === 0) return { kind: 'fast', name: '드론 편대', count: 26, hp: hp * 0.6, speed: 105, bounty: bounty * 0.75, gap: 0.42 };
   return { kind: 'normal', name: '적 보병', count: 20, hp, speed: 70, bounty, gap: 0.6 };
@@ -140,8 +141,13 @@ export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true }
   };
 }
 
+// 빈 발판 가운데 무작위 한 곳 (없으면 -1)
+function randomEmptySlot(g) {
+  const free = []; g.units.forEach((u, i) => { if (!u) free.push(i); });
+  return free.length ? free[Math.floor(g.rand() * free.length)] : -1;
+}
 export function summon(g) {
-  const cost = summonCost(g.branch, g.camp), slot = g.units.indexOf(null);
+  const cost = summonCost(g.branch, g.camp), slot = randomEmptySlot(g);
   if (g.over || g.gold < cost || slot < 0) return null;
   g.gold -= cost;
   const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.06 ? 2 : r < 0.28 ? 1 : 0));
@@ -152,7 +158,7 @@ export function summon(g) {
   return placeUnit(g, slot, level, [c, c]);
 }
 function placeUnit(g, slot, level, type, hidden = null) {
-  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0,
+  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0, stunT: 0, burnT: 0, burn: 0,
     stats: unitStats(g.branch, level, type, g.meta, g.up), flash: 0.5 };
   if (hidden) { g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
   g.units[slot] = u; g.auraDirty = true; return u;
@@ -178,7 +184,7 @@ export function upgradeClass(g, c) {
 }
 // 선택 소집: 보급품을 써서 원하는 기본 병과를 고른다 (계급 운은 일반 소집과 같고 히든 뽑기는 없다)
 export function summonPick(g, c) {
-  const cost = summonCost(g.branch, g.camp), slot = g.units.indexOf(null);
+  const cost = summonCost(g.branch, g.camp), slot = randomEmptySlot(g);
   if (g.over || g.gold < cost || g.supply < CFG.pickSupply || slot < 0) return null;
   g.gold -= cost; g.supply -= CFG.pickSupply;
   const r = g.rand();
@@ -272,6 +278,12 @@ function startWave(g) {
   g.gold += 10 + g.wave * 2; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
 }
 function hit(g, e, dmg) {
+  const k = e.skill;
+  if (k) {      // 보스 방어 능력
+    if (k.id === 'evade' && g.rand() < k.p) { if (g.fx) g.effects.push({ txt: '회피', x: e.x, y: e.y - 30, t: 0.6, small: true }); return; }
+    if (k.id === 'armor' && e.hp > e.maxHp * 0.5) dmg *= 1 - k.cut;
+    if (e.dashT > 0) dmg *= 1 - k.cut;
+  }
   e.hp -= dmg * (1 + (e.vulnT > 0 ? e.vuln : 0));
   if (e.hp <= 0 && !e.dead) {
     e.dead = true; g.kills++;
@@ -280,6 +292,29 @@ function hit(g, e, dmg) {
     if (g.fx) { g.effects.push({ puff: true, x: e.x, y: e.y, r: e.kind === 'boss' ? 60 : 18, t: 0.3 }); if (e.kind === 'boss') g.sfx.push('bossdie'); }
     g.gold += e.bounty * (g.branch.trait.key === 'slow' ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0));
   }
+}
+
+// 보스 특수 능력: 주기적으로 발동하는 것(증원·고속 기동·기절·화염·폭격)과 늘 적용되는 것(재생). 방어 능력은 hit()에서 처리
+function bossSkill(g, e, dt) {
+  const k = e.skill;
+  if (k.regen) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * k.regen * dt);
+  if (e.dashT > 0) e.dashT -= dt;
+  if (!k.cd || (e.skT -= dt) > 0) return;
+  e.skT = k.cd;
+  const live = g.units.filter(Boolean), slots = g.map.slots;
+  const stun = (list, dur) => { for (const u of list) { u.stunT = Math.max(u.stunT, dur); if (g.fx) g.effects.push({ puff: true, x: slots[u.slot].x, y: slots[u.slot].y, r: 34, t: 0.3 }); } };
+  const pick = n => { const a = [...live], out = []; while (out.length < n && a.length) out.push(a.splice(Math.floor(g.rand() * a.length), 1)[0]); return out; };
+  if (k.id === 'summon') {
+    const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * k.hp, bounty = CFG.bountyBase * CFG.bountyGrowth ** w * 0.3;
+    for (let i = 0; i < k.n; i++) g.enemies.push({ id: g.uid++, s: e.s - 26 * (i + 1), hp, maxHp: hp, speed: k.kind === 'fast' ? 105 : 70, bounty, kind: k.kind, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
+  } else if (k.id === 'dash') e.dashT = k.dur;
+  else if (k.id === 'stun') stun(pick(k.n), k.dur);
+  else if (k.id === 'burn') { for (const u of live) { const p = slots[u.slot]; if (Math.hypot(p.x - e.x, p.y - e.y) <= k.r) { u.burnT = k.dur; u.burn = k.slow; } }
+    if (g.fx) g.effects.push({ puff: true, x: e.x, y: e.y, r: k.r, t: 0.35, col: '#ff8a3c' }); }
+  else if (k.id === 'bomb') { const c = slots[Math.floor(g.rand() * slots.length)];
+    stun(live.filter(u => Math.hypot(slots[u.slot].x - c.x, slots[u.slot].y - c.y) <= k.r), k.dur);
+    if (g.fx) g.effects.push({ puff: true, x: c.x, y: c.y, r: k.r, t: 0.4, col: '#ffb347' }); }
+  if (g.fx) { g.effects.push({ txt: k.label + '!', x: e.x, y: e.y - 46, t: 1.3 }); g.sfx.push('art'); }
 }
 
 export function step(g, dt) {
@@ -292,6 +327,7 @@ export function step(g, dt) {
     if (g.spawn.cd <= 0) {
       const s = g.spawn; s.left--; s.cd += s.gap;
       g.enemies.push({ id: g.uid++, s: 0, hp: s.hp, maxHp: s.hp, speed: s.speed, bounty: s.bounty, kind: s.kind, boss: s.boss, fly: s.fly,
+        skill: s.skill, skT: s.skill && s.skill.cd ? s.skill.cd * 0.6 : 0, dashT: 0,
         slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
     }
   }
@@ -321,15 +357,19 @@ export function step(g, dt) {
     g.auraDirty = false;
   }
   // 적 이동
+  for (const e of g.enemies.slice()) if (e.skill && !e.dead) bossSkill(g, e, dt);
   for (const e of g.enemies) {
     e.slowT -= dt; e.vulnT -= dt;
-    e.s += e.speed * (1 - (e.slowT > 0 ? e.slow : 0)) * dt;
+    const fast = e.dashT > 0 ? 2.2 : e.skill && e.skill.rage && e.hp < e.maxHp * e.skill.rage ? 1.5 : 1;
+    e.s += e.speed * fast * (1 - (e.slowT > 0 && !(e.dashT > 0) ? e.slow : 0)) * dt;
     const p = g.map.pathPos(e.s); e.x = p.x; e.y = p.y; e.left = p.dx < 0;
   }
   // 아군 공격
   for (const u of g.units) {
     if (!u) continue;
-    u.flash -= dt; u.fireT -= dt; u.cd -= dt * (1 + u.haste);
+    u.flash -= dt; u.fireT -= dt; u.stunT -= dt; u.burnT -= dt;
+    if (u.stunT > 0) continue;                                  // 기절: 공격하지 못한다
+    u.cd -= dt * (1 + u.haste) * (u.burnT > 0 ? 1 - u.burn : 1);   // 화염: 공격 속도 감소
     if (u.cd > 0) continue;
     const p = g.map.slots[u.slot], st = u.stats, r2 = (st.range * (1 + u.rangeUp)) ** 2;
     let target = null;

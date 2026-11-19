@@ -20,7 +20,9 @@ const DEV = [
     await p.goto('http://localhost:8080/'); await p.click('text=출격'); await p.click('text=육군');
     await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C; g.gold = 5000; for (let i = 0; i < 9; i++) C.summon(g); });
     const fb = await p.locator('#field').boundingBox();
-    await p.mouse.click(fb.x + fb.width * 160 / 720, fb.y + fb.height * 150 / 700); await p.waitForTimeout(250);
+    // 소집 자리는 무작위이므로 실제 유닛이 선 발판을 눌러 선택한다
+    const sp = await p.evaluate(() => { const g = window.__srd.game, u = g.units.find(Boolean), s = g.map.slots[u.slot]; return { x: s.x / window.__srd.C.FIELD.w, y: s.y / window.__srd.C.FIELD.h }; });
+    await p.mouse.click(fb.x + fb.width * sp.x, fb.y + fb.height * sp.y); await p.waitForTimeout(250);
     const m = await p.evaluate(() => { const r = id => { const e = document.getElementById(id).getBoundingClientRect(); return [e.left, e.top, e.width, e.height].map(Math.round); };
       const btn = document.getElementById('b-summon').getBoundingClientRect(), info = document.getElementById('info');
       const fs = parseFloat(getComputedStyle(info).fontSize);
@@ -28,7 +30,7 @@ const DEV = [
         infoOverflow: info.scrollHeight > info.clientHeight + 1, hscroll: document.documentElement.scrollWidth > innerWidth,
         offscreen: ['hud', 'field', 'info', 'actions'].some(id => { const e = document.getElementById(id).getBoundingClientRect(); return e.bottom > innerHeight + 1 || e.right > innerWidth + 1 || e.top < -1 || e.left < -1; }) }; });
     const cover = Math.round(100 * m.field[2] * m.field[3] / (w * h));
-    const slot = Math.round(m.field[2] * 88 / 720);
+    const slot = Math.round(m.field[2] * 100 / 720);
     const flags = [m.offscreen && '화면밖', m.hscroll && '가로스크롤', m.infoOverflow && '정보창넘침', slot < 40 && '칸<40px', m.btnH < 44 && '버튼<44px', m.font < 11.5 && '글자<11.5', errs.length && '오류'].filter(Boolean);
     if (flags.length) bad++;
     console.log(`${name.padEnd(20)} ${w}x${h} 전장 ${m.field[2]}x${m.field[3]} (${cover}%) 칸 ${slot}px 버튼높이 ${m.btnH} 글자 ${m.font} 정보창 ${m.info[2]}x${m.info[3]} ${flags.join(',') || 'OK'}`);

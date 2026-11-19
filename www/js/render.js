@@ -142,12 +142,30 @@ export function draw(ctx, g, ui, quality = 2) {
   // 사격 효과
   const fxList = quality > 0 ? g.effects : g.effects.slice(-12);   // 최저 품질에서는 사격 효과 수를 줄인다
   for (const f of fxList) {
-    if (f.puff) { const a = Math.max(0, f.t / 0.3); ctx.globalAlpha = a; ctx.fillStyle = '#fff3c4';
+    if (f.txt) { const a = Math.min(1, f.t / 0.4), up = (1 - Math.min(1, f.t)) * 18; ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `900 ${f.small ? 14 : 22}px sans-serif`; ctx.lineWidth = 4; ctx.strokeStyle = '#1b1208'; ctx.strokeText(f.txt, f.x, f.y - up);
+      ctx.fillStyle = f.small ? '#d7e3ee' : '#ffd45e'; ctx.fillText(f.txt, f.x, f.y - up); ctx.globalAlpha = 1; continue; }
+    if (f.puff) { const a = Math.max(0, f.t / 0.3); ctx.globalAlpha = Math.min(1, a) * (f.col ? 0.55 : 1); ctx.fillStyle = f.col || '#fff3c4';
       ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.25 - a * 0.75), 0, 7); ctx.fill(); ctx.globalAlpha = 1; continue; }
     const a = Math.min(1, f.t / 0.18);
     ctx.strokeStyle = CLASS_INFO[f.c].color; ctx.globalAlpha = a; ctx.lineWidth = f.crit ? 5 : 2.5;
     ctx.beginPath(); ctx.moveTo(f.x1, f.y1 - 8); ctx.lineTo(f.x2, f.y2); ctx.stroke();
     if (f.r > 0) { ctx.fillStyle = 'rgba(255,170,80,.45)'; ctx.beginPath(); ctx.arc(f.x2, f.y2, f.r * (1.15 - a * .4), 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  }
+  // 지역 이동 연출: 화면이 어두워졌다 밝아지며 새 지역이 드러나고, 지역 이름 띠가 지나간다
+  if (ui.trans) {
+    const el = ui.trans.total - ui.trans.t, A = AREAS[ui.trans.area], T = THEMES[A.theme];
+    const dark = el < 0.3 ? 1 : Math.max(0, 1 - (el - 0.3) / 0.7);
+    if (dark > 0) { ctx.fillStyle = `rgba(8,10,6,${dark})`; ctx.fillRect(0, 0, FIELD.w, FIELD.h); }
+    const inn = Math.min(1, el / 0.35), out = Math.min(1, ui.trans.t / 0.4), a = Math.min(inn, out), cy = FIELD.h * 0.42, slide = (1 - inn) * -160 + (1 - out) * 160;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(8,10,6,.86)'; ctx.fillRect(0, cy - 92, FIELD.w, 184);
+    ctx.fillStyle = T.pad[0]; ctx.fillRect(0, cy - 92, FIELD.w, 6); ctx.fillRect(0, cy + 86, FIELD.w, 6);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = T.pad[4]; ctx.font = '800 24px sans-serif'; ctx.fillText(`작전 지역 ${ui.trans.area + 1} / ${AREAS.length}`, FIELD.w / 2 + slide, cy - 52);
+    ctx.fillStyle = '#fff'; ctx.font = '900 58px sans-serif'; ctx.fillText(A.name, FIELD.w / 2 + slide, cy);
+    ctx.fillStyle = '#ffb3a8'; ctx.font = '700 22px sans-serif'; ctx.fillText(`${(ui.trans.area + 1) * 10}단계 보스 — ${A.boss.name}`, FIELD.w / 2 - slide, cy + 54);
     ctx.globalAlpha = 1;
   }
   if (g.enemies.some(e => e.kind === 'boss')) {
@@ -164,6 +182,8 @@ function enemy(ctx, e, k, quality) {
   // 바닥 그림자 · 상태 표시
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.85, r * 0.95, r * 0.36, 0, 0, 7); ctx.fill();
   if (elite) { ctx.fillStyle = 'rgba(160,90,220,.4)'; ctx.strokeStyle = '#c99bff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.6, r + 9, (r + 9) * 0.5, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (e.dashT > 0) { ctx.strokeStyle = '#7fe3ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
+  else if (e.skill && e.skill.id === 'armor' && e.hp > e.maxHp * 0.5) { ctx.strokeStyle = '#cfd6dc'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
   if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.5)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 4, (r + 4) * 0.45, 0, 0, 7); ctx.fill(); }
   if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 5, (r + 5) * 0.45, 0, 0, 7); ctx.stroke(); }
   const im = (e.kind === 'boss' && bossImage(e.boss)) || (elite && enemyArt('elite')) || enemyArt(art) || sprite('e:' + art, half, k, ENEMY_DRAW[art]);
@@ -191,6 +211,16 @@ function unit(ctx, b, u, p, k, now, quality) {
   const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.2 : 0) - fire * 6, sc = 1 + fire * 0.07;
   const im = unitImage(b.id, u.type) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
   const w = CHAR * sc;
-  ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + dy, w, w);
+  const stunned = u.stunT > 0;
+  if (stunned) ctx.globalAlpha = 0.55;
+  ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy), w, w);
+  ctx.globalAlpha = 1;
+  if (stunned) { ctx.fillStyle = '#ffd45e'; ctx.strokeStyle = '#3a2a08'; ctx.lineWidth = 1.2;     // 기절: 머리 위를 도는 별
+    for (let i = 0; i < 3; i++) { const a = now * 5 + i * 2.1, sx = p.x + Math.cos(a) * 20, sy = p.y - 46 + Math.sin(a) * 6;
+      ctx.beginPath(); for (let j = 0; j < 10; j++) { const q = -Math.PI / 2 + j * Math.PI / 5, rr2 = j % 2 ? 2.6 : 6; ctx[j ? 'lineTo' : 'moveTo'](sx + Math.cos(q) * rr2, sy + Math.sin(q) * rr2); }
+      ctx.closePath(); ctx.fill(); ctx.stroke(); } }
+  else if (u.burnT > 0) { const fl = 1 + Math.sin(now * 14 + u.id) * 0.15;                          // 화염: 머리 위 불꽃
+    ctx.fillStyle = '#ff7a2e'; ctx.beginPath(); ctx.moveTo(p.x, p.y - 62 * fl + 8); ctx.quadraticCurveTo(p.x + 11, p.y - 44, p.x, p.y - 38); ctx.quadraticCurveTo(p.x - 11, p.y - 44, p.x, p.y - 62 * fl + 8); ctx.fill();
+    ctx.fillStyle = '#ffd45e'; ctx.beginPath(); ctx.arc(p.x, p.y - 42, 3.5, 0, 7); ctx.fill(); }
   ctx.drawImage(sprite(['ut', tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':'), 62, k, c => drawTag(c, o)), p.x - 62, p.y - 62, 124, 124);
 }

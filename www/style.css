@@ -52,8 +52,8 @@ th { background: #232c1e; } .chips { display: flex; flex-wrap: wrap; gap: 0.4rem
 .list p { margin: 0.4rem 0; font-size: 1.3rem; color: #c5cdb8; } .list b { color: #eef0e6; }
 .up { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 0; border-bottom: 1px solid #2e3a27; font-size: 1.3rem; }
 .up div { flex: 1; } .up button { padding: 0.8rem 1.2rem; background: #7a6a2c; font-weight: 700; }
-#toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 0.8rem 1.6rem; border-radius: 9.9rem; background: rgba(0, 0, 0, .8);
-  font-weight: 700; font-size: 1.4rem; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 9; white-space: nowrap; }
+#toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 0.8rem 1.6rem; border-radius: 1.8rem; background: rgba(0, 0, 0, .8);
+  font-weight: 700; font-size: 1.4rem; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 9; white-space: normal; text-align: center; max-width: 92vw; width: max-content; line-height: 1.35; }
 #toast.on { opacity: 1; }
 
 /* 세로가 짧은 화면: 정보창의 안내 문구를 숨기고 버튼을 낮춘다 */

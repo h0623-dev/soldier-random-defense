@@ -15,7 +15,7 @@ const UPGRADES = [
   { key: 'gold', name: '초기 보급', desc: '시작 군자금 +40', max: 10 },
   { key: 'bounty', name: '전리품', desc: '처치 보상 +3%', max: 20 },
 ];
-let slowT = 0, frameMs = 16, logAt = 0;
+let slowT = 0, frameMs = 16, logAt = 0, hold = 0;
 let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 1, paused = true, last = 0, infoKey = '';
 const view = initLayout(() => { infoKey = ''; });
 
@@ -30,7 +30,7 @@ const buildLabel = b => { const d = new Date(b * 1000), z = n => String(n).padSt
 const fmt = n => { n = Math.floor(n); if (n < 1e4) return String(n);
   const u = ['만', '억', '조', '경']; let i = -1; while (n >= 1e4 && i < 3) { n /= 1e4; i++; } return (n >= 100 ? Math.floor(n) : n.toFixed(1)) + u[i]; };
 let toastT;
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1400); }
+function toast(msg, ms = 1400) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
 function show(html) { overlay.innerHTML = `<div class="panel">${html}</div>`; overlay.classList.add('on'); overlay.scrollTop = 0; paused = true; }
 function hide() { overlay.classList.remove('on'); paused = false; last = performance.now(); }
 overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) ACT[b.dataset.act](b.dataset.arg); });
@@ -54,7 +54,7 @@ const ACT = {
       <button class="wide sec" data-act="title">뒤로</button>`);
   },
   start(id) {
-    g = C.createGame({ branchId: id, meta }); logAt = 0; ui = { sel: null, target: null }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1';
+    g = C.createGame({ branchId: id, meta }); logAt = 0; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: 0 } }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1';
     hide(); toast(`${g.branch.name} 출격! 신병을 소집하세요`);
   },
   resume() { hide(); },
@@ -75,7 +75,7 @@ const ACT = {
   },
   help() {
     show(`<h2>게임 방법</h2><div class="list">
-      <p><b>1. 신병 소집</b> — 군자금으로 무작위 병과의 유닛을 뽑습니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
+      <p><b>1. 신병 소집</b> — 군자금으로 무작위 병과의 유닛을 뽑습니다. 빈 발판 가운데 무작위 자리에 배치됩니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 계급</b>의 다른 유닛을 누르면 한 계급 위 유닛으로 진급합니다. 두 병과에 따라 결과 병과가 달라집니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 계급이 올라갑니다.</p>
       <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
@@ -83,7 +83,7 @@ const ACT = {
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
-      <p><b>작전 지역</b> — 10단계마다 다음 지역으로 이동합니다. 지역마다 맵 모양과 배경이 다르고, 마지막 단계에 그 지역의 보스가 나옵니다. 유닛은 그대로 따라갑니다.</p>
+      <p><b>작전 지역</b> — 10단계마다 다음 지역으로 이동합니다. 지역마다 맵 모양과 배경이 다르고, 마지막 단계에 그 지역의 보스가 나옵니다. 보스마다 특수 능력이 다릅니다(기절, 화염, 증원, 회피 등). 유닛은 그대로 따라갑니다.</p>
       <p><b>패배</b> — 전장의 적이 ${C.CFG.enemyLimit}명을 넘거나, 보스를 ${C.CFG.bossTime}초 안에 잡지 못하면 패배합니다.</p>
       ${CLASS_IDS.map(c => `<p><span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span> ${CLASS_INFO[c].role}</p>`).join('')}
       </div><button class="wide sec" data-act="${g ? 'menu' : 'title'}">뒤로</button>`);
@@ -216,7 +216,8 @@ function renderInfo() {
     const w = g.wave ? C.waveInfo(g.wave) : null;
     const nw = g.wave < C.CFG.maxWave ? C.waveInfo(g.wave + 1) : null;
     el.innerHTML = `<h3>${b.name}<em>${b.trait.text}</em></h3>
-      <p class="hint">작전 지역 ${g.area + 1}/${C.AREAS.length} · ${C.AREAS[g.area].name} — 보스: ${C.AREAS[g.area].boss.name} (${(g.area + 1) * 10}단계)</p>
+      <p class="hint">작전 지역 ${g.area + 1}/${C.AREAS.length} · ${C.AREAS[g.area].name}</p>
+      <p class="hint">${(g.area + 1) * 10}단계 보스 ${C.AREAS[g.area].boss.name}: ${C.AREAS[g.area].boss.text}</p>
       <p>${w ? `${g.wave}단계 — ${w.name}` : '곧 적이 진입합니다. 신병을 소집해 방어선을 만드세요.'}</p>
       ${nw ? `<p>다음 ${g.wave + 1}단계 — ${nw.name} ${nw.count}기${nw.kind === 'boss' ? ` · ${C.CFG.bossTime}초 안에 격파` : ''}</p>` : ''}
       <p class="hint">유닛을 눌러 선택 → 같은 계급 유닛을 눌러 조합</p>`;
@@ -244,8 +245,11 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (!g) return;
   if (!paused && !g.over) {
-    let dt = Math.min(0.1, (now - last) / 1000) * speed;
-    while (dt > 0) { const d = Math.min(0.05, dt); C.step(g, d); dt -= d; }
+    const real = Math.min(0.1, (now - last) / 1000);
+    // 지역 이동 연출: 알림이 뜨는 동안 잠깐 멈췄다가(hold) 다시 진행한다
+    if (ui.trans) { ui.trans.t -= real; if (ui.trans.t <= 0) ui.trans = null; }
+    if (hold > 0) hold -= real;
+    else { let dt = real * speed; while (dt > 0) { const d = Math.min(0.05, dt); C.step(g, d); dt -= d; } }
   }
   // 느린 기기 자동 조정: 프레임이 계속 밀리면 그리기 해상도를 한 단계씩 낮춘다
   if (!paused && !g.over && last) {
@@ -256,8 +260,9 @@ function frame(now) {
   // 소리: 사격음은 프레임당 몇 개만, 웨이브 시작·보스 등장은 기록을 보고 낸다
   for (const s of g.sfx.splice(0)) Sound.play(s);
   for (; logAt < g.log.length; logAt++) { const l = g.log[logAt];
-    if (l.t === 'wave') { Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); if (l.wave % 10 === 0) toast(`보스 출현 — ${l.name}`); }
-    else if (l.t === 'area') { toast(`작전 지역 ${l.area + 1}/${C.AREAS.length} — ${C.AREAS[l.area].name}`); Sound.play('hidden'); infoKey = ''; }
+    if (l.t === 'wave') { Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); if (l.wave % 10 === 0) toast(`보스 출현 — ${C.AREAS[g.area].boss.text}`, 3200); }
+    else if (l.t === 'area') { ui.trans = { t: 2.6, total: 2.6, area: l.area }; hold = 1.3; ui.sel = ui.target = null; infoKey = '';
+      for (const u of g.units) if (u) u.flash = 0.9; Sound.play('hidden'); }
     else if (l.t === 'mission') { toast(`임무 완수: ${l.text} · 보급품 +${l.sup}`); Sound.play('camp'); }
     else if (l.t === 'eliteKill') { toast(`특수 임무 성공! 보급품 +${C.CFG.eliteSupply}`); Sound.play('merge'); }
     else if (l.t === 'eliteFail') { toast('특수 임무 실패 — 표적이 빠져나갔습니다'); Sound.play('deny'); } }
