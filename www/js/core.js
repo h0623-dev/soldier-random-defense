@@ -1,20 +1,22 @@
 // 군인 랜덤 디펜스 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
 import { CLASS_IDS, branchById } from './data.js';
 
-export const FIELD = { w: 720, h: 700 };
-const TR = { x0: 60, y0: 60, x1: 660, y1: 640 };
+// 전장은 휴대폰 화면에 맞춘 세로로 긴 형태. 적은 바깥 이동로를 돌고, 안쪽 5×5 발판에 유닛이 선다.
+export const FIELD = { w: 720, h: 880 };
+const TR = { x0: 60, y0: 70, x1: 660, y1: 820 };
 const TW = TR.x1 - TR.x0, TH = TR.y1 - TR.y0;
 export const TRACK = TR;
 export const PATH_LEN = 2 * (TW + TH);
 export const SLOTS = [];
-for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) SLOTS.push({ x: 160 + i * 100, y: 150 + j * 100 });
+export const CELL = { w: 100, h: 124 };     // 발판 간격 (캐릭터가 서 있는 모습이라 세로가 더 길다)
+for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) SLOTS.push({ x: 160 + i * CELL.w, y: 200 + j * CELL.h });
 
 export const CFG = {
   maxWave: 100, enemyLimit: 50, bossTime: 55, waveGap: 24, prepTime: 8,
   growth: 1.9,          // 계급 1단계(정규화)당 전투력 배수
   baseDmg: 10, summonBase: 20, summonGrowth: 1.75, campBase: 110, campGrowth: 1.95,
-  hpBase: 26, hpGrowth: 1.134, bountyBase: 2.2, bountyGrowth: 1.098,
-  startGold: 100, sellRate: 0.4, auraRadius: 150,
+  hpBase: 26, hpGrowth: 1.13, bountyBase: 2.2, bountyGrowth: 1.098,
+  startGold: 100, sellRate: 0.4, auraRadius: 165,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
   upBase: 80, upGrowth: 1.55, upStep: 0.08,
   // 보급품(두 번째 재화): 보스·특수 임무·임무 완수로 얻고 선택 소집·진급 심사에 쓴다

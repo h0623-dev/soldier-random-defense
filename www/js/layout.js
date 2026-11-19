@@ -4,6 +4,7 @@ import { FIELD } from './core.js';
 
 const BASE_W = 390;            // 설계 기준 폭 (배율 1)
 const BASE_H = 640;            // 세로 배치에서 배율 1로 다 들어가는 최소 높이
+const UI_EST = 18;             // 상단바 + 하단 버튼 두 줄의 대략적인 높이 (rem) — 배치 방식을 고를 때만 쓴다
 const INFO_MIN = 15;           // 정보창 최소 높이 (rem)
 const SIDE_MIN = 30;           // 가로 배치의 오른쪽 패널 최소 폭 (rem)
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -21,15 +22,22 @@ export function initLayout(onChange) {
     const W = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const H = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
     if (W < 50 || H < 50) return;
-    const land = W > H * 1.15;
+    const ratio = FIELD.h / FIELD.w;
     // 배율: 세로는 폭 기준(높이가 모자라면 줄임), 가로는 높이 기준
     // 하한: 작은 화면에서도 글자가 11px 아래로 내려가지 않게. 상한: 태블릿에서 글자·버튼만 커지지 않고 전장이 커지게.
-    const s = land ? clamp(Math.min(H / 520, W / 800), 0.85, 1.8) : clamp(Math.min(W / BASE_W, H / BASE_H), 0.88, 1.6);
+    const sP = clamp(Math.min(W / BASE_W, H / BASE_H), 0.88, 1.6), sL = clamp(Math.min(H / 520, W / 800), 0.85, 1.8);
+    // 세로 배치와 가로 배치 중 전장이 더 크게 나오는 쪽을 고른다 (정사각형에 가까운 폴더블 펼친 화면은 가로 배치가 유리)
+    const estP = Math.min(W, (H - (UI_EST + INFO_MIN) * 10 * sP) / ratio), estL = Math.min(H / ratio, W - SIDE_MIN * 10 * sL);
+    const land = W > H * 1.15 || estL > estP * 1.12;
+    const s = land ? sL : sP;
+    // 세로가 짧은 화면(구형 16:9 휴대폰)은 정보창을 줄여 전장을 키운다
+    const short = !land && H / (10 * s) < 76, infoMin = short ? 12 : INFO_MIN;
+    app.classList.toggle('short', short);
     root.style.fontSize = 10 * s + 'px'; root.style.setProperty('--vy', '0rem');
     app.classList.toggle('land', land);
-    const rem = 10 * s, ratio = FIELD.h / FIELD.w;
+    const rem = 10 * s;
     const fit = () => Math.max(120, Math.floor(land ? Math.min(H / ratio, W - SIDE_MIN * rem)
-      : Math.min(W, (H - hud.offsetHeight - actions.offsetHeight - INFO_MIN * rem) / ratio)));
+      : Math.min(W, (H - hud.offsetHeight - actions.offsetHeight - infoMin * rem) / ratio)));
     let fw = fit(), fh = Math.floor(fw * ratio);
     if (!land) {
       // 세로로 긴 화면: 남는 높이의 일부를 버튼·상단바 높이로 돌려 누르기 쉽게 한다.

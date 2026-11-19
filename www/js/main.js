@@ -150,7 +150,7 @@ const ACT = {
 canvas.addEventListener('pointerdown', e => {
   if (!g || g.over) return;
   const r = canvas.getBoundingClientRect(), x = (e.clientX - r.left) * C.FIELD.w / r.width, y = (e.clientY - r.top) * C.FIELD.h / r.height;
-  const i = C.SLOTS.findIndex(s => Math.abs(s.x - x) <= 48 && Math.abs(s.y - y) <= 48);
+  const i = C.SLOTS.findIndex(s => Math.abs(s.x - x) <= C.CELL.w / 2 && Math.abs(s.y - y) <= C.CELL.h / 2);
   if (i < 0) { ui.sel = ui.target = null; return; }
   if (ui.sel == null || !g.units[ui.sel]) { ui.sel = g.units[i] ? i : null; ui.target = null; return; }
   if (i === ui.sel) { ui.sel = ui.target = null; return; }

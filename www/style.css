@@ -11,8 +11,8 @@ body { font-size: 1.6rem; }
 #hud { grid-area: hud; } #field { grid-area: field; } #info { grid-area: info; } #actions { grid-area: actions; }
 #hud { display: flex; align-items: center; gap: 0.6rem; padding: calc(0.6rem + var(--vy, 0rem) * .4) 0.8rem; background: #141a12; border-bottom: 2px solid #2e3a27; }
 .stat { flex: 1; min-width: 0; text-align: center; line-height: 1.15; }
-.stat small { display: block; font-size: 1rem; color: #9aa68c; }
-.stat b { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.stat small { display: block; font-size: 1rem; color: #9aa68c; white-space: nowrap; }
+.stat b { font-size: 1.5rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat.gold b { color: #ffd45e; }
 .stat.warn b { color: #ff6b5e; }
 button { font: inherit; color: inherit; border: 0; border-radius: 1rem; cursor: pointer; touch-action: manipulation; }
@@ -55,3 +55,6 @@ th { background: #232c1e; } .chips { display: flex; flex-wrap: wrap; gap: 0.4rem
 #toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 0.8rem 1.6rem; border-radius: 9.9rem; background: rgba(0, 0, 0, .8);
   font-weight: 700; font-size: 1.4rem; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 9; white-space: nowrap; }
 #toast.on { opacity: 1; }
+
+/* 세로가 짧은 화면: 정보창의 안내 문구를 숨기고 버튼을 낮춘다 */
+#app.short #info .hint { display: none; } #app.short #info { padding: 0.5rem 1rem; } #app.short #info .row { margin-top: 0.3rem; } #app.short #info .row button { padding: 0.6rem; } #app.short .big { padding: 0.7rem 0.4rem; } #app.short .sm { padding: 0.45rem 0.2rem; }
