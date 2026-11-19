@@ -1,0 +1,272 @@
+{
+ "army": [
+  {
+   "file": "art/raw/army_inf.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, holding an assault rifle, confident grin, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, standing next to a small field cannon and hugging a large artillery shell, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, a field medic with a red cross armband carrying a white first-aid bag, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, wearing a radio backpack with a long antenna and talking into a handset, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_inf-art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, carrying a mortar tube on the shoulder, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_inf-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, a combat medic with a rifle on the back and a red cross medical bag, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_inf-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, a recon scout with face paint looking through binoculars, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_art-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, wearing a gas mask and holding a decontamination sprayer, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_art-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, a forward observer with a tripod rangefinder and a radio, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/army_med-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean army soldier in green camouflage combat uniform and green camouflage helmet, carrying a folded stretcher and a walkie-talkie, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  }
+ ],
+ "navy": [
+  {
+   "file": "art/raw/navy_inf.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, holding a rifle on deck guard duty, confident grin, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, hugging a huge naval gun shell, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, a ship medic with a red cross armband carrying a white first-aid bag, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, a radar operator with headphones holding a small radar dish, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_inf-art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, gripping a mounted heavy machine gun, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_inf-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, a rescue diver in a black wetsuit with diving goggles holding a life ring, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_inf-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, a helmsman gripping a wooden ship steering wheel, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_art-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, carefully carrying a spiky black sea mine, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_art-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, a sonar operator with big headphones holding a small torpedo, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/navy_med-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean navy sailor in white sailor uniform with navy blue collar and white sailor cap, a navy helicopter crewman in a flight helmet with visor giving a thumbs up, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  }
+ ],
+ "marine": [
+  {
+   "file": "art/raw/marine_inf.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, charging forward holding an assault rifle, fierce grin, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, standing next to a small field cannon and hugging a large artillery shell, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, a field medic with a red cross armband carrying a white first-aid bag, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, wearing a radio backpack with a long antenna and talking into a handset, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_inf-art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, carrying a mortar tube on the shoulder, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_inf-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, a combat rescue medic with a rifle on the back and a red cross medical bag, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_inf-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, a recon marine with face paint carrying a small black rubber boat paddle and a submachine gun, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_art-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, wearing a gas mask and holding a decontamination sprayer, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_art-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, aiming a laser target designator on a tripod, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/marine_med-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a tough young Korean marine in digital camouflage combat uniform with a red name tag and a camouflage eight-pointed marine cap, wearing an orange life vest and waving two signal flags, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  }
+ ],
+ "sf": [
+  {
+   "file": "art/raw/sf_inf.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, holding a compact submachine gun, cool smirk, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, a demolition expert holding a bundle of dynamite and a detonator, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, a tactical medic with a red cross patch carrying a medical kit, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, wearing a satellite radio backpack with an antenna and a headset, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_inf-art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, holding a grenade launcher, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_inf-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, a combat medic with a submachine gun and a red cross medical pouch, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_inf-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, a sniper in a ghillie hood holding a long scoped sniper rifle, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_art-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, wearing a heavy green bomb disposal suit with a big helmet, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_art-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, aiming a laser target designator and calling an air strike on a radio, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/sf_med-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, an elite special forces commando in black tactical uniform and black beret, a paratrooper with goggles and a parachute backpack, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  }
+ ],
+ "air": [
+  {
+   "file": "art/raw/air_inf.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, a military police guard with an armband holding a rifle, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, an air defense gunner carrying an anti-aircraft missile launcher on the shoulder, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, a flight medic with a red cross armband carrying a white first-aid bag, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, an air traffic controller wearing a headset and holding a tablet, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_inf-art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, a fighter pilot in a green flight suit holding a pilot helmet under the arm, confident grin, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_inf-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, a rescue jumper in an orange flight suit with a rope and a helmet, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_inf-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, a recon pilot in a flight suit holding a big camera, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_art-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, an aircraft weapons mechanic carrying a missile with a wrench in the pocket, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_art-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, a bomber pilot in a flight suit and helmet with visor holding a small bomb, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/air_med-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean air force airman in sky-blue uniform and blue garrison cap, a transport pilot in a flight suit carrying a cargo box, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  }
+ ],
+ "police": [
+  {
+   "file": "art/raw/police_inf.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a patrol officer holding a police baton, friendly confident smile, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a riot police officer with a helmet holding a big transparent riot shield, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a police medic with a red cross armband carrying a first-aid kit, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, talking into a walkie-talkie, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_inf-art.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a tactical squad officer with a riot shield and a baton, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_inf-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a rescue officer with a rope and an orange life buoy, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_inf-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a traffic police officer in a neon yellow reflective vest waving a glowing red traffic baton, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_art-med.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, wearing a heavy bomb disposal suit with a big helmet, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_art-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a commander shouting into a megaphone, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  },
+  {
+   "file": "art/raw/police_med-sig.webp",
+   "prompt": "Chibi shonen manga style game character, full body, a young Korean police officer in navy-blue police uniform and police cap with a gold badge, a search officer with a cute police search dog on a leash, big expressive anime eyes, thick bold black outlines, flat cel shading, vibrant colors, dynamic heroic pose, 2.5 heads tall, single character, centered, plain solid white background, no text, mobile game unit sprite"
+  }
+ ],
+ "enemy": [
+  {
+   "file": "art/raw/enemy_normal.webp",
+   "prompt": "Chibi shonen manga style game enemy, full body, a grumpy villain foot soldier in dark red uniform and dark red helmet with a skull emblem, holding a rifle, marching, angry eyes, thick bold black outlines, flat cel shading, vibrant colors, single subject, centered, side view facing right, plain solid white background, no text, mobile game enemy sprite"
+  },
+  {
+   "file": "art/raw/enemy_fast.webp",
+   "prompt": "Chibi shonen manga style game enemy, a small menacing orange quadcopter attack drone with four spinning rotors and one glowing red eye, thick bold black outlines, flat cel shading, vibrant colors, single subject, centered, side view facing right, plain solid white background, no text, mobile game enemy sprite"
+  },
+  {
+   "file": "art/raw/enemy_armor.webp",
+   "prompt": "Chibi shonen manga style game enemy, a chunky dark brown armored personnel carrier with six wheels, a small turret and angry cartoon headlight eyes, thick bold black outlines, flat cel shading, vibrant colors, single subject, centered, side view facing right, plain solid white background, no text, mobile game enemy sprite"
+  },
+  {
+   "file": "art/raw/enemy_boss.webp",
+   "prompt": "Chibi shonen manga style game enemy, a huge intimidating crimson red battle tank boss with a big cannon, spikes, a gold skull emblem and angry glowing eyes, thick bold black outlines, flat cel shading, vibrant colors, single subject, centered, side view facing right, plain solid white background, no text, mobile game enemy sprite"
+  }
+ ]
+}

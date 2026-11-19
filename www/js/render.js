@@ -1,7 +1,8 @@
 // 전장 캔버스 그리기 (임시 도형 그래픽 — 정식 그림 자산으로 교체 예정)
 import { CLASS_INFO } from './data.js';
 import { FIELD, TRACK, SLOTS, canMerge, rankName } from './core.js';
-import { drawUnitCard, ENEMY_DRAW, ENEMY_R, sprite } from './sprites.js';
+import { drawUnitCard, ENEMY_DRAW, ENEMY_R, sprite, artState, enemyArt, loadArt } from './sprites.js';
+loadArt();
 
 
 export function draw(ctx, g, ui, quality = 2) {
@@ -40,7 +41,9 @@ export function draw(ctx, g, ui, quality = 2) {
     const r = ENEMY_R[e.kind], half = r + 8;
     if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.45)'; ctx.beginPath(); ctx.arc(e.x, e.y, r + 3, 0, 7); ctx.fill(); }
     if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, r + 4, 0, 7); ctx.stroke(); }
-    ctx.drawImage(sprite('e:' + e.kind, half, k, ENEMY_DRAW[e.kind]), e.x - half, e.y - half, half * 2, half * 2);
+    const im = enemyArt(e.kind);
+    if (im) ctx.drawImage(im, e.x - half, e.y - half, half * 2, half * 2);
+    else ctx.drawImage(sprite('e:' + e.kind, half, k, ENEMY_DRAW[e.kind]), e.x - half, e.y - half, half * 2, half * 2);
     ctx.fillStyle = '#000'; ctx.fillRect(e.x - r, e.y - half - 2, r * 2, 4);
     ctx.fillStyle = '#7be36a'; ctx.fillRect(e.x - r, e.y - half - 2, r * 2 * Math.max(0, e.hp / e.maxHp), 4);
   }
@@ -64,7 +67,7 @@ export function draw(ctx, g, ui, quality = 2) {
 function unit(ctx, b, u, selected, k) {
   const p = SLOTS[u.slot], tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u);
   if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.arc(p.x, p.y, 54, 0, 7); ctx.fill(); }
-  const cv = sprite(['u', b.id, u.type.join('+'), tier, rank, u.hidden ? 1 : 0].join(':'), 46, k,
+  const cv = sprite(['u', b.id, u.type.join('+'), tier, rank, u.hidden ? 1 : 0, artState.version].join(':'), 46, k,
     c => drawUnitCard(c, { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden }));
   ctx.drawImage(cv, p.x - 46, p.y - 46, 92, 92);
   if (selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, p.x - 43, p.y - 43, 86, 86, 13); ctx.stroke(); }

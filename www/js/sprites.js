@@ -118,7 +118,9 @@ export function drawUnitCard(c, o) {
   c.globalAlpha = 0.28; c.fillStyle = cols[0]; rr(c, -41, -41, 41, 82, [12, 0, 0, 12]); c.fill();
   c.fillStyle = cols[1]; rr(c, 0, -41, 41, 82, [0, 12, 12, 0]); c.fill(); c.globalAlpha = 1;
   if (hidden) { c.strokeStyle = GOLD; c.lineWidth = 3; c.setLineDash([6, 5]); rr(c, -41, -41, 82, 82, 12); c.stroke(); c.setLineDash([]); }
-  c.save(); c.translate(0, 3); c.scale(1.12, 1.12); drawSoldier(c, branchId, type, tier); c.restore();
+  const im = unitArt(branchId, type);
+  if (im) c.drawImage(im, -37, -46, 74, 74);
+  else { c.save(); c.translate(0, 3); c.scale(1.12, 1.12); drawSoldier(c, branchId, type, tier); c.restore(); }
   // 병과 표시 (왼쪽 위)
   c.font = '800 13px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
   (pure ? [type[0]] : type).forEach((cls, i) => {
@@ -173,6 +175,28 @@ export const ENEMY_DRAW = {
     c.strokeStyle = '#cfd6dc'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-9, -21); c.lineTo(-12, -31); c.stroke();
   },
 };
+
+// ── 그림 파일 (만화풍 일러스트) ────────────────────────────
+// www/img/manifest.json에 적힌 그림만 불러온다. 군별 10병과가 모두 준비된 군별만 그림 파일을 쓰고,
+// 아니면 위의 코드 그림을 쓴다(한 화면에 두 그림체가 섞이지 않게). 파일 이름: units/<군별>_<병과>.webp, enemy_<종류>.webp
+const art = {};                 // 이름 → 불러온 Image
+export const artState = { version: 0 };   // 그림이 새로 준비될 때마다 올라간다 (캐시 키에 넣어 다시 그리게 함)
+const fullBranch = new Set();
+export function loadArt() {
+  fetch('img/manifest.json').then(r => (r.ok ? r.json() : [])).then(list => {
+    const byBranch = {};
+    for (const name of list) { const m = /^units\/([a-z]+)_/.exec(name); if (m) byBranch[m[1]] = (byBranch[m[1]] || 0) + 1; }
+    for (const name of list) {
+      const im = new Image();
+      im.onload = () => { art[name] = im; artState.version++; };
+      im.src = `img/${name}.webp`;
+    }
+    for (const b in byBranch) if (byBranch[b] >= 10) fullBranch.add(b);
+  }).catch(() => { /* 그림 파일이 없으면 코드 그림 사용 */ });
+}
+const unitArt = (branchId, type) => (fullBranch.has(branchId)
+  ? art[`units/${branchId}_${type[0] === type[1] ? type[0] : type.join('-')}`] : null) || null;
+export const enemyArt = kind => art['enemy_' + kind] || null;
 
 // ── 그림 캐시: 같은 그림은 한 번만 그려 두고 복사한다 ───────────
 const cache = new Map();
