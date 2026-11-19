@@ -110,29 +110,47 @@ export function drawSoldier(c, branchId, type, tier) {
   gear(GEAR_FRONT);
 }
 
-// 칸에 놓인 유닛 한 장 (캐릭터 + 병과 표시 + 계급 이름표)
-export function drawUnitCard(c, o) {
-  const { branchId, type, tier, rank, hidden } = o, pure = type[0] === type[1];
-  // 발판: 병과 색
-  const cols = [CLASS_INFO[type[0]].color, CLASS_INFO[type[1]].color];
-  c.globalAlpha = 0.28; c.fillStyle = cols[0]; rr(c, -41, -41, 41, 82, [12, 0, 0, 12]); c.fill();
+// 칸에 놓인 유닛은 세 겹으로 그린다: 카드 뒤(발판) → 캐릭터(움직임) → 카드 앞(이름표·병과·계급장)
+export function drawCardBack(c, o) {
+  const cols = [CLASS_INFO[o.type[0]].color, CLASS_INFO[o.type[1]].color];
+  c.globalAlpha = 0.3; c.fillStyle = cols[0]; rr(c, -41, -41, 41, 82, [12, 0, 0, 12]); c.fill();
   c.fillStyle = cols[1]; rr(c, 0, -41, 41, 82, [0, 12, 12, 0]); c.fill(); c.globalAlpha = 1;
-  if (hidden) { c.strokeStyle = GOLD; c.lineWidth = 3; c.setLineDash([6, 5]); rr(c, -41, -41, 82, 82, 12); c.stroke(); c.setLineDash([]); }
-  const im = unitArt(branchId, type);
-  if (im) c.drawImage(im, -43, -48, 86, 86);
-  else { c.save(); c.translate(0, 3); c.scale(1.12, 1.12); drawSoldier(c, branchId, type, tier); c.restore(); }
-  // 병과 표시 (왼쪽 위)
-  c.font = '800 13px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  (pure ? [type[0]] : type).forEach((cls, i) => {
-    c.fillStyle = CLASS_INFO[cls].color; c.strokeStyle = INK; c.lineWidth = 1.5;
-    c.beginPath(); c.arc(-31 + i * 17, -31, 9, 0, 7); c.fill(); c.stroke();
-    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[cls].short, -31 + i * 17, -30);
-  });
-  if (tier === 2) { c.fillStyle = GOLD; c.strokeStyle = INK; c.lineWidth = 1.2; star(c, 31, -30, 9); c.stroke(); }   // 장성 표시 (오른쪽 위)
-  // 계급 이름표 (아래)
-  c.fillStyle = 'rgba(12,16,10,.9)'; rr(c, -41, 23, 82, 19, 7); c.fill();
+  if (o.hidden) { c.strokeStyle = GOLD; c.lineWidth = 3; c.setLineDash([6, 5]); rr(c, -41, -41, 82, 82, 12); c.stroke(); c.setLineDash([]); }
+}
+// 그림 파일이 있으면 그 Image, 없으면 null (그때는 drawSoldierFallback을 캐시에 그려 쓴다)
+export const unitImage = (branchId, type) => unitArt(branchId, type);
+export function drawSoldierFallback(c, o) { c.save(); c.translate(0, -2); c.scale(1.12, 1.12); drawSoldier(c, o.branchId, o.type, o.tier); c.restore(); }
+
+const INSIG_COL = { bar: GOLD, chev: GOLD, dia: '#eef3f7', flower: '#eef3f7', star: GOLD };
+function insigShape(c, shape, x, y) {
+  c.fillStyle = c.strokeStyle = INSIG_COL[shape];
+  if (shape === 'bar') { c.fillRect(x - 1.6, y - 4.5, 3.2, 9); }
+  else if (shape === 'chev') { c.lineWidth = 2.2; c.lineJoin = 'miter'; c.beginPath(); c.moveTo(x - 3.6, y + 2.6); c.lineTo(x, y - 2.8); c.lineTo(x + 3.6, y + 2.6); c.stroke(); }
+  else if (shape === 'dia') { c.beginPath(); c.moveTo(x, y - 4.8); c.lineTo(x + 3.6, y); c.lineTo(x, y + 4.8); c.lineTo(x - 3.6, y); c.closePath(); c.fill(); }
+  else if (shape === 'flower') { for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; c.beginPath(); c.arc(x + Math.cos(a) * 2.6, y + Math.sin(a) * 2.6, 2.1, 0, 7); c.fill(); }
+    c.fillStyle = '#c9a23a'; c.beginPath(); c.arc(x, y, 1.4, 0, 7); c.fill(); }
+  else star(c, x, y, 4.8);
+}
+export function drawCardFront(c, o) {
+  const { type, tier, rank, hidden, insig } = o, pure = type[0] === type[1];
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  // 계급장 (오른쪽 위): 계급마다 모양·개수가 달라 같은 계급을 찾기 쉽다
+  if (insig) {
+    const [shape, n] = insig, step = shape === 'bar' ? 5.2 : 8.6, w = (n - 1) * step + 12;
+    c.fillStyle = 'rgba(12,16,10,.88)'; rr(c, 41 - w, -41, w, 15, [0, 11, 0, 7]); c.fill();
+    for (let i = 0; i < n; i++) insigShape(c, shape, 41 - w + 6 + i * step, -33.5);
+  }
+  // 이름표 (아래): 병과 글자 + 계급 이름
+  c.fillStyle = 'rgba(12,16,10,.92)'; rr(c, -41, 25, 82, 17, 7); c.fill();
   c.strokeStyle = hidden ? GOLD : ['#3d4a34', '#cfd6dc', GOLD][tier]; c.lineWidth = 2; c.stroke();
-  c.fillStyle = hidden ? GOLD : '#fff'; c.font = `800 ${rank.length > 3 ? 14 : 16}px sans-serif`; c.fillText(rank, 0, 33.5);
+  const cls = pure ? [type[0]] : type, cw = cls.length * 14.5;
+  c.font = '800 11px sans-serif';
+  cls.forEach((k, i) => {
+    c.fillStyle = CLASS_INFO[k].color; c.beginPath(); c.arc(-33 + i * 14.5, 33.5, 6.6, 0, 7); c.fill();
+    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[k].short, -33 + i * 14.5, 34.2);
+  });
+  const tw = 82 - cw - 8, fs = Math.min(15, Math.floor(tw / rank.length));
+  c.fillStyle = hidden ? GOLD : '#fff'; c.font = `800 ${fs}px sans-serif`; c.fillText(rank, -41 + cw + 4 + tw / 2, 34);
 }
 
 // ── 적 ───────────────────────────────────────────────────

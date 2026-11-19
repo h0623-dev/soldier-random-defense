@@ -1,7 +1,7 @@
 // 전장 캔버스 그리기 (임시 도형 그래픽 — 정식 그림 자산으로 교체 예정)
 import { CLASS_INFO } from './data.js';
-import { FIELD, TRACK, SLOTS, canMerge, rankName } from './core.js';
-import { drawUnitCard, ENEMY_DRAW, ENEMY_R, sprite, artState, enemyArt, loadArt } from './sprites.js';
+import { FIELD, TRACK, SLOTS, PATH_LEN, canMerge, rankName, rankInsig } from './core.js';
+import { drawCardBack, drawCardFront, drawSoldierFallback, unitImage, ENEMY_DRAW, ENEMY_R, sprite, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
 
@@ -35,23 +35,27 @@ export function draw(ctx, g, ui, quality = 2) {
     if (sel.stats.haste > 0) { ctx.strokeStyle = CLASS_INFO.med.color; ctx.setLineDash([6, 6]);
       ctx.beginPath(); ctx.arc(p.x, p.y, 150, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   }
-  // 적
-  const k = ctx.getTransform().a;
+  // 적 (걸음에 맞춰 살짝 흔들리고, 왼쪽으로 갈 때는 좌우를 뒤집는다)
+  const k = ctx.getTransform().a, now = performance.now() / 1000;
+  const TW = TRACK.x1 - TRACK.x0, TH = TRACK.y1 - TRACK.y0;
   for (const e of g.enemies) {
-    const r = ENEMY_R[e.kind], half = r + 8;
+    const r = ENEMY_R[e.kind], half = r + 8, m = e.s % PATH_LEN, left = m >= TW + TH && m < 2 * TW + TH;
+    const by = quality > 0 ? Math.sin(e.s * 0.22 + e.id) * (e.kind === 'boss' ? 1 : 1.8) : 0;
     if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.45)'; ctx.beginPath(); ctx.arc(e.x, e.y, r + 3, 0, 7); ctx.fill(); }
     if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, r + 4, 0, 7); ctx.stroke(); }
-    const im = enemyArt(e.kind);
-    if (im) ctx.drawImage(im, e.x - half, e.y - half, half * 2, half * 2);
-    else ctx.drawImage(sprite('e:' + e.kind, half, k, ENEMY_DRAW[e.kind]), e.x - half, e.y - half, half * 2, half * 2);
+    const im = enemyArt(e.kind) || sprite('e:' + e.kind, half, k, ENEMY_DRAW[e.kind]);
+    if (left) { ctx.save(); ctx.translate(e.x, e.y + by); ctx.scale(-1, 1); ctx.drawImage(im, -half, -half, half * 2, half * 2); ctx.restore(); }
+    else ctx.drawImage(im, e.x - half, e.y - half + by, half * 2, half * 2);
     ctx.fillStyle = '#000'; ctx.fillRect(e.x - r, e.y - half - 2, r * 2, 4);
     ctx.fillStyle = '#7be36a'; ctx.fillRect(e.x - r, e.y - half - 2, r * 2 * Math.max(0, e.hp / e.maxHp), 4);
   }
   // 아군
-  for (const u of g.units) if (u) unit(ctx, b, u, u === sel, k);
+  for (const u of g.units) if (u) unit(ctx, b, u, u === sel, k, now, quality);
   // 사격 효과
   const fxList = quality > 0 ? g.effects : g.effects.slice(-12);   // 최저 품질에서는 사격 효과 수를 줄인다
   for (const f of fxList) {
+    if (f.puff) { const a = Math.max(0, f.t / 0.3); ctx.globalAlpha = a; ctx.fillStyle = '#fff3c4';
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.25 - a * 0.75), 0, 7); ctx.fill(); ctx.globalAlpha = 1; continue; }
     const a = Math.min(1, f.t / 0.18);
     ctx.strokeStyle = CLASS_INFO[f.c].color; ctx.globalAlpha = a; ctx.lineWidth = f.crit ? 5 : 2.5;
     ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke();
@@ -64,12 +68,18 @@ export function draw(ctx, g, ui, quality = 2) {
   }
 }
 
-function unit(ctx, b, u, selected, k) {
+function unit(ctx, b, u, selected, k, now, quality) {
   const p = SLOTS[u.slot], tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u);
+  const o = { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u) }, tk = u.type.join('+');
   if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.arc(p.x, p.y, 54, 0, 7); ctx.fill(); }
-  const cv = sprite(['u', b.id, u.type.join('+'), tier, rank, u.hidden ? 1 : 0, artState.version].join(':'), 46, k,
-    c => drawUnitCard(c, { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden }));
-  ctx.drawImage(cv, p.x - 46, p.y - 46, 92, 92);
+  ctx.drawImage(sprite(['ub', tk, o.hidden ? 1 : 0].join(':'), 46, k, c => drawCardBack(c, o)), p.x - 46, p.y - 46, 92, 92);
+  // 캐릭터: 가만히 있을 때는 숨쉬듯 조금 움직이고, 사격할 때는 반동으로 튄다
+  const fire = u.fireT > 0 ? Math.sin((1 - u.fireT / 0.16) * Math.PI) : 0;
+  const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.1 : 0) - fire * 5, sc = 1 + fire * 0.07;
+  const im = unitImage(b.id, u.type) || sprite(['uc', b.id, tk, tier].join(':'), 46, k, c => drawSoldierFallback(c, o));
+  const w = (im.width === im.height && im.naturalWidth ? 78 : 92) * sc, cy = im.naturalWidth ? p.y - 9 : p.y;
+  ctx.drawImage(im, p.x - w / 2, cy - w / 2 + dy, w, w);
+  ctx.drawImage(sprite(['uf', tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':'), 46, k, c => drawCardFront(c, o)), p.x - 46, p.y - 46, 92, 92);
   if (selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, p.x - 43, p.y - 43, 86, 86, 13); ctx.stroke(); }
 }
 function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }

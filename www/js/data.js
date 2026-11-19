@@ -17,15 +17,21 @@ const MIL_RANKS = ['이등병', '일병', '상병', '병장', '하사', '중사'
 const POLICE_RANKS = ['이경', '일경', '상경', '수경', '순경', '경장', '경사', '경위', '경감', '경정',
   '총경', '경무관', '치안감', '치안정감', '치안총감'];
 
+// 계급장: 계급마다 [모양, 개수]. 모양 — bar 병(막대) / chev 부사관(갈매기) / dia 위관(다이아) / flower 영관(꽃) / star 장성(별)
+// 실제 계급장을 그대로 그린 것이 아니라 단계가 한눈에 보이도록 단순화한 표시다.
+const insig = spec => spec.flatMap(([shape, n, from = 1]) => Array.from({ length: n }, (_, i) => [shape, from + i]));
+const MIL_INSIG = insig([['bar', 4], ['chev', 3], ['dia', 3], ['flower', 3], ['star', 5]]);
+const POLICE_INSIG = insig([['bar', 4], ['chev', 3, 2], ['flower', 4], ['star', 4]]);
+
 // 히든 계급: 정규 조합으로는 나오지 않고 히든 조합(recipe) 또는 소집 뽑기 확률(draw)로만 얻는다.
 //  level  : 조합할 때 취급되는 계급 인덱스(7 = 소위급). 조합하면 일반 계급으로 진급하며 능력은 사라진다.
 //  recipe : 'allDiff' = 한 계급 아래(상사) 두 유닛의 병과 4칸이 모두 다를 때
 //  draw   : 훈련소 기본 계급이 drawCamp[0]~[1] 범위일 때 신병 소집 1회당 등장 확률
 //  aura   : 주변 아군에게 주는 효과 (dmg = 공격력, range = 사거리)
 const MIL_HIDDEN = [
-  { id: 'wonsa', name: '원사', level: 7, recipe: 'allDiff', aura: { dmg: 0.2 }, text: '주변 아군 공격력 +20%',
+  { id: 'wonsa', name: '원사', level: 7, insig: ['chev', 4], recipe: 'allDiff', aura: { dmg: 0.2 }, text: '주변 아군 공격력 +20%',
     how: '히든 조합 — 상사 + 상사, 두 유닛의 병과 4칸이 모두 다를 때 (보·포·의·통)' },
-  { id: 'junwi', name: '준위', level: 7, draw: 0.03, drawCamp: [4, 6], aura: { range: 0.15 }, text: '주변 아군 사거리 +15%',
+  { id: 'junwi', name: '준위', level: 7, insig: ['dia', 1], draw: 0.03, drawCamp: [4, 6], aura: { range: 0.15 }, text: '주변 아군 사거리 +15%',
     how: '뽑기 — 훈련소 기본 계급이 하사~상사일 때 신병 소집 3% 확률' },
 ];
 
@@ -37,7 +43,7 @@ const POLICE_TIERS = [4, 9];
 // 값: [병과 이름, [병·부사관 병기, 장교 병기, 장성 병기]]
 export const BRANCHES = [
   {
-    id: 'army', name: '육군', color: '#4b6b3a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'army', name: '육군', color: '#4b6b3a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
     trait: { key: 'artDmg', text: '포병 계열 공격력 +15%' },
     types: {
       'inf': ['보병', ['K2 소총', 'K808 차륜형장갑차', 'K2 흑표 전차']],
@@ -53,7 +59,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'navy', name: '해군', color: '#2f5d8a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'navy', name: '해군', color: '#2f5d8a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
     trait: { key: 'range', text: '모든 유닛 사거리 +10%' },
     types: {
       'inf': ['갑판병', ['K2 소총 함상경계', '참수리 고속정', '윤영하급 유도탄고속함']],
@@ -69,7 +75,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'marine', name: '해병대', color: '#b23a3a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'marine', name: '해병대', color: '#b23a3a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
     trait: { key: 'infSpeed', text: '보병 계열 공격속도 +15%' },
     types: {
       'inf': ['상륙보병', ['K2 소총', 'KAAV 상륙돌격장갑차', '마린온 상륙기동헬기']],
@@ -85,7 +91,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'sf', name: '특공대', color: '#3b3b46', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'sf', name: '특공대', color: '#3b3b46', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
     trait: { key: 'crit', text: '15% 확률로 2.5배 치명타' },
     types: {
       'inf': ['화기', ['K1A 기관단총', 'K7 소음기관단총', 'K13 특수작전 기관단총']],
@@ -101,7 +107,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'air', name: '공군', color: '#3f7fb5', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'air', name: '공군', color: '#3f7fb5', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
     trait: { key: 'splash', text: '광역 범위 +30% · 광역 피해 +10%' },
     types: {
       'inf': ['군사경찰', ['K2 소총', '기지방호 장갑차', '기지방어 체계']],
@@ -117,7 +123,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'police', name: '의경', color: '#27408b', ranks: POLICE_RANKS, tiers: POLICE_TIERS, hidden: [],
+    id: 'police', name: '의경', color: '#27408b', ranks: POLICE_RANKS, tiers: POLICE_TIERS, hidden: [], insig: POLICE_INSIG,
     trait: { key: 'slow', text: '둔화 효과 +30% · 처치 보상 +10% · 공격력 -52% (소수정예: 15계급)' },
     types: {
       'inf': ['방범순찰', ['경찰봉', '테이저건', '순찰차']],

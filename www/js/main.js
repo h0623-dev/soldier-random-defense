@@ -4,6 +4,7 @@ import * as C from './core.js';
 import { draw } from './render.js';
 import { Monetize } from './monetize.js';
 import { initLayout } from './layout.js';
+import { Sound } from './sound.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('field'), ctx = canvas.getContext('2d'), overlay = $('overlay');
@@ -13,12 +14,12 @@ const UPGRADES = [
   { key: 'gold', name: '초기 보급', desc: '시작 군자금 +40', max: 10 },
   { key: 'bounty', name: '전리품', desc: '처치 보상 +3%', max: 20 },
 ];
-let slowT = 0, frameMs = 16;
+let slowT = 0, frameMs = 16, logAt = 0;
 let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 1, paused = true, last = 0, infoKey = '';
 const view = initLayout(() => { infoKey = ''; });
 
 function loadMeta() {
-  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {}, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
+  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {}, mute: false, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
   catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {} }; }
 }
 const saveMeta = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch { /* 저장 불가 환경 */ } };
@@ -38,6 +39,7 @@ const ACT = {
       <button class="wide sec" data-act="upgrades">영구 강화 · 훈장 ${meta.medals}개</button>
       <button class="wide sec" data-act="shop">보급 상점</button>
       <button class="wide sec" data-act="help">게임 방법</button>
+      <button class="wide sec" data-act="mute" data-arg="title">소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
       <p class="sub" style="margin-top:22px">v0.1.0 · 시제품</p>`);
   },
   branches() {
@@ -48,10 +50,11 @@ const ACT = {
       <button class="wide sec" data-act="title">뒤로</button>`);
   },
   start(id) {
-    g = C.createGame({ branchId: id, meta }); ui = { sel: null, target: null }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1';
+    g = C.createGame({ branchId: id, meta }); logAt = 0; ui = { sel: null, target: null }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1';
     hide(); toast(`${g.branch.name} 출격! 신병을 소집하세요`);
   },
   resume() { hide(); },
+  mute(back) { meta.mute = !meta.mute; saveMeta(); Sound.setMuted(meta.mute); if (!meta.mute) Sound.play('summon'); ACT[back](); },
   quit() { g = null; ACT.title(); },
   upgrades() {
     show(`<h2>영구 강화</h2><p class="sub">보유 훈장 ${meta.medals}개 · 5단계마다 1개, 100단계 방어 시 +20개</p>
@@ -80,6 +83,7 @@ const ACT = {
   menu() {
     show(`<h2>일시정지</h2><button class="wide" data-act="resume">계속하기</button>
       <button class="wide sec" data-act="codex">조합 도감</button><button class="wide sec" data-act="help">게임 방법</button>
+      <button class="wide sec" data-act="mute" data-arg="menu">소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
       <button class="wide sec" data-act="quit">포기하고 나가기</button>`);
   },
   codex() {
@@ -101,6 +105,7 @@ const ACT = {
   result() {
     const medals = C.medalsFor(g), b = g.branch;
     meta.medals += medals; meta.best[b.id] = Math.max(meta.best[b.id] || 0, g.over.win ? 100 : g.wave - 1); saveMeta();
+    Sound.play(g.over.win ? 'win' : 'lose');
     show(`<h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
       <div class="list"><p><b>${b.name}</b> · 도달 ${g.wave}단계 · 처치 ${g.kills}</p><p>획득 훈장 <b>+${medals}</b> (보유 ${meta.medals})</p></div>
       <button class="wide" data-act="start" data-arg="${b.id}">다시 도전</button>
@@ -124,19 +129,19 @@ canvas.addEventListener('pointerdown', e => {
 function found(u) { if (u.hidden && !meta.found[u.hidden]) { meta.found[u.hidden] = 1; saveMeta(); } }
 function doMerge() {
   const u = C.merge(g, ui.sel, ui.target); if (!u) return;
-  toast(u.hidden ? `히든 조합! ${C.unitName(g.branch, u)} 등장` : `${C.unitName(g.branch, u)} 진급!`); found(u); ui.sel = u.slot; ui.target = null;
+  toast(u.hidden ? `히든 조합! ${C.unitName(g.branch, u)} 등장` : `${C.unitName(g.branch, u)} 진급!`); found(u); Sound.play(u.hidden ? 'hidden' : 'merge'); ui.sel = u.slot; ui.target = null;
 }
 $('info').addEventListener('click', e => {
   const a = e.target.dataset.do; if (!a || !g) return;
   if (a === 'merge') doMerge();
   if (a === 'cancel') ui.target = null;
-  if (a === 'sell') { const v = C.sell(g, ui.sel); ui.sel = ui.target = null; toast(`전역 처리 +${fmt(v)}`); }
+  if (a === 'sell') { const v = C.sell(g, ui.sel); ui.sel = ui.target = null; toast(`전역 처리 +${fmt(v)}`); Sound.play('sell'); }
 });
 $('b-summon').onclick = () => { if (!g) return; const u = C.summon(g);
-  if (!u) toast(g.units.includes(null) ? '군자금이 부족합니다' : '배치할 칸이 없습니다 — 조합하세요');
-  else if (u.hidden) { toast(`히든 계급! ${C.unitName(g.branch, u)} 소집`); found(u); }
-  else if (u.level > g.camp) toast(`행운! ${C.unitName(g.branch, u)} 소집`); };
-$('b-camp').onclick = () => { if (g && C.upgradeCamp(g)) toast(`훈련소 Lv${g.camp + 1} — ${g.branch.ranks[g.camp]}부터 소집`); };
+  if (!u) { toast(g.units.includes(null) ? '군자금이 부족합니다' : '배치할 칸이 없습니다 — 조합하세요'); Sound.play('deny'); }
+  else if (u.hidden) { toast(`히든 계급! ${C.unitName(g.branch, u)} 소집`); found(u); Sound.play('hidden'); }
+  else { if (u.level > g.camp) toast(`행운! ${C.unitName(g.branch, u)} 소집`); Sound.play('summon'); } };
+$('b-camp').onclick = () => { if (g && C.upgradeCamp(g)) { toast(`훈련소 Lv${g.camp + 1} — ${g.branch.ranks[g.camp]}부터 소집`); Sound.play('camp'); } };
 $('b-codex').onclick = () => g && ACT.codex();
 $('b-menu').onclick = () => g && ACT.menu();
 $('b-speed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; $('b-speed').textContent = '×' + speed; };
@@ -198,10 +203,15 @@ function frame(now) {
     if (frameMs > 28) { slowT += now - last; if (slowT > 2500 && view.quality > 0) { view.setQuality(view.quality - 1); slowT = 0; frameMs = 16; } } else slowT = 0;
   }
   last = now;
+  // 소리: 사격음은 프레임당 몇 개만, 웨이브 시작·보스 등장은 기록을 보고 낸다
+  for (const s of g.sfx.splice(0)) Sound.play(s);
+  for (; logAt < g.log.length; logAt++) { const l = g.log[logAt]; if (l.t === 'wave') Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); }
   if (ui.sel != null && !g.units[ui.sel]) ui.sel = ui.target = null;
   const k = canvas.width / C.FIELD.w; ctx.setTransform(k, 0, 0, k, 0, 0);
   draw(ctx, g, ui, view.quality); renderHud(); renderInfo();
   if (g.over && !g.reported) ACT.result();
 }
+Sound.setMuted(meta.mute);
+document.addEventListener('pointerdown', () => Sound.unlock(), { passive: true });
 window.__srd = { get game() { return g; }, C, view };   // 자동 검사용
 ACT.title(); requestAnimationFrame(frame);

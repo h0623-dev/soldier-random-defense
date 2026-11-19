@@ -87,7 +87,7 @@ export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true }
   return {
     branch, meta, rand: rng(seed), fx, time: 0, wave: 0, nextWave: CFG.prepTime,
     gold: CFG.startGold + 40 * (meta.gold || 0), camp: 0, units: Array(SLOTS.length).fill(null),
-    enemies: [], effects: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
+    enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
   };
 }
 
@@ -103,7 +103,7 @@ export function summon(g) {
   return placeUnit(g, slot, level, [c, c]);
 }
 function placeUnit(g, slot, level, type, hidden = null) {
-  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0,
+  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0,
     stats: unitStats(g.branch, level, type, g.meta), flash: 0.5 };
   if (hidden) g.log.push({ t: 'hidden', id: hidden });
   g.units[slot] = u; g.auraDirty = true; return u;
@@ -147,6 +147,7 @@ export function sell(g, a) {
   const v = Math.floor(unitValue(g.branch, u.level) * CFG.sellRate);
   g.units[a] = null; g.gold += v; g.auraDirty = true; return v;
 }
+export const rankInsig = (branch, u) => (hiddenDef(branch, u.hidden) || {}).insig || branch.insig[u.level];
 export const rankName = (branch, u) => (hiddenDef(branch, u.hidden) || {}).name || branch.ranks[u.level];
 export const unitName = (branch, u) => `${rankName(branch, u)} ${branch.types[typeKey(u.type)][0]}`;
 export const unitWeapon = (branch, u) =>
@@ -162,6 +163,7 @@ function hit(g, e, dmg) {
   e.hp -= dmg * (1 + (e.vulnT > 0 ? e.vuln : 0));
   if (e.hp <= 0 && !e.dead) {
     e.dead = true; g.kills++;
+    if (g.fx) { g.effects.push({ puff: true, x: e.x, y: e.y, r: e.kind === 'boss' ? 60 : 18, t: 0.3 }); if (e.kind === 'boss') g.sfx.push('bossdie'); }
     g.gold += e.bounty * (g.branch.trait.key === 'slow' ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0));
   }
 }
@@ -203,7 +205,7 @@ export function step(g, dt) {
   // 아군 공격
   for (const u of g.units) {
     if (!u) continue;
-    u.flash -= dt; u.cd -= dt * (1 + u.haste);
+    u.flash -= dt; u.fireT -= dt; u.cd -= dt * (1 + u.haste);
     if (u.cd > 0) continue;
     const p = SLOTS[u.slot], st = u.stats, r2 = (st.range * (1 + u.rangeUp)) ** 2;
     let target = null;
@@ -219,7 +221,8 @@ export function step(g, dt) {
       if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = 2; }
       hit(g, e, dmg);
     }
-    if (g.fx) g.effects.push({ x1: p.x, y1: p.y, x2: target.x, y2: target.y, r: st.splash, t: 0.18, crit, c: u.type[0] });
+    if (g.fx) { u.fireT = 0.16; if (g.sfx.length < 8) g.sfx.push(u.type[0]);
+      g.effects.push({ x1: p.x, y1: p.y, x2: target.x, y2: target.y, r: st.splash, t: 0.18, crit, c: u.type[0] }); }
   }
   if (g.enemies.some(e => e.dead)) g.enemies = g.enemies.filter(e => !e.dead);
   if (g.fx) { for (const f of g.effects) f.t -= dt; g.effects = g.effects.filter(f => f.t > 0); }
