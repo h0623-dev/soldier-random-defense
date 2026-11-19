@@ -63,3 +63,6 @@ Android는 Capacitor로 `www/`를 감싼다. Steam은 같은 `www/`를 Electron 
 - 적: 보병, 드론, 장갑차, 지휘 전차(보스). 둔화는 파란 원, 취약은 노란 테.
 - 같은 그림은 `sprite()` 캐시에 한 번만 그려 두고 복사한다(화면 배율이 바뀌면 다시 그림).
 - 정식 화풍이 정해지면 `drawSoldier()`·`ENEMY_DRAW`만 바꾸거나 이미지 파일로 교체하면 된다.
+
+### 그림 파일 (만화풍, 2026-11-19 적용)
+`www/img/manifest.json`에 등록된 그림이 있으면 코드 그림 대신 그림 파일을 쓴다(군별 10병과가 모두 있을 때만). 유닛은 `www/img/units/<군별>_<병과>.webp`, 적은 `www/img/enemy_<종류>.webp`. 원본·지시문은 `art/raw_figma/`, `art/jobs_figma.json`. 다시 만들 때: 원본 교체 → `python3 -I tools/cutout.py <원본 폴더> <출력 폴더>` → 파일을 위 위치로 옮김.

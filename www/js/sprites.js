@@ -119,7 +119,7 @@ export function drawUnitCard(c, o) {
   c.fillStyle = cols[1]; rr(c, 0, -41, 41, 82, [0, 12, 12, 0]); c.fill(); c.globalAlpha = 1;
   if (hidden) { c.strokeStyle = GOLD; c.lineWidth = 3; c.setLineDash([6, 5]); rr(c, -41, -41, 82, 82, 12); c.stroke(); c.setLineDash([]); }
   const im = unitArt(branchId, type);
-  if (im) c.drawImage(im, -37, -46, 74, 74);
+  if (im) c.drawImage(im, -43, -48, 86, 86);
   else { c.save(); c.translate(0, 3); c.scale(1.12, 1.12); drawSoldier(c, branchId, type, tier); c.restore(); }
   // 병과 표시 (왼쪽 위)
   c.font = '800 13px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
