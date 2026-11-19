@@ -1,6 +1,6 @@
 name: Android 시험 빌드
 on:
-  push: { branches: [main] }
+  push: { branches: [main, "claude/**"] }
   workflow_dispatch:
 jobs:
   build:
