@@ -3,6 +3,7 @@ import { BRANCHES, CLASS_IDS, CLASS_INFO } from './data.js';
 import * as C from './core.js';
 import { draw } from './render.js';
 import { Monetize } from './monetize.js';
+import { initLayout } from './layout.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('field'), ctx = canvas.getContext('2d'), overlay = $('overlay');
@@ -12,7 +13,9 @@ const UPGRADES = [
   { key: 'gold', name: '초기 보급', desc: '시작 군자금 +40', max: 10 },
   { key: 'bounty', name: '전리품', desc: '처치 보상 +3%', max: 20 },
 ];
+let slowT = 0, frameMs = 16;
 let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 1, paused = true, last = 0, infoKey = '';
+const view = initLayout(() => { infoKey = ''; });
 
 function loadMeta() {
   try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {}, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
@@ -164,8 +167,10 @@ function renderInfo() {
       <div class="row"><button class="sell" data-do="sell">전역(판매) +${fmt(C.unitValue(b, A.level) * C.CFG.sellRate)}</button></div>`;
   } else {
     const w = g.wave ? C.waveInfo(g.wave) : null;
+    const nw = g.wave < C.CFG.maxWave ? C.waveInfo(g.wave + 1) : null;
     el.innerHTML = `<h3>${b.name}<em>${b.trait.text}</em></h3>
       <p>${w ? `${g.wave}단계 — ${w.name}` : '곧 적이 진입합니다. 신병을 소집해 방어선을 만드세요.'}</p>
+      ${nw ? `<p>다음 ${g.wave + 1}단계 — ${nw.name} ${nw.count}기${nw.kind === 'boss' ? ` · ${C.CFG.bossTime}초 안에 격파` : ''}</p>` : ''}
       <p class="hint">유닛을 눌러 선택 → 같은 계급 유닛을 눌러 조합</p>`;
   }
 }
@@ -187,10 +192,16 @@ function frame(now) {
     let dt = Math.min(0.1, (now - last) / 1000) * speed;
     while (dt > 0) { const d = Math.min(0.05, dt); C.step(g, d); dt -= d; }
   }
+  // 느린 기기 자동 조정: 프레임이 계속 밀리면 그리기 해상도를 한 단계씩 낮춘다
+  if (!paused && !g.over && last) {
+    frameMs += (Math.min(100, now - last) - frameMs) * 0.05;
+    if (frameMs > 28) { slowT += now - last; if (slowT > 2500 && view.quality > 0) { view.setQuality(view.quality - 1); slowT = 0; frameMs = 16; } } else slowT = 0;
+  }
   last = now;
   if (ui.sel != null && !g.units[ui.sel]) ui.sel = ui.target = null;
-  draw(ctx, g, ui); renderHud(); renderInfo();
+  const k = canvas.width / C.FIELD.w; ctx.setTransform(k, 0, 0, k, 0, 0);
+  draw(ctx, g, ui, view.quality); renderHud(); renderInfo();
   if (g.over && !g.reported) ACT.result();
 }
-window.__srd = { get game() { return g; }, C };   // 자동 검사용
+window.__srd = { get game() { return g; }, C, view };   // 자동 검사용
 ACT.title(); requestAnimationFrame(frame);

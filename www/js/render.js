@@ -4,7 +4,7 @@ import { FIELD, TRACK, SLOTS, typeKey, canMerge, rankName } from './core.js';
 
 const ENEMY = { normal: ['#c94a3f', 11], fast: ['#e0a13a', 8], armor: ['#8d5a4a', 15], boss: ['#7b1f2b', 26] };
 
-export function draw(ctx, g, ui) {
+export function draw(ctx, g, ui, quality = 2) {
   const b = g.branch;
   ctx.clearRect(0, 0, FIELD.w, FIELD.h);
   ctx.fillStyle = '#263020'; ctx.fillRect(0, 0, FIELD.w, FIELD.h);
@@ -45,7 +45,8 @@ export function draw(ctx, g, ui) {
   // 아군
   for (const u of g.units) if (u) unit(ctx, b, u, u === sel);
   // 사격 효과
-  for (const f of g.effects) {
+  const fxList = quality > 0 ? g.effects : g.effects.slice(-12);   // 최저 품질에서는 사격 효과 수를 줄인다
+  for (const f of fxList) {
     const a = Math.min(1, f.t / 0.18);
     ctx.strokeStyle = CLASS_INFO[f.c].color; ctx.globalAlpha = a; ctx.lineWidth = f.crit ? 5 : 2.5;
     ctx.beginPath(); ctx.moveTo(f.x1, f.y1); ctx.lineTo(f.x2, f.y2); ctx.stroke();
