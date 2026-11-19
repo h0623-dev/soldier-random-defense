@@ -111,10 +111,10 @@ export function drawSoldier(c, branchId, type, tier) {
 }
 
 // 유닛은 네모 카드 없이 발판 위에 서 있는 모습으로 그린다. 여기서는 캐릭터에 붙는 표시(이름표·계급장)만 만든다.
-// 좌표: 발판 중심 (0,0), 발은 y=+46 근처, 머리 위는 y=-56 근처.
+// 좌표: 발판 중심 (0,0), 발은 y=+34 근처, 머리 위는 y=-50 근처.
 // 그림 파일이 있으면 그 Image, 없으면 null (그때는 drawSoldierFallback을 캐시에 그려 쓴다)
 export const unitImage = (branchId, type) => unitArt(branchId, type);
-export function drawSoldierFallback(c, o) { c.save(); c.translate(0, 8); c.scale(1.5, 1.5); drawSoldier(c, o.branchId, o.type, o.tier); c.restore(); }
+export function drawSoldierFallback(c, o) { c.save(); c.translate(0, 4); c.scale(1.25, 1.25); drawSoldier(c, o.branchId, o.type, o.tier); c.restore(); }
 
 const INSIG_COL = { bar: GOLD, chev: GOLD, dia: '#eef3f7', flower: '#eef3f7', star: GOLD };
 function insigShape(c, shape, x, y) {
@@ -132,20 +132,20 @@ export function drawTag(c, o) {
   // 계급장 (머리 오른쪽 위): 계급마다 모양·개수가 달라 같은 계급을 찾기 쉽다
   if (insig) {
     const [shape, n] = insig, step = shape === 'bar' ? 5.2 : 8.6, w = (n - 1) * step + 13;
-    c.fillStyle = 'rgba(12,16,10,.85)'; rr(c, 50 - w, -58, w, 15, 7.5); c.fill();
-    for (let i = 0; i < n; i++) insigShape(c, shape, 50 - w + 6.5 + i * step, -50.5);
+    c.fillStyle = 'rgba(12,16,10,.85)'; rr(c, 48 - w, -52, w, 15, 7.5); c.fill();
+    for (let i = 0; i < n; i++) insigShape(c, shape, 48 - w + 6.5 + i * step, -44.5);
   }
   // 이름표 (발 아래): 병과 글자 + 계급 이름. 글자 길이에 맞춰 폭이 정해진다
   const cls = pure ? [type[0]] : type, cw = cls.length * 14.5, fs = rank.length > 3 ? 12 : 14;
   c.font = `800 ${fs}px sans-serif`;
-  const tw = Math.ceil(c.measureText(rank).width), w = Math.min(98, cw + tw + 14), x0 = -w / 2;
-  c.fillStyle = 'rgba(12,16,10,.9)'; rr(c, x0, 43, w, 17, 8.5); c.fill();
+  const tw = Math.ceil(c.measureText(rank).width), w = Math.min(96, cw + tw + 14), x0 = -w / 2;
+  c.fillStyle = 'rgba(12,16,10,.9)'; rr(c, x0, 32, w, 16, 8); c.fill();
   c.strokeStyle = hidden ? GOLD : ['#4a5a3e', '#cfd6dc', GOLD][tier]; c.lineWidth = 1.8; c.stroke();
-  c.fillStyle = hidden ? GOLD : '#fff'; c.fillText(rank, x0 + cw + 5 + tw / 2, 52);
+  c.fillStyle = hidden ? GOLD : '#fff'; c.fillText(rank, x0 + cw + 5 + tw / 2, 40.5);
   c.font = '800 11px sans-serif';
   cls.forEach((k, i) => {
-    c.fillStyle = CLASS_INFO[k].color; c.beginPath(); c.arc(x0 + 9 + i * 14.5, 51.5, 6.6, 0, 7); c.fill();
-    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[k].short, x0 + 9 + i * 14.5, 52.2);
+    c.fillStyle = CLASS_INFO[k].color; c.beginPath(); c.arc(x0 + 9 + i * 14.5, 40, 6.4, 0, 7); c.fill();
+    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[k].short, x0 + 9 + i * 14.5, 40.7);
   });
 }
 

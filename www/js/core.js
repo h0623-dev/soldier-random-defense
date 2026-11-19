@@ -1,22 +1,39 @@
 // 군인 랜덤 디펜스 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
 import { CLASS_IDS, branchById } from './data.js';
 
-// 전장은 휴대폰 화면에 맞춘 세로로 긴 형태. 적은 바깥 이동로를 돌고, 안쪽 5×5 발판에 유닛이 선다.
-export const FIELD = { w: 720, h: 880 };
-const TR = { x0: 60, y0: 70, x1: 660, y1: 820 };
-const TW = TR.x1 - TR.x0, TH = TR.y1 - TR.y0;
-export const TRACK = TR;
-export const PATH_LEN = 2 * (TW + TH);
-export const SLOTS = [];
-export const CELL = { w: 100, h: 124 };     // 발판 간격 (캐릭터가 서 있는 모습이라 세로가 더 길다)
-for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) SLOTS.push({ x: 160 + i * CELL.w, y: 200 + j * CELL.h });
+// ── 전장 ─────────────────────────────────────────────────
+// 가로 7칸 × 세로 9칸(칸 100×100)의 세로로 긴 전장. 적은 발판 덩어리 사이로 꺾이며 도는 닫힌 길을 계속 돈다.
+// 유닛은 길 옆의 발판(높이가 있는 블록) 위에 선다. 발판은 크기가 다른 덩어리 4개, 모두 25칸.
+//   행0  ━━━━━━━━━━━━━┓      R = 길, 숫자 = 발판 덩어리
+//   행1  R 1 1 1 1 1 R
+//   행2  R 1 1 1 1 1 R
+//   행3  R · R R R R R
+//   행4  R 2 R 3 3 3 3
+//   행5  R 2 R 3 3 3 3
+//   행6  R · R R R R R
+//   행7  R 4 4 4 4 4 R
+//   행8  R R R R R R R
+export const FIELD = { w: 720, h: 900 };
+export const CELL = { w: 100, h: 100 };
+const cellX = c => 60 + c * CELL.w, cellY = r => 50 + r * CELL.h;
+const ROUTE = [[0, 0], [0, 6], [3, 6], [3, 2], [6, 2], [6, 6], [8, 6], [8, 0]];     // 길이 꺾이는 칸 [행, 열], 마지막에서 처음으로 이어진다
+const PADS = [[1, 1, 5], [2, 1, 5], [4, 1, 1], [5, 1, 1], [4, 3, 6], [5, 3, 6], [7, 1, 5]];   // 발판 [행, 첫 열, 끝 열]
+export const DECOR = [[3, 1], [6, 1]];                                             // 길도 발판도 아닌 칸 (장식)
+export const PATH = ROUTE.map(([r, c]) => ({ x: cellX(c), y: cellY(r) }));
+const SEG = PATH.map((p, i) => { const q = PATH[(i + 1) % PATH.length];
+  return { p, len: Math.abs(q.x - p.x) + Math.abs(q.y - p.y), dx: Math.sign(q.x - p.x), dy: Math.sign(q.y - p.y) }; });
+export const PATH_LEN = SEG.reduce((n, g) => n + g.len, 0);
+export const SLOTS = [];       // 위쪽 줄부터 차례로 (그릴 때 아래 줄이 위 줄을 가리도록)
+for (const [r, a, b] of PADS) for (let c = a; c <= b; c++) SLOTS.push({ x: cellX(c), y: cellY(r), r, c });
+SLOTS.sort((p, q) => p.r - q.r || p.c - q.c);
+export const decorPos = DECOR.map(([r, c]) => ({ x: cellX(c), y: cellY(r) }));
 
 export const CFG = {
   maxWave: 100, enemyLimit: 50, bossTime: 55, waveGap: 24, prepTime: 8,
   growth: 1.9,          // 계급 1단계(정규화)당 전투력 배수
   baseDmg: 10, summonBase: 20, summonGrowth: 1.75, campBase: 110, campGrowth: 1.95,
-  hpBase: 26, hpGrowth: 1.13, bountyBase: 2.2, bountyGrowth: 1.098,
-  startGold: 100, sellRate: 0.4, auraRadius: 165,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
+  hpBase: 26, hpGrowth: 1.137, bountyBase: 2.2, bountyGrowth: 1.098,
+  startGold: 100, sellRate: 0.4, auraRadius: 150,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
   upBase: 80, upGrowth: 1.55, upStep: 0.08,
   // 보급품(두 번째 재화): 보스·특수 임무·임무 완수로 얻고 선택 소집·진급 심사에 쓴다
@@ -25,12 +42,11 @@ export const CFG = {
   eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
 };
 
+// 길 위의 거리 s → 위치와 진행 방향
 export function pathPos(s) {
   s = ((s % PATH_LEN) + PATH_LEN) % PATH_LEN;
-  if (s < TW) return { x: TR.x0 + s, y: TR.y0 };
-  s -= TW; if (s < TH) return { x: TR.x1, y: TR.y0 + s };
-  s -= TH; if (s < TW) return { x: TR.x1 - s, y: TR.y1 };
-  s -= TW; return { x: TR.x0, y: TR.y1 - s };
+  for (const g of SEG) { if (s < g.len) return { x: g.p.x + g.dx * s, y: g.p.y + g.dy * s, dx: g.dx, dy: g.dy }; s -= g.len; }
+  return { x: PATH[0].x, y: PATH[0].y, dx: 1, dy: 0 };
 }
 
 function rng(seed) {
@@ -280,7 +296,7 @@ export function step(g, dt) {
   for (const e of g.enemies) {
     e.slowT -= dt; e.vulnT -= dt;
     e.s += e.speed * (1 - (e.slowT > 0 ? e.slow : 0)) * dt;
-    const p = pathPos(e.s); e.x = p.x; e.y = p.y;
+    const p = pathPos(e.s); e.x = p.x; e.y = p.y; e.left = p.dx < 0;
   }
   // 아군 공격
   for (const u of g.units) {

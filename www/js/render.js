@@ -1,14 +1,14 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO } from './data.js';
-import { FIELD, TRACK, SLOTS, CELL, PATH_LEN, CFG, canMerge, rankName, rankInsig } from './core.js';
+import { FIELD, PATH, SLOTS, CELL, PATH_LEN, CFG, decorPos, pathPos, canMerge, rankName, rankInsig } from './core.js';
 import { drawTag, drawSoldierFallback, unitImage, ENEMY_DRAW, ENEMY_R, sprite, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
-const TW = TRACK.x1 - TRACK.x0, TH = TRACK.y1 - TRACK.y0;
-const TILE = { w: 88, h: 62, dy: 20, depth: 9 };      // 발판: 윗면 크기, 중심에서 아래로 내린 정도, 옆면 두께
-const FEET = 46;                                       // 발판 중심에서 캐릭터 발까지
+const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
+const FEET = 34, CHAR = 84;                            // 발판 중심에서 캐릭터 발까지, 캐릭터 그림 크기
 const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
 const rnd = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // 장식 배치용 고정 난수
+const padKey = (r, c) => r * 10 + c, padSet = new Set(SLOTS.map(s => padKey(s.r, s.c)));
 
 // ── 배경(움직이지 않는 부분)은 한 번만 그려 두고 복사한다 ──────────
 let bg = null, bgKey = '';
@@ -16,52 +16,56 @@ function background(k) {
   const key = k.toFixed(3); if (bg && bgKey === key) return bg;
   bg = document.createElement('canvas'); bg.width = Math.ceil(FIELD.w * k); bg.height = Math.ceil(FIELD.h * k); bgKey = key;
   const c = bg.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0);
+  const hw = CELL.w / 2, hh = CELL.h / 2;
   // 풀밭
-  const gr = c.createLinearGradient(0, 0, 0, FIELD.h); gr.addColorStop(0, '#3d5a33'); gr.addColorStop(1, '#2c4426');
+  const gr = c.createLinearGradient(0, 0, 0, FIELD.h); gr.addColorStop(0, '#46683a'); gr.addColorStop(1, '#35522d');
   c.fillStyle = gr; c.fillRect(0, 0, FIELD.w, FIELD.h);
-  for (let i = 0; i < 90; i++) { c.fillStyle = i % 2 ? 'rgba(120,170,90,.16)' : 'rgba(20,40,18,.18)';
-    c.beginPath(); c.ellipse(rnd(i) * FIELD.w, rnd(i + 99) * FIELD.h, 10 + rnd(i + 7) * 26, 5 + rnd(i + 3) * 9, 0, 0, 7); c.fill(); }
-  // 이동로: 살짝 파인 흙길 (바깥 그림자 → 턱 → 길 → 바퀴 자국)
-  const road = (w, col, off = 0) => { c.strokeStyle = col; c.lineWidth = w; c.lineJoin = 'round'; rr(c, TRACK.x0, TRACK.y0 + off, TW, TH, 46); c.stroke(); };
-  road(72, 'rgba(0,0,0,.28)', 5); road(68, '#5b4a31'); road(58, '#a08a5e'); road(58, 'rgba(255,255,255,.05)', -2);
-  c.setLineDash([16, 14]); road(2.5, 'rgba(70,55,35,.55)'); c.setLineDash([]);
-  for (let i = 0; i < 60; i++) { const s = rnd(i + 500) * PATH_LEN, p = trackPos(s), o = (rnd(i + 900) - 0.5) * 40;
-    c.fillStyle = 'rgba(70,55,35,.35)'; c.beginPath(); c.ellipse(p.x + o, p.y + o * 0.6, 3 + rnd(i) * 4, 2, 0, 0, 7); c.fill(); }
-  // 안쪽 진지: 두께가 있는 바닥판
-  const bx = SLOTS[0].x - 62, by = SLOTS[0].y - 70, bw = CELL.w * 4 + 124, bh = CELL.h * 4 + 146;
-  c.fillStyle = 'rgba(0,0,0,.3)'; rr(c, bx - 2, by + 14, bw + 4, bh, 26); c.fill();
-  c.fillStyle = '#24381f'; rr(c, bx, by + 10, bw, bh, 24); c.fill();
-  const g2 = c.createLinearGradient(0, by, 0, by + bh); g2.addColorStop(0, '#4c7040'); g2.addColorStop(1, '#3c5c33');
-  c.fillStyle = g2; rr(c, bx, by, bw, bh, 24); c.fill();
-  c.strokeStyle = 'rgba(190,230,160,.22)'; c.lineWidth = 2; rr(c, bx + 2, by + 2, bw - 4, bh - 4, 22); c.stroke();
-  // 발판 (옆면 → 윗면)
+  for (let i = 0; i < 110; i++) { c.fillStyle = i % 2 ? 'rgba(140,190,100,.16)' : 'rgba(20,40,18,.2)';
+    c.beginPath(); c.ellipse(rnd(i) * FIELD.w, rnd(i + 99) * FIELD.h, 10 + rnd(i + 7) * 24, 5 + rnd(i + 3) * 9, 0, 0, 7); c.fill(); }
+  // 길: 발판 사이로 꺾이며 도는 흙길 (테두리 → 흙 → 밝은 가운데 → 진행 방향 표시)
+  const road = (w, col) => { c.strokeStyle = col; c.lineWidth = w; c.lineJoin = 'round'; c.lineCap = 'round';
+    c.beginPath(); PATH.forEach((p, i) => c[i ? 'lineTo' : 'moveTo'](p.x, p.y)); c.closePath(); c.stroke(); };
+  road(98, '#4a3b25'); road(90, '#c9ad74'); road(70, '#d6bc86');
+  for (let i = 0; i < 130; i++) { const p = pathPos(rnd(i + 500) * PATH_LEN), ox = (rnd(i + 900) - 0.5) * 70, oy = (rnd(i + 300) - 0.5) * 70;
+    c.fillStyle = i % 3 ? 'rgba(120,92,52,.3)' : 'rgba(255,240,200,.3)'; c.beginPath(); c.ellipse(p.x + ox, p.y + oy, 3 + rnd(i) * 5, 2 + rnd(i + 1) * 2, 0, 0, 7); c.fill(); }
+  c.fillStyle = 'rgba(110,84,46,.5)';
+  for (let s = 60; s < PATH_LEN; s += 120) { const p = pathPos(s); c.save(); c.translate(p.x, p.y); c.rotate(Math.atan2(p.dy, p.dx));
+    c.beginPath(); c.moveTo(11, 0); c.lineTo(-7, -10); c.lineTo(-2, 0); c.lineTo(-7, 10); c.closePath(); c.fill(); c.restore(); }
+  // 발판 블록: 바닥 그림자 → 옆면 → 윗면(체크 무늬) → 가장자리 선. 이웃한 발판은 한 덩어리로 이어진다
+  const has = (r, cc) => padSet.has(padKey(r, cc));
+  for (const s of SLOTS) if (!has(s.r + 1, s.c)) { c.fillStyle = 'rgba(0,0,0,.3)'; c.fillRect(s.x - hw + 4, s.y + hh - 8, CELL.w, DEPTH + 10); }
   for (const s of SLOTS) {
-    const x = s.x - TILE.w / 2, y = s.y + TILE.dy - TILE.h / 2;
-    c.fillStyle = 'rgba(0,0,0,.25)'; rr(c, x - 1, y + TILE.depth + 3, TILE.w + 2, TILE.h, 16); c.fill();
-    c.fillStyle = '#5d5846'; rr(c, x, y + TILE.depth, TILE.w, TILE.h, 16); c.fill();
-    const tg = c.createLinearGradient(0, y, 0, y + TILE.h); tg.addColorStop(0, '#b3ab8c'); tg.addColorStop(1, '#989073');
-    c.fillStyle = tg; rr(c, x, y, TILE.w, TILE.h, 16); c.fill();
-    c.strokeStyle = 'rgba(255,255,255,.28)'; c.lineWidth = 1.5; rr(c, x + 1.5, y + 1.5, TILE.w - 3, TILE.h - 3, 14.5); c.stroke();
+    const x = s.x - hw, y = s.y - hh - 8;       // 윗면은 칸보다 조금 위로 올라가 있다
+    if (!has(s.r + 1, s.c)) { const fg = c.createLinearGradient(0, y + CELL.h, 0, y + CELL.h + DEPTH); fg.addColorStop(0, '#5f6f3a'); fg.addColorStop(1, '#46532b');
+      c.fillStyle = fg; c.fillRect(x, y + CELL.h - 1, CELL.w, DEPTH + 1);
+      c.fillStyle = 'rgba(0,0,0,.18)'; for (let i = 1; i < 4; i++) c.fillRect(x + i * 25, y + CELL.h, 2, DEPTH); }
+    c.fillStyle = (s.r + s.c) % 2 ? '#a9bb6e' : '#9db063'; c.fillRect(x, y, CELL.w, CELL.h);
+    c.fillStyle = 'rgba(255,255,255,.07)'; c.fillRect(x + 6, y + 6, CELL.w - 12, CELL.h - 12);
   }
-  // 장식: 길 바깥 풀·바위, 진입 깃발
-  for (let i = 0; i < 26; i++) {
-    const side = i % 4, t = rnd(i + 40), x = side < 2 ? (side ? FIELD.w - 14 : 14) + (rnd(i) - 0.5) * 10 : 40 + t * (FIELD.w - 80);
-    const y = side < 2 ? 30 + t * (FIELD.h - 60) : (side === 2 ? 16 : FIELD.h - 12) + (rnd(i) - 0.5) * 8;
-    if (i % 3 === 0) { c.fillStyle = '#7d8474'; c.beginPath(); c.ellipse(x, y, 8, 5.5, 0, 0, 7); c.fill(); c.fillStyle = '#9aa191'; c.beginPath(); c.ellipse(x - 1.5, y - 1.5, 5, 3, 0, 0, 7); c.fill(); }
-    else { c.fillStyle = '#2a4a25'; c.beginPath(); c.arc(x, y, 9, 0, 7); c.fill(); c.fillStyle = '#4b7a3c'; c.beginPath(); c.arc(x - 2, y - 3, 6.5, 0, 7); c.fill(); }
+  c.lineWidth = 3; c.lineCap = 'square';
+  for (const s of SLOTS) {
+    const x = s.x - hw, y = s.y - hh - 8, edge = (col, x1, y1, x2, y2) => { c.strokeStyle = col; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
+    if (!has(s.r - 1, s.c)) edge('#d3e39a', x, y + 1.5, x + CELL.w, y + 1.5);
+    if (!has(s.r, s.c - 1)) edge('#c3d488', x + 1.5, y, x + 1.5, y + CELL.h);
+    if (!has(s.r, s.c + 1)) edge('#7f9050', x + CELL.w - 1.5, y, x + CELL.w - 1.5, y + CELL.h);
+    if (!has(s.r + 1, s.c)) edge('#6f7f43', x, y + CELL.h - 1.5, x + CELL.w, y + CELL.h - 1.5);
   }
-  const fx = TRACK.x0 - 22, fy = TRACK.y0 - 44;
-  c.strokeStyle = '#3a2f20'; c.lineWidth = 3; c.beginPath(); c.moveTo(fx, fy + 22); c.lineTo(fx, fy - 12); c.stroke();
-  c.fillStyle = '#d0453a'; c.beginPath(); c.moveTo(fx, fy - 12); c.lineTo(fx + 24, fy - 5); c.lineTo(fx, fy + 3); c.closePath(); c.fill();
-  c.fillStyle = '#ffe9a6'; c.font = '800 14px sans-serif'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText('적 진입 ▶', fx + 30, fy - 3);
+  // 장식: 빈 칸의 모래주머니 진지, 가장자리 덤불·바위, 진입 깃발
+  for (const d of decorPos) {
+    c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(d.x, d.y + 22, 40, 14, 0, 0, 7); c.fill();
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 3 - row; i++) { const bx = d.x - 30 + i * 24 + row * 12, by = d.y + 14 - row * 15;
+      c.fillStyle = row % 2 ? '#b8a57a' : '#a89468'; c.strokeStyle = '#5b4a31'; c.lineWidth = 1.5; rr(c, bx, by, 23, 15, 6); c.fill(); c.stroke(); }
+    c.fillStyle = '#2f5a2a'; c.beginPath(); c.arc(d.x - 30, d.y - 22, 13, 0, 7); c.fill(); c.fillStyle = '#4f8a40'; c.beginPath(); c.arc(d.x - 33, d.y - 26, 9, 0, 7); c.fill();
+  }
+  for (let i = 0; i < 22; i++) {
+    const side = i % 2, x = side ? FIELD.w - 6 + (rnd(i) - 0.5) * 6 : 6 + (rnd(i) - 0.5) * 6, y = 20 + rnd(i + 40) * (FIELD.h - 40);
+    if (i % 3 === 0) { c.fillStyle = '#7d8474'; c.beginPath(); c.ellipse(x, y, 7, 5, 0, 0, 7); c.fill(); }
+    else { c.fillStyle = '#2a4a25'; c.beginPath(); c.arc(x, y, 9, 0, 7); c.fill(); c.fillStyle = '#4b7a3c'; c.beginPath(); c.arc(x - 2, y - 3, 6, 0, 7); c.fill(); }
+  }
+  const f = PATH[0];
+  c.strokeStyle = '#3a2f20'; c.lineWidth = 3; c.beginPath(); c.moveTo(f.x - 38, f.y + 30); c.lineTo(f.x - 38, f.y - 36); c.stroke();
+  c.fillStyle = '#d0453a'; c.beginPath(); c.moveTo(f.x - 38, f.y - 36); c.lineTo(f.x - 12, f.y - 28); c.lineTo(f.x - 38, f.y - 20); c.closePath(); c.fill();
   return bg;
-}
-function trackPos(s) {
-  s = ((s % PATH_LEN) + PATH_LEN) % PATH_LEN;
-  if (s < TW) return { x: TRACK.x0 + s, y: TRACK.y0 };
-  s -= TW; if (s < TH) return { x: TRACK.x1, y: TRACK.y0 + s };
-  s -= TH; if (s < TW) return { x: TRACK.x1 - s, y: TRACK.y1 };
-  return { x: TRACK.x0, y: TRACK.y1 - (s - TW) };
 }
 
 export function draw(ctx, g, ui, quality = 2) {
@@ -70,10 +74,10 @@ export function draw(ctx, g, ui, quality = 2) {
   const sel = ui.sel != null ? g.units[ui.sel] : null;
   // 발판 강조: 조합할 수 있는 칸(노랑), 선택한 칸(흰색)
   SLOTS.forEach((s, i) => {
-    const x = s.x - TILE.w / 2, y = s.y + TILE.dy - TILE.h / 2, mergeable = sel && i !== ui.sel && canMerge(g, ui.sel, i);
-    if (mergeable) { ctx.fillStyle = `rgba(255,212,94,${0.3 + 0.18 * Math.sin(now * 6)})`; rr(ctx, x, y, TILE.w, TILE.h, 16); ctx.fill();
+    const x = s.x - CELL.w / 2 + 4, y = s.y - CELL.h / 2 - 4, mergeable = sel && i !== ui.sel && canMerge(g, ui.sel, i);
+    if (mergeable) { ctx.fillStyle = `rgba(255,212,94,${0.32 + 0.18 * Math.sin(now * 6)})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill();
       ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 4; ctx.stroke(); }
-    else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, TILE.w, TILE.h, 16); ctx.stroke(); }
+    else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.stroke(); }
   });
   // 선택 유닛 사거리 · 지원 범위 (바닥에 눕힌 원)
   if (sel) {
@@ -108,7 +112,7 @@ export function draw(ctx, g, ui, quality = 2) {
 
 function enemy(ctx, e, k, quality) {
   const elite = e.kind === 'elite', art = elite ? 'armor' : e.kind;
-  const r = ENEMY_R[e.kind], half = r + 8, m = e.s % PATH_LEN, left = m >= TW + TH && m < 2 * TW + TH;
+  const r = ENEMY_R[e.kind], half = r + 8, left = e.left;
   const by = quality > 0 ? Math.sin(e.s * 0.22 + e.id) * (e.kind === 'boss' ? 1 : 1.8) : 0, fly = e.kind === 'fast' ? 9 : 0;
   // 바닥 그림자 · 상태 표시
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.85, r * 0.95, r * 0.36, 0, 0, 7); ctx.fill();
@@ -126,21 +130,20 @@ function enemy(ctx, e, k, quality) {
 function unit(ctx, b, u, selected, k, now, quality) {
   const p = SLOTS[u.slot], tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u);
   const o = { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u) }, tk = u.type.join('+');
-  const fy = p.y + FEET - 6;
+  const fy = p.y + FEET - 5;
   // 발밑: 소집·진급 때 번쩍임, 히든 계급의 금빛, 병과 색 띠, 그림자
-  if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 58, 30, 0, 0, 7); ctx.fill(); }
-  if (u.hidden) { ctx.fillStyle = `rgba(255,212,94,${0.3 + 0.12 * Math.sin(now * 3 + u.id)})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 46, 21, 0, 0, 7); ctx.fill();
+  if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 50, 26, 0, 0, 7); ctx.fill(); }
+  if (u.hidden) { ctx.fillStyle = `rgba(255,212,94,${0.3 + 0.12 * Math.sin(now * 3 + u.id)})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 42, 19, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]); }
   ctx.lineWidth = 4;
-  ctx.strokeStyle = CLASS_INFO[u.type[0]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 34, 14, 0, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
-  ctx.strokeStyle = CLASS_INFO[u.type[1]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 34, 14, 0, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-  ctx.fillStyle = 'rgba(0,0,0,.34)'; ctx.beginPath(); ctx.ellipse(p.x, fy, 27, 10, 0, 0, 7); ctx.fill();
-  if (selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(p.x, fy, 41, 18, 0, 0, 7); ctx.stroke(); }
+  ctx.strokeStyle = CLASS_INFO[u.type[0]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 31, 13, 0, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
+  ctx.strokeStyle = CLASS_INFO[u.type[1]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 31, 13, 0, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,.34)'; ctx.beginPath(); ctx.ellipse(p.x, fy, 24, 9, 0, 0, 7); ctx.fill();
   // 캐릭터: 가만히 있을 때는 숨쉬듯 조금 움직이고, 사격할 때는 반동으로 튄다. 발을 기준으로 커졌다 작아진다
   const fire = u.fireT > 0 ? Math.sin((1 - u.fireT / 0.16) * Math.PI) : 0;
   const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.2 : 0) - fire * 6, sc = 1 + fire * 0.07;
   const im = unitImage(b.id, u.type) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
-  const w = 102 * sc;
+  const w = CHAR * sc;
   ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + dy, w, w);
   ctx.drawImage(sprite(['ut', tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':'), 62, k, c => drawTag(c, o)), p.x - 62, p.y - 62, 124, 124);
 }
