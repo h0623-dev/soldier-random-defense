@@ -2,6 +2,17 @@
 
 > 처음 이어받는다면 `docs/CLAUDE_CODE_HANDOFF.md`를 먼저 읽는다.
 
+## 2026-11-19 — Claude Code 이어받기 (push 차단)
+**직접 한 작업**
+- zip(v0.1.0)을 풀어 커밋: ① v0.1.0 원본 그대로 ② CI 트리거에 `claude/**` 작업 브랜치 추가.
+**검사**
+- `npm ci && npm test` 통과. 봇 결과는 v0.1.0과 같은 범위.
+- APK 빌드는 못 함: 작업 환경에서 Android SDK 다운로드(dl.google.com)가 막혀 있음.
+**배포**
+- 없음. `git push`가 403으로 거부됨(Claude GitHub 앱 미설치/미연결). 원격 저장소는 아직 비어 있음.
+**남은 한계**
+- Actions APK 빌드는 아직 한 번도 실행되지 않음.
+
 ## 2026-11-19 — Claude Code 인수인계 준비
 - `docs/CLAUDE_CODE_HANDOFF.md` 작성. 코드는 아직 GitHub에 올라가지 않았다(push 403, Claude GitHub 앱 권한 없음). zip으로 전달.
 
