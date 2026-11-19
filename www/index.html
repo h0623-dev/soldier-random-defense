@@ -27,6 +27,22 @@
 </div>
 <div id="overlay"></div>
 <div id="toast"></div>
+<script>
+// 시작 점검: 내려받은 새 버전이 시작에 실패하면(지난번 실행 때, 또는 이번 실행에서 5초 안에 못 뜨면)
+// 그 버전을 버리고 앱에 든 버전으로 돌아간다. 정상으로 뜨면 main.js가 srd_boot_ok를 적는다.
+(function () { try {
+  var b = localStorage.getItem('srd_live_build'); if (!b) return;
+  var ok = function () { return localStorage.getItem('srd_boot_ok') === b; };
+  var rollback = function () {
+    localStorage.removeItem('srd_live_build'); localStorage.setItem('srd_live_bad', b);
+    caches.keys().then(function (ks) { return Promise.all(ks.filter(function (k) { return k.indexOf('srd-live') === 0; }).map(function (k) { return caches.delete(k); })); })
+      .then(function () { location.reload(); });
+  };
+  if (localStorage.getItem('srd_boot_try') === b && !ok()) { rollback(); return; }
+  localStorage.setItem('srd_boot_try', b);
+  setTimeout(function () { if (!ok()) rollback(); }, 5000);
+} catch (e) {} })();
+</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import { draw } from './render.js';
 import { Monetize } from './monetize.js';
 import { initLayout } from './layout.js';
 import { Sound } from './sound.js';
+import { checkUpdate, buildInfo } from './update.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('field'), ctx = canvas.getContext('2d'), overlay = $('overlay');
@@ -40,7 +41,7 @@ const ACT = {
       <button class="wide sec" data-act="shop">보급 상점</button>
       <button class="wide sec" data-act="help">게임 방법</button>
       <button class="wide sec" data-act="mute" data-arg="title">소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
-      <p class="sub" style="margin-top:22px">v0.1.0 · 시제품</p>`);
+      <p class="sub" style="margin-top:22px">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · 빌드 ${buildInfo.live || buildInfo.bundled}` : ''}</p>`);
   },
   branches() {
     show(`<h2>군별 선택</h2><div class="cards">${BRANCHES.map(b => `
@@ -215,3 +216,7 @@ Sound.setMuted(meta.mute);
 document.addEventListener('pointerdown', () => Sound.unlock(), { passive: true });
 window.__srd = { get game() { return g; }, C, view };   // 자동 검사용
 ACT.title(); requestAnimationFrame(frame);
+try { localStorage.setItem('srd_boot_ok', localStorage.getItem('srd_live_build') || ''); } catch { /* 저장 불가 환경 */ }
+// 자동 업데이트: 새 버전을 다 받으면, 아직 게임을 시작하지 않았을 때는 바로 다시 열고 아니면 다음 실행부터 적용한다
+checkUpdate(() => { if (!g) location.reload(); else toast('새 버전을 받았습니다 — 다음 실행부터 적용됩니다'); })
+  .then(() => { if (!g && overlay.classList.contains('on') && overlay.querySelector('h1')) ACT.title(); });

@@ -74,3 +74,14 @@ Android는 Capacitor로 `www/`를 감싼다. Steam은 같은 `www/`를 Electron 
 
 ## 효과음 (`www/js/sound.js`)
 소리 파일 없이 Web Audio로 합성. `core.js`는 사격 때 `g.sfx`에 병과를, 보스 격파 때 `bossdie`를 넣고, `main.js`가 매 프레임 꺼내 재생한다(같은 소리는 최소 간격을 둬 겹치지 않게). 웨이브 시작·보스 등장은 `g.log`를 보고 낸다. 설정은 `meta.mute`.
+
+## 자동 업데이트 (`www/js/update.js`, `www/sw.js`, `tools/make-update.mjs`)
+APK를 다시 설치하지 않아도 게임 내용(화면·규칙·그림·소리 = `www/` 전체)을 앱 실행 시 내려받아 바꾼다.
+- **흐름**: 앱 실행 → `update-config.json`의 `url`에서 `version.json`을 읽음 → 빌드 번호가 지금 것(앱에 든 것, 이미 받아 둔 것)보다 크면 목록의 파일을 모두 받아 캐시 `srd-live-<빌드>`에 저장 → 아직 게임을 시작하지 않았으면 바로 다시 열고, 게임 중이면 다음 실행부터 적용. `sw.js`(서비스 워커)가 받아 둔 파일을 앱에 든 파일 대신 내준다.
+- **인터넷이 없을 때**: 가지고 있는 버전(받아 둔 것 또는 앱에 든 것)으로 그대로 실행.
+- **새 APK 설치**: 앱에 든 빌드가 받아 둔 것 이상이면 받아 둔 것을 버린다.
+- **고장 난 업데이트**: 받은 버전이 5초 안에 못 뜨거나 지난 실행에서 못 떴으면 버리고 앱에 든 버전으로 복구, 그 빌드는 다시 받지 않는다(`index.html`의 시작 점검, `srd_live_bad`).
+- **빌드 번호**: 마지막 커밋 시각(초). `npm run bundle`이 `www/version.json`(앱용, git에는 올리지 않음)과 `dist/update/`(호스팅에 올릴 폴더)를 만든다. APK를 직접 빌드할 때도 `npx cap sync` 전에 `npm run bundle`을 먼저 실행한다.
+- **배포**: `.github/workflows/android.yml`이 main push 때 `dist/update`를 Cloudflare Pages에 올린다. 저장소 Secrets `CLOUDFLARE_API_TOKEN`·`CLOUDFLARE_ACCOUNT_ID`, Variables `CF_PAGES_PROJECT`가 있을 때만 동작. 다른 호스팅을 쓰려면 이 단계만 바꾸면 된다(필요 조건: `dist/update` 폴더를 그대로 올리고, 모든 출처에서 받을 수 있게 CORS 허용).
+- **자동 업데이트가 안 되는 것**: 앱 껍데기(Android 쪽) 변경 — 앱 ID, 아이콘, 권한, 광고·결제 같은 기기 기능 추가, `sw.js` 자체. 이런 변경은 새 APK(또는 스토어 업데이트)가 필요하다.
+- 켜는 법: `www/update-config.json`의 `url`에 호스팅 주소를 넣는다. 비어 있으면 꺼져 있다.
