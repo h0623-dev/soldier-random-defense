@@ -154,7 +154,7 @@ export function drawCardFront(c, o) {
 }
 
 // ── 적 ───────────────────────────────────────────────────
-export const ENEMY_R = { normal: 12, fast: 10, armor: 17, boss: 28 };
+export const ENEMY_R = { normal: 12, fast: 10, armor: 17, boss: 28, elite: 21 };   // elite(특수 임무 표적)는 장갑차 그림을 크게 쓴다
 export const ENEMY_DRAW = {
   normal(c) {   // 적 보병
     c.strokeStyle = INK; c.lineWidth = 1.2;

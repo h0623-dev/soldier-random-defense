@@ -40,8 +40,29 @@ assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]
   g.camp = 3; for (let i = 0; i < 500; i++) { const u = C.summon(g); assert.equal(u.hidden, null); g.units[u.slot] = null; }
   assert.equal(BRANCHES.find(b => b.id === 'police').hidden.length, 0);
 }
+// 3-2) 병과 강화 · 선택 소집 · 진급 심사 · 특수 임무 · 임무
+{
+  const g = C.createGame({ branchId: 'army', seed: 5, fx: false });
+  g.gold = 1e9; const u0 = C.summon(g), d0 = u0.stats.dmg, c = u0.type[0];
+  assert.equal(C.upgradeClass(g, c), true); assert.ok(Math.abs(u0.stats.dmg / d0 - (1 + C.CFG.upStep)) < 1e-9);     // 순수 병과는 단계당 +8%
+  assert.equal(C.classUpCost(g, c), Math.round(C.CFG.upBase * C.CFG.upGrowth));
+  assert.equal(C.summonPick(g, 'art'), null);                                   // 보급품이 없으면 선택 소집 불가
+  g.supply = 10; const pu = C.summonPick(g, 'art'); assert.deepEqual(pu.type, ['art', 'art']); assert.equal(g.supply, 10 - C.CFG.pickSupply);
+  const tally = { up: 0, same: 0, down: 0 };
+  for (let i = 0; i < 3000; i++) { g.supply = 1; g.units[0] = { ...u0, level: 5, hidden: null }; tally[C.gamble(g, 0)]++; }
+  assert.ok(Math.abs(tally.up / 3000 - C.CFG.gambleUp) < 0.04 && Math.abs(tally.down / 3000 - C.CFG.gambleDown) < 0.04, JSON.stringify(tally));
+  assert.equal(C.callElite(g), false);                                          // 1단계 전에는 호출 불가
+  g.nextWave = 0; C.step(g, 0.05); assert.equal(C.callElite(g), true); assert.equal(C.callElite(g), false);
+  const el = g.enemies.find(e => e.kind === 'elite'), sup = g.supply; el.hp = 1e-9;
+  for (let i = 0; i < 200 && g.elite.active; i++) C.step(g, 0.05);
+  assert.equal(g.elite.n, 1); assert.ok(g.supply >= sup + C.CFG.eliteSupply); assert.equal(C.eliteState(g), 'cd');
+  for (let i = 0; i < 12; i++) C.step(g, 0.05);                                 // 임무는 0.5초마다 확인한다
+  assert.ok(g.done.el1, '임무(특수 임무 1회) 자동 완수');
+}
 console.log('규칙·데이터 검사 통과');
 
+if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
+const UPR = +process.env.UPR || 0.12;   // 봇이 병과 강화에 쓰는 군자금 비율
 // 4) 봇 플레이
 function play(branchId, seed, smart = true) {
   const g = C.createGame({ branchId, seed, fx: false });
@@ -51,6 +72,13 @@ function play(branchId, seed, smart = true) {
     if (acc < 0.5) continue; acc = 0;
     for (let n = 0; n < 40; n++) {
       if (smart && C.campCost(g.branch, g.camp) <= g.gold * 0.5 && C.upgradeCamp(g)) continue;
+      if (smart) {      // 새 시스템도 단순하게 사용: 가장 낮은 병과 강화, 특수 임무는 될 때마다, 보급품은 최고 계급 유닛 진급 심사
+        const c = CLASS_IDS.reduce((a, b) => (g.up[b] < g.up[a] ? b : a));
+        if (C.classUpCost(g, c) <= g.gold * UPR && C.upgradeClass(g, c)) continue;
+        C.callElite(g);
+        const top = g.units.filter(u => u && !u.hidden && u.level < C.maxLevel(g.branch)).sort((a, b) => b.level - a.level)[0];
+        if (top && C.canGamble(g, top.slot)) { C.gamble(g, top.slot); continue; }
+      }
       if (g.units.includes(null)) { if (!C.summon(g)) break; continue; }
       const us = g.units.filter(Boolean).sort((a, b) => a.level - b.level);
       let done = false;
@@ -70,5 +98,6 @@ for (const b of BRANCHES) {
   console.log(b.name.padEnd(4), '봇:', rs.map(g => `${g.wave}${g.over?.win ? '승' : '패'}`).join(' '),
     '| 훈련소 미강화 봇:', `${lazy.wave}${lazy.over?.win ? '승' : '패'}`,
     '| 최고계급', b.ranks[Math.max(...rs[0].units.filter(Boolean).map(u => u.level))],
-    '| 히든 등장', rs.map(g => g.log.filter(l => l.t === 'hidden').length).join('/'));
+    '| 히든', rs.map(g => g.log.filter(l => l.t === 'hidden').length).join('/'),
+    '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'), '| 임무', rs.map(g => Object.keys(g.done).length).join('/'));
 }

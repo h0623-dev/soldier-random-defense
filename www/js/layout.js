@@ -4,7 +4,7 @@ import { FIELD } from './core.js';
 
 const BASE_W = 390;            // 설계 기준 폭 (배율 1)
 const BASE_H = 640;            // 세로 배치에서 배율 1로 다 들어가는 최소 높이
-const INFO_MIN = 13;           // 정보창 최소 높이 (rem)
+const INFO_MIN = 15;           // 정보창 최소 높이 (rem)
 const SIDE_MIN = 30;           // 가로 배치의 오른쪽 패널 최소 폭 (rem)
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -28,16 +28,17 @@ export function initLayout(onChange) {
     root.style.fontSize = 10 * s + 'px'; root.style.setProperty('--vy', '0rem');
     app.classList.toggle('land', land);
     const rem = 10 * s, ratio = FIELD.h / FIELD.w;
-    let fw;
-    if (land) fw = Math.min(H / ratio, W - SIDE_MIN * rem);
-    else fw = Math.min(W, (H - hud.offsetHeight - actions.offsetHeight - INFO_MIN * rem) / ratio);
-    fw = Math.max(120, Math.floor(fw)); const fh = Math.floor(fw * ratio);
-    canvas.style.width = fw + 'px'; canvas.style.height = fh + 'px';
+    const fit = () => Math.max(120, Math.floor(land ? Math.min(H / ratio, W - SIDE_MIN * rem)
+      : Math.min(W, (H - hud.offsetHeight - actions.offsetHeight - INFO_MIN * rem) / ratio)));
+    let fw = fit(), fh = Math.floor(fw * ratio);
     if (!land) {
-      // 세로로 긴 화면: 남는 높이의 일부를 버튼·상단바 높이로 돌려 누르기 쉽게 한다
-      const spare = (H - hud.offsetHeight - actions.offsetHeight - fh) / rem - 20;
+      // 세로로 긴 화면: 남는 높이의 일부를 버튼·상단바 높이로 돌려 누르기 쉽게 한다.
+      // 버튼이 커지면 남는 높이가 줄어드므로 전장 크기를 한 번 더 계산한다.
+      const spare = (H - hud.offsetHeight - actions.offsetHeight - fh) / rem - 22;
       root.style.setProperty('--vy', clamp(spare * 0.1, 0, 0.9).toFixed(2) + 'rem');
+      fw = fit(); fh = Math.floor(fw * ratio);
     }
+    canvas.style.width = fw + 'px'; canvas.style.height = fh + 'px';
     Object.assign(view, { scale: s, land, w: W, h: H, fieldW: fw, fieldH: fh });
     resizeCanvas(); if (onChange) onChange(view);
   }

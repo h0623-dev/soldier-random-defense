@@ -10,10 +10,10 @@
 <body>
 <div id="app">
   <header id="hud">
-    <div class="stat"><small>웨이브</small><b id="h-wave">0/100</b></div>
-    <div class="stat"><small id="h-next-label">다음</small><b id="h-next">-</b></div>
+    <div class="stat"><small id="h-next">웨이브</small><b id="h-wave">0/100</b></div>
     <div class="stat"><small>적</small><b id="h-enemy">0/50</b></div>
     <div class="stat gold"><small>군자금</small><b id="h-gold">0</b></div>
+    <div class="stat sup"><small>보급품</small><b id="h-sup">0</b></div>
     <button id="b-speed" class="mini">×1</button>
     <button id="b-menu" class="mini">≡</button>
   </header>
@@ -23,6 +23,12 @@
     <button id="b-summon" class="big"><span>신병 소집</span><small id="c-summon"></small></button>
     <button id="b-camp" class="big alt"><span id="t-camp">훈련소 강화</span><small id="c-camp"></small></button>
     <button id="b-codex" class="big ghost"><span>조합 도감</span><small>계급 · 병과</small></button>
+    <div class="sub">
+      <button id="b-pick" class="sm"><span>선택 소집</span><small id="c-pick"></small></button>
+      <button id="b-up" class="sm"><span>병과 강화</span><small id="c-up"></small></button>
+      <button id="b-elite" class="sm"><span>특수 임무</span><small id="c-elite"></small></button>
+      <button id="b-mission" class="sm"><span>임무</span><small id="c-mission"></small></button>
+    </div>
   </footer>
 </div>
 <div id="overlay"></div>

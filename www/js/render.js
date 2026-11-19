@@ -39,11 +39,14 @@ export function draw(ctx, g, ui, quality = 2) {
   const k = ctx.getTransform().a, now = performance.now() / 1000;
   const TW = TRACK.x1 - TRACK.x0, TH = TRACK.y1 - TRACK.y0;
   for (const e of g.enemies) {
+    const elite = e.kind === 'elite', art = elite ? 'armor' : e.kind;
     const r = ENEMY_R[e.kind], half = r + 8, m = e.s % PATH_LEN, left = m >= TW + TH && m < 2 * TW + TH;
+    if (elite) { ctx.fillStyle = 'rgba(160,90,220,.4)'; ctx.strokeStyle = '#c99bff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(e.x, e.y, r + 7, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e9d6ff'; ctx.font = '800 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(Math.ceil(e.life) + '초', e.x, e.y - half - 13); }
     const by = quality > 0 ? Math.sin(e.s * 0.22 + e.id) * (e.kind === 'boss' ? 1 : 1.8) : 0;
     if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.45)'; ctx.beginPath(); ctx.arc(e.x, e.y, r + 3, 0, 7); ctx.fill(); }
     if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, r + 4, 0, 7); ctx.stroke(); }
-    const im = enemyArt(e.kind) || sprite('e:' + e.kind, half, k, ENEMY_DRAW[e.kind]);
+    const im = enemyArt(art) || sprite('e:' + art, half, k, ENEMY_DRAW[art]);
     if (left) { ctx.save(); ctx.translate(e.x, e.y + by); ctx.scale(-1, 1); ctx.drawImage(im, -half, -half, half * 2, half * 2); ctx.restore(); }
     else ctx.drawImage(im, e.x - half, e.y - half + by, half * 2, half * 2);
     ctx.fillStyle = '#000'; ctx.fillRect(e.x - r, e.y - half - 2, r * 2, 4);

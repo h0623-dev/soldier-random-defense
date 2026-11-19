@@ -13,8 +13,14 @@ export const CFG = {
   maxWave: 100, enemyLimit: 50, bossTime: 55, waveGap: 24, prepTime: 8,
   growth: 1.9,          // 계급 1단계(정규화)당 전투력 배수
   baseDmg: 10, summonBase: 20, summonGrowth: 1.75, campBase: 110, campGrowth: 1.95,
-  hpBase: 26, hpGrowth: 1.124, bountyBase: 2.2, bountyGrowth: 1.098,
+  hpBase: 26, hpGrowth: 1.134, bountyBase: 2.2, bountyGrowth: 1.098,
   startGold: 100, sellRate: 0.4, auraRadius: 150,
+  // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
+  upBase: 80, upGrowth: 1.55, upStep: 0.08,
+  // 보급품(두 번째 재화): 보스·특수 임무·임무 완수로 얻고 선택 소집·진급 심사에 쓴다
+  bossSupply: 3, pickSupply: 2, gambleSupply: 1, gambleUp: 0.45, gambleDown: 0.15,
+  // 특수 임무(정예 표적): 직접 불러내는 추가 보스. 제한 시간 안에 잡으면 군자금·보급품
+  eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
 };
 
 export function pathPos(s) {
@@ -57,10 +63,11 @@ export const summonCost = (branch, camp) => Math.round(CFG.summonBase * CFG.summ
 export const campCost = (branch, camp) => Math.round(CFG.campBase * CFG.campGrowth ** expo(branch, camp));
 export const unitValue = (branch, level) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, level));
 
-export function unitStats(branch, level, type, meta = {}) {
+export function unitStats(branch, level, type, meta = {}, up = null) {
   const w = { inf: 0, art: 0, med: 0, sig: 0 }; w[type[0]] += 0.5; w[type[1]] += 0.5;
   const k = branch.trait.key;
-  const D = CFG.baseDmg * CFG.growth ** expo(branch, level) * (1 + 0.03 * (meta.atk || 0));
+  const D = CFG.baseDmg * CFG.growth ** expo(branch, level) * (1 + 0.03 * (meta.atk || 0))
+    * (1 + CFG.upStep * (up ? (up[type[0]] + up[type[1]]) / 2 : 0));
   let dmg = D * (w.inf * 1.0 + w.art * 2.6 + w.med * 0.5 + w.sig * 0.6);
   let cd = w.inf * 0.55 + w.art * 1.5 + w.med * 0.9 + w.sig * 0.8;
   let range = w.inf * 190 + w.art * 290 + w.med * 170 + w.sig * 240;
@@ -87,6 +94,7 @@ export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true }
   return {
     branch, meta, rand: rng(seed), fx, time: 0, wave: 0, nextWave: CFG.prepTime,
     gold: CFG.startGold + 40 * (meta.gold || 0), camp: 0, units: Array(SLOTS.length).fill(null),
+    supply: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
   };
 }
@@ -104,8 +112,8 @@ export function summon(g) {
 }
 function placeUnit(g, slot, level, type, hidden = null) {
   const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0,
-    stats: unitStats(g.branch, level, type, g.meta), flash: 0.5 };
-  if (hidden) g.log.push({ t: 'hidden', id: hidden });
+    stats: unitStats(g.branch, level, type, g.meta, g.up), flash: 0.5 };
+  if (hidden) { g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
   g.units[slot] = u; g.auraDirty = true; return u;
 }
 export const hiddenDef = (branch, id) => (id ? branch.hidden.find(h => h.id === id) : null) || null;
@@ -118,6 +126,64 @@ export function hiddenRecipe(branch, A, B) {
   }
   return null;
 }
+// ── 병과 강화 · 선택 소집 · 진급 심사 · 특수 임무 ─────────────
+export const classUpCost = (g, c) => Math.round(CFG.upBase * CFG.upGrowth ** g.up[c]);
+export function upgradeClass(g, c) {
+  const cost = classUpCost(g, c);
+  if (g.over || g.gold < cost) return false;
+  g.gold -= cost; g.up[c]++;
+  for (const u of g.units) if (u) u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up);
+  g.auraDirty = true; return true;
+}
+// 선택 소집: 보급품을 써서 원하는 기본 병과를 고른다 (계급 운은 일반 소집과 같고 히든 뽑기는 없다)
+export function summonPick(g, c) {
+  const cost = summonCost(g.branch, g.camp), slot = g.units.indexOf(null);
+  if (g.over || g.gold < cost || g.supply < CFG.pickSupply || slot < 0) return null;
+  g.gold -= cost; g.supply -= CFG.pickSupply;
+  const r = g.rand();
+  return placeUnit(g, slot, Math.min(maxLevel(g.branch), g.camp + (r < 0.06 ? 2 : r < 0.28 ? 1 : 0)), [c, c]);
+}
+// 진급 심사: 보급품 1로 선택한 유닛에 도전. 성공하면 한 계급 진급, 실패하면 그대로, 낮은 확률로 강등
+export function canGamble(g, a) {
+  const u = g.units[a];
+  return !!(u && !g.over && !u.hidden && g.supply >= CFG.gambleSupply && u.level < maxLevel(g.branch));
+}
+export function gamble(g, a) {
+  if (!canGamble(g, a)) return null;
+  const u = g.units[a], r = g.rand(); g.supply -= CFG.gambleSupply;
+  const res = r < CFG.gambleUp ? 'up' : r < 1 - CFG.gambleDown || u.level === 0 ? 'same' : 'down';
+  if (res !== 'same') placeUnit(g, a, u.level + (res === 'up' ? 1 : -1), u.type);
+  return res;
+}
+export const eliteState = g => (g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');
+export function callElite(g) {
+  if (g.over || eliteState(g) !== 'ready') return false;
+  const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * CFG.eliteHp * CFG.eliteHpGrowth ** g.elite.n;
+  g.enemies.push({ id: g.uid++, s: 0, hp, maxHp: hp, speed: 55, bounty: CFG.bountyBase * CFG.bountyGrowth ** w * CFG.eliteBounty, kind: 'elite',
+    life: CFG.eliteTime, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
+  g.elite.active = true; return true;
+}
+// ── 임무: 조건을 채우면 자동으로 완수되고 보급품을 받는다 ───────
+const lvCount = (g, lv) => g.units.filter(u => u && u.level >= lv).length;
+export const MISSIONS = [
+  { id: 'k50', sup: 1, text: () => '적 50명 처치', ok: g => g.kills >= 50 },
+  { id: 'k300', sup: 2, text: () => '적 300명 처치', ok: g => g.kills >= 300 },
+  { id: 'k1000', sup: 3, text: () => '적 1000명 처치', ok: g => g.kills >= 1000 },
+  { id: 'four', sup: 1, text: () => '기본 병과 4종을 모두 배치', ok: g => CLASS_IDS.every(c => g.units.some(u => u && u.type[0] === c && u.type[1] === c)) },
+  { id: 'mix3', sup: 2, text: () => '혼성 병과 3종을 동시에 보유', ok: g => new Set(g.units.filter(u => u && u.type[0] !== u.type[1]).map(u => typeKey(u.type))).size >= 3 },
+  { id: 'full', sup: 1, text: () => '배치 칸 25칸을 모두 채우기', ok: g => !g.units.includes(null) },
+  { id: 'lv5', sup: 1, text: g => `${g.branch.ranks[4]} 이상 3명 보유`, ok: g => lvCount(g, 4) >= 3 },
+  { id: 'officer', sup: 2, text: g => `${g.branch.ranks[g.branch.tiers[0]]} 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[0]) >= 1 },
+  { id: 'general', sup: 3, text: g => `${g.branch.ranks[g.branch.tiers[1]]} 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[1]) >= 1 },
+  { id: 'up5', sup: 1, text: () => '병과 강화 합계 5단계', ok: g => CLASS_IDS.reduce((s, c) => s + g.up[c], 0) >= 5 },
+  { id: 'el1', sup: 1, text: () => '특수 임무 1회 완수', ok: g => g.elite.n >= 1 },
+  { id: 'el5', sup: 2, text: () => '특수 임무 5회 완수', ok: g => g.elite.n >= 5 },
+  { id: 'hid', sup: 2, text: () => '히든 계급 획득', ok: g => g.hiddenGot > 0, only: g => g.branch.hidden.length > 0 },
+  { id: 'w30', sup: 2, text: () => '30단계 도달', ok: g => g.wave >= 30 },
+  { id: 'w60', sup: 3, text: () => '60단계 도달', ok: g => g.wave >= 60 },
+];
+export const missionList = g => MISSIONS.filter(m => !m.only || m.only(g));
+
 export function upgradeCamp(g) {
   const cost = campCost(g.branch, g.camp);
   if (g.over || g.camp >= maxCamp(g.branch) || g.gold < cost) return false;
@@ -163,6 +229,8 @@ function hit(g, e, dmg) {
   e.hp -= dmg * (1 + (e.vulnT > 0 ? e.vuln : 0));
   if (e.hp <= 0 && !e.dead) {
     e.dead = true; g.kills++;
+    if (e.kind === 'boss') g.supply += CFG.bossSupply;
+    if (e.kind === 'elite') { g.supply += CFG.eliteSupply; g.elite.n++; g.elite.active = false; g.elite.cd = CFG.eliteCd; g.log.push({ t: 'eliteKill' }); }
     if (g.fx) { g.effects.push({ puff: true, x: e.x, y: e.y, r: e.kind === 'boss' ? 60 : 18, t: 0.3 }); if (e.kind === 'boss') g.sfx.push('bossdie'); }
     g.gold += e.bounty * (g.branch.trait.key === 'slow' ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0));
   }
@@ -180,6 +248,16 @@ export function step(g, dt) {
       g.enemies.push({ id: g.uid++, s: 0, hp: s.hp, maxHp: s.hp, speed: s.speed, bounty: s.bounty, kind: s.kind,
         slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
     }
+  }
+  // 특수 임무 표적: 제한 시간이 지나면 떠난다
+  g.elite.cd -= dt;
+  for (const e of g.enemies) if (e.kind === 'elite' && !e.dead && (e.life -= dt) <= 0) {
+    e.dead = true; g.elite.active = false; g.elite.cd = CFG.eliteCd; g.log.push({ t: 'eliteFail' });
+  }
+  // 임무 확인 (0.5초마다)
+  if ((g.missionT -= dt) <= 0) {
+    g.missionT = 0.5;
+    for (const m of missionList(g)) if (!g.done[m.id] && m.ok(g)) { g.done[m.id] = true; g.supply += m.sup; g.log.push({ t: 'mission', text: m.text(g), sup: m.sup }); }
   }
   // 의무 계열 · 히든 계급 오라 (같은 종류는 겹치지 않고 가장 큰 값만 적용)
   if (g.auraDirty) {
@@ -217,7 +295,7 @@ export function step(g, dt) {
       ? g.enemies.filter(e => !e.dead && (e.x - target.x) ** 2 + (e.y - target.y) ** 2 <= st.splash * st.splash)
       : [target];
     for (const e of victims) {
-      if (st.slow > 0) { const s = e.kind === 'boss' ? st.slow / 2 : st.slow; if (s >= e.slow || e.slowT <= 0) { e.slow = s; e.slowT = 1.5; } }
+      if (st.slow > 0) { const s = e.kind === 'boss' || e.kind === 'elite' ? st.slow / 2 : st.slow; if (s >= e.slow || e.slowT <= 0) { e.slow = s; e.slowT = 1.5; } }
       if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = 2; }
       hit(g, e, dmg);
     }

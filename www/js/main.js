@@ -79,10 +79,38 @@ const ACT = {
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 계급</b>의 다른 유닛을 누르면 한 계급 위 유닛으로 진급합니다. 두 병과에 따라 결과 병과가 달라집니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 계급이 올라갑니다.</p>
       <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
+      <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기)과 <b>진급 심사</b>(유닛 선택 후 도전: 45% 진급, 15% 강등)에 씁니다.</p>
+      <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
+      <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
       <p><b>패배</b> — 전장의 적이 ${C.CFG.enemyLimit}명을 넘거나, 보스를 ${C.CFG.bossTime}초 안에 잡지 못하면 패배합니다.</p>
       ${CLASS_IDS.map(c => `<p><span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span> ${CLASS_INFO[c].role}</p>`).join('')}
       </div><button class="wide sec" data-act="${g ? 'menu' : 'title'}">뒤로</button>`);
+  },
+  // 선택 소집: 보급품을 써서 원하는 기본 병과를 고른다
+  pick() {
+    const b = g.branch, sc = C.summonCost(b, g.camp);
+    show(`<h2>선택 소집</h2><p class="sub">보급품 ${C.CFG.pickSupply}개 + 군자금 ${fmt(sc)} · 보유 보급품 ${g.supply}개</p>
+      <div class="cards">${CLASS_IDS.map(c => `<button class="card" style="background:${CLASS_INFO[c].color};color:#10140e" data-act="pickc" data-arg="${c}">
+        <b>${b.types[c][0]}</b><small>${CLASS_INFO[c].role}</small></button>`).join('')}</div>
+      <button class="wide sec" data-act="resume">닫기</button>`);
+  },
+  pickc(c) { const u = C.summonPick(g, c); hide(); if (u) { toast(`${C.unitName(g.branch, u)} 소집`); Sound.play('summon'); } else { toast('보급품·군자금·빈 칸을 확인하세요'); Sound.play('deny'); } },
+  // 병과 강화: 그 병과가 들어간 모든 유닛의 공격력이 오른다 (혼성 병과는 두 병과의 평균)
+  upg() {
+    const b = g.branch;
+    show(`<h2>병과 강화</h2><p class="sub">단계마다 그 병과 공격력 +${Math.round(C.CFG.upStep * 100)}% · 군자금 ${fmt(g.gold)}</p>
+      ${CLASS_IDS.map(c => { const cost = C.classUpCost(g, c); return `<div class="up"><div><span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span>
+        <b>${b.types[c][0]} Lv${g.up[c]}</b> · 공격력 +${Math.round(g.up[c] * C.CFG.upStep * 100)}%</div>
+        <button data-act="upc" data-arg="${c}" ${g.gold < cost ? 'disabled' : ''}>${fmt(cost)}</button></div>`; }).join('')}
+      <button class="wide" data-act="resume">전장으로</button>`);
+  },
+  upc(c) { if (C.upgradeClass(g, c)) Sound.play('camp'); ACT.upg(); },
+  missions() {
+    show(`<h2>임무</h2><p class="sub">조건을 채우면 자동으로 완수되고 보급품을 받습니다</p><div class="list">
+      ${C.missionList(g).map(m => `<p>${g.done[m.id] ? '✅' : '⬜'} ${g.done[m.id] ? `<s>${m.text(g)}</s>` : `<b>${m.text(g)}</b>`} · 보급품 +${m.sup}</p>`).join('')}
+      <p>⭐ 보스 격파 · 보급품 +${C.CFG.bossSupply} / 특수 임무 성공 · 보급품 +${C.CFG.eliteSupply} (횟수 제한 없음)</p></div>
+      <button class="wide" data-act="resume">전장으로</button>`);
   },
   menu() {
     show(`<h2>일시정지</h2><button class="wide" data-act="resume">계속하기</button>
@@ -139,6 +167,10 @@ $('info').addEventListener('click', e => {
   const a = e.target.dataset.do; if (!a || !g) return;
   if (a === 'merge') doMerge();
   if (a === 'cancel') ui.target = null;
+  if (a === 'gamble') { const r = C.gamble(g, ui.sel); infoKey = '';
+    if (r === 'up') { toast(`진급 심사 통과! ${C.unitName(g.branch, g.units[ui.sel])}`); Sound.play('merge'); }
+    else if (r === 'down') { toast(`심사 탈락 — ${C.unitName(g.branch, g.units[ui.sel])}(으)로 강등`); Sound.play('deny'); }
+    else if (r === 'same') { toast('심사 보류 — 변화 없음'); Sound.play('sell'); } }
   if (a === 'sell') { const v = C.sell(g, ui.sel); ui.sel = ui.target = null; toast(`전역 처리 +${fmt(v)}`); Sound.play('sell'); }
 });
 $('b-summon').onclick = () => { if (!g) return; const u = C.summon(g);
@@ -147,6 +179,10 @@ $('b-summon').onclick = () => { if (!g) return; const u = C.summon(g);
   else { if (u.level > g.camp) toast(`행운! ${C.unitName(g.branch, u)} 소집`); Sound.play('summon'); } };
 $('b-camp').onclick = () => { if (g && C.upgradeCamp(g)) { toast(`훈련소 Lv${g.camp + 1} — ${g.branch.ranks[g.camp]}부터 소집`); Sound.play('camp'); } };
 $('b-codex').onclick = () => g && ACT.codex();
+$('b-pick').onclick = () => g && ACT.pick();
+$('b-up').onclick = () => g && ACT.upg();
+$('b-mission').onclick = () => g && ACT.missions();
+$('b-elite').onclick = () => { if (g && C.callElite(g)) { toast(`특수 임무 — ${C.CFG.eliteTime}초 안에 정예 표적을 격파하라`); Sound.play('boss'); } };
 $('b-menu').onclick = () => g && ACT.menu();
 $('b-speed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; $('b-speed').textContent = '×' + speed; };
 document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over && !paused) ACT.menu(); });
@@ -160,12 +196,12 @@ function statLine(st) {
 }
 function renderInfo() {
   const b = g.branch, A = ui.sel != null ? g.units[ui.sel] : null, B = ui.target != null ? g.units[ui.target] : null;
-  const key = [A && A.id, B && B.id, g.wave].join('|'); if (key === infoKey) return; infoKey = key;
+  const key = [A && A.id, B && B.id, g.wave, g.supply, CLASS_IDS.map(c => g.up[c]).join('')].join('|'); if (key === infoKey) return; infoKey = key;
   const el = $('info');
   if (A && B) {
     const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type, hidden: p.hidden }, h = C.hiddenDef(b, p.hidden);
     el.innerHTML = `<p class="pv">${C.unitName(b, A)} + ${C.unitName(b, B)}<br>→ <b>${C.unitName(b, nu)}</b> (${C.unitWeapon(b, nu)})</p>
-      <p>${statLine(C.unitStats(b, p.level, p.type, meta))}</p>
+      <p>${statLine(C.unitStats(b, p.level, p.type, meta, g.up))}</p>
       ${h ? `<p class="hint">★ 히든 조합 — ${h.text}</p>` : ''}${A.hidden || B.hidden ? '<p class="hint">⚠ 히든 계급의 능력은 조합하면 사라집니다</p>' : ''}
       <div class="row"><button class="ok" data-do="merge">조합</button><button class="no" data-do="cancel">취소</button></div>`;
   } else if (A) {
@@ -173,7 +209,8 @@ function renderInfo() {
     el.innerHTML = `<h3>${C.unitName(b, A)}<em>${h ? `히든 · ${b.ranks[A.level]}급` : `Lv${A.level + 1}`} · ${C.unitWeapon(b, A)}</em></h3><p>${statLine(A.stats)}</p>
       ${h ? `<p class="hint">★ ${h.text}</p>` : ''}${up.length ? `<p class="hint">히든 계급 지원: ${up.join(' · ')}</p>` : ''}
       <p class="hint">${A.level < C.maxLevel(b) ? '노란 테두리 유닛을 누르면 조합, 빈 칸을 누르면 이동' : '최고 계급입니다'}</p>
-      <div class="row"><button class="sell" data-do="sell">전역(판매) +${fmt(C.unitValue(b, A.level) * C.CFG.sellRate)}</button></div>`;
+      <div class="row"><button class="gam" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>진급 심사 · 보급 ${C.CFG.gambleSupply}</button>
+        <button class="sell" data-do="sell">전역(판매) +${fmt(C.unitValue(b, A.level) * C.CFG.sellRate)}</button></div>`;
   } else {
     const w = g.wave ? C.waveInfo(g.wave) : null;
     const nw = g.wave < C.CFG.maxWave ? C.waveInfo(g.wave + 1) : null;
@@ -185,7 +222,8 @@ function renderInfo() {
 }
 function renderHud() {
   $('h-wave').textContent = `${g.wave}/${C.CFG.maxWave}`;
-  $('h-next').textContent = g.wave >= C.CFG.maxWave ? '최종' : Math.ceil(g.nextWave) + '초';
+  $('h-next').textContent = g.wave >= C.CFG.maxWave ? '최종 단계' : `다음 ${Math.ceil(g.nextWave)}초`;
+  $('h-sup').textContent = g.supply;
   $('h-enemy').textContent = `${g.enemies.length}/${C.CFG.enemyLimit}`;
   $('h-enemy').parentElement.classList.toggle('warn', g.enemies.length > C.CFG.enemyLimit * 0.7);
   $('h-gold').textContent = fmt(g.gold);
@@ -193,6 +231,12 @@ function renderHud() {
   $('c-summon').textContent = `${g.branch.ranks[g.camp]}~ · ${fmt(sc)}`; $('b-summon').disabled = g.gold < sc;
   $('t-camp').textContent = `훈련소 Lv${g.camp + 1}`; $('c-camp').textContent = maxed ? '최대' : `강화 ${fmt(cc)}`;
   $('b-camp').disabled = maxed || g.gold < cc;
+  $('c-pick').textContent = `보급 ${C.CFG.pickSupply}`; $('b-pick').disabled = g.supply < C.CFG.pickSupply || g.gold < sc || !g.units.includes(null);
+  $('c-up').textContent = `합계 Lv${CLASS_IDS.reduce((n, c) => n + g.up[c], 0)}`;
+  const es = C.eliteState(g), el = g.enemies.find(e => e.kind === 'elite');
+  $('c-elite').textContent = es === 'ready' ? '출동 가능' : es === 'active' ? `진행 ${Math.ceil(el ? el.life : 0)}초` : es === 'cd' ? `대기 ${Math.ceil(g.elite.cd)}초` : '1단계부터';
+  $('b-elite').disabled = es !== 'ready'; $('b-elite').classList.toggle('go', es === 'ready');
+  const ms = C.missionList(g); $('c-mission').textContent = `${ms.filter(m => g.done[m.id]).length}/${ms.length}`;
 }
 function frame(now) {
   requestAnimationFrame(frame);
@@ -209,7 +253,11 @@ function frame(now) {
   last = now;
   // 소리: 사격음은 프레임당 몇 개만, 웨이브 시작·보스 등장은 기록을 보고 낸다
   for (const s of g.sfx.splice(0)) Sound.play(s);
-  for (; logAt < g.log.length; logAt++) { const l = g.log[logAt]; if (l.t === 'wave') Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); }
+  for (; logAt < g.log.length; logAt++) { const l = g.log[logAt];
+    if (l.t === 'wave') Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave');
+    else if (l.t === 'mission') { toast(`임무 완수: ${l.text} · 보급품 +${l.sup}`); Sound.play('camp'); }
+    else if (l.t === 'eliteKill') { toast(`특수 임무 성공! 보급품 +${C.CFG.eliteSupply}`); Sound.play('merge'); }
+    else if (l.t === 'eliteFail') { toast('특수 임무 실패 — 표적이 빠져나갔습니다'); Sound.play('deny'); } }
   if (ui.sel != null && !g.units[ui.sel]) ui.sel = ui.target = null;
   const k = canvas.width / C.FIELD.w; ctx.setTransform(k, 0, 0, k, 0, 0);
   draw(ctx, g, ui, view.quality); renderHud(); renderInfo();
