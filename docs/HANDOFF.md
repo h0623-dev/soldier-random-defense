@@ -2,6 +2,15 @@
 
 > 처음 이어받는다면 `docs/CLAUDE_CODE_HANDOFF.md`를 먼저 읽는다.
 
+## 2026-11-19 — GitHub 첫 push, Actions APK 빌드 첫 성공
+**배포**
+- GitHub 권한 해결 후 브랜치 `claude/sweet-mccarthy-jmw8fa`에 push 완료. `main` 브랜치는 아직 없음(이 브랜치가 현재 기본 브랜치).
+**검사**
+- Actions "Android 시험 빌드" 실행 #1 성공(테스트 → cap sync → assembleDebug → APK 업로드, 약 1분 30초). 수정 없이 통과.
+- 산출물: Actions 실행 페이지의 `soldier-random-defense-debug-apk` (debug 서명, 시험용).
+**남은 한계**
+- APK를 실제 기기에 설치·실행해 본 적은 아직 없음. 빌드 성공은 "앱이 기기에서 잘 돈다"를 뜻하지 않음.
+
 ## 2026-11-19 — Claude Code 이어받기 (push 차단)
 **직접 한 작업**
 - zip(v0.1.0)을 풀어 커밋: ① v0.1.0 원본 그대로 ② CI 트리거에 `claude/**` 작업 브랜치 추가.
