@@ -24,6 +24,9 @@ function loadMeta() {
   catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {} }; }
 }
 const saveMeta = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch { /* 저장 불가 환경 */ } };
+// 빌드 번호(커밋 시각, 초)를 '11.19 21:08 빌드'처럼 읽기 쉽게
+const buildLabel = b => { const d = new Date(b * 1000), z = n => String(n).padStart(2, '0');
+  return `${d.getMonth() + 1}.${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())} 빌드`; };
 const fmt = n => { n = Math.floor(n); if (n < 1e4) return String(n);
   const u = ['만', '억', '조', '경']; let i = -1; while (n >= 1e4 && i < 3) { n /= 1e4; i++; } return (n >= 100 ? Math.floor(n) : n.toFixed(1)) + u[i]; };
 let toastT;
@@ -41,7 +44,7 @@ const ACT = {
       <button class="wide sec" data-act="shop">보급 상점</button>
       <button class="wide sec" data-act="help">게임 방법</button>
       <button class="wide sec" data-act="mute" data-arg="title">소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
-      <p class="sub" style="margin-top:22px">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · 빌드 ${buildInfo.live || buildInfo.bundled}` : ''}</p>`);
+      <p class="sub" style="margin-top:22px">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · ${buildLabel(buildInfo.live || buildInfo.bundled)}` : ''}</p>`);
   },
   branches() {
     show(`<h2>군별 선택</h2><div class="cards">${BRANCHES.map(b => `

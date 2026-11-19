@@ -2,6 +2,14 @@
 
 > 처음 이어받는다면 `docs/CLAUDE_CODE_HANDOFF.md`를 먼저 읽는다.
 
+## 2026-11-19 — 자동 업데이트 켜짐 (Cloudflare Pages 연결)
+- 사용자가 Cloudflare Pages 프로젝트 `soldier-rd-game`을 만들어 GitHub 저장소와 연결(빌드 명령 `npm run bundle`, 출력 `dist/update`, 브랜치 `main`). 토큰·Secrets 없이 Cloudflare가 main push를 보고 스스로 빌드·배포한다. 주소: https://soldier-rd-game.pages.dev
+- `www/update-config.json`에 주소를 넣어 자동 업데이트를 켬. 처음 화면의 빌드 표시를 날짜·시각 형태로 바꿈.
+- 확인: push 후 1분 안에 새 빌드가 올라가는 것, CORS 헤더(`access-control-allow-origin: *`)가 붙는 것, 빌드 100으로 꾸민 앱이 실제 호스팅에서 새 빌드를 받아 약 10초 안에 자동 적용되고 게임이 시작되는 것(Chromium).
+- 전용 환경에 `soldier-rd-game.pages.dev` 허용 추가(배포 확인용, 사용자 승인).
+- `.github/workflows/android.yml`의 wrangler 배포 단계는 Secrets가 없어 건너뛴다(Cloudflare 쪽 연결로 대체됨). 지워도 된다.
+- **남은 한계**: 실제 Android 기기에서는 아직 미확인. 이 기능이 든 APK를 한 번은 직접 설치해야 한다(그 뒤부터 자동). Cloudflare 계정에 같은 이름을 못 쓰게 한 기존 프로젝트 `soldier-random-defense`가 남아 있다(사용자가 앞서 만든 것으로 보임, 쓰지 않음).
+
 ## 2026-11-19 — 자동 업데이트 (호스팅 연결 대기)
 **사용자 요청**: 게임이 업데이트되면 APK 앱 실행 시 자동으로 업데이트되게. 업데이트 파일 위치는 "다른 호스팅 서비스"를 선택(저장소는 비공개 유지).
 **직접 한 작업**
