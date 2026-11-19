@@ -1,8 +1,8 @@
 // 전장 캔버스 그리기 (임시 도형 그래픽 — 정식 그림 자산으로 교체 예정)
 import { CLASS_INFO } from './data.js';
-import { FIELD, TRACK, SLOTS, typeKey, canMerge, rankName } from './core.js';
+import { FIELD, TRACK, SLOTS, canMerge, rankName } from './core.js';
+import { drawUnitCard, ENEMY_DRAW, ENEMY_R, sprite } from './sprites.js';
 
-const ENEMY = { normal: ['#c94a3f', 11], fast: ['#e0a13a', 8], armor: ['#8d5a4a', 15], boss: ['#7b1f2b', 26] };
 
 export function draw(ctx, g, ui, quality = 2) {
   const b = g.branch;
@@ -35,15 +35,17 @@ export function draw(ctx, g, ui, quality = 2) {
       ctx.beginPath(); ctx.arc(p.x, p.y, 150, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   }
   // 적
+  const k = ctx.getTransform().a;
   for (const e of g.enemies) {
-    const [col, r] = ENEMY[e.kind];
-    ctx.fillStyle = e.slowT > 0 ? '#6f8fc0' : col; ctx.beginPath(); ctx.arc(e.x, e.y, r, 0, 7); ctx.fill();
-    ctx.strokeStyle = e.vulnT > 0 ? '#ffd45e' : '#1a0d0b'; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = '#000'; ctx.fillRect(e.x - r, e.y - r - 8, r * 2, 4);
-    ctx.fillStyle = '#7be36a'; ctx.fillRect(e.x - r, e.y - r - 8, r * 2 * Math.max(0, e.hp / e.maxHp), 4);
+    const r = ENEMY_R[e.kind], half = r + 8;
+    if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.45)'; ctx.beginPath(); ctx.arc(e.x, e.y, r + 3, 0, 7); ctx.fill(); }
+    if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, r + 4, 0, 7); ctx.stroke(); }
+    ctx.drawImage(sprite('e:' + e.kind, half, k, ENEMY_DRAW[e.kind]), e.x - half, e.y - half, half * 2, half * 2);
+    ctx.fillStyle = '#000'; ctx.fillRect(e.x - r, e.y - half - 2, r * 2, 4);
+    ctx.fillStyle = '#7be36a'; ctx.fillRect(e.x - r, e.y - half - 2, r * 2 * Math.max(0, e.hp / e.maxHp), 4);
   }
   // 아군
-  for (const u of g.units) if (u) unit(ctx, b, u, u === sel);
+  for (const u of g.units) if (u) unit(ctx, b, u, u === sel, k);
   // 사격 효과
   const fxList = quality > 0 ? g.effects : g.effects.slice(-12);   // 최저 품질에서는 사격 효과 수를 줄인다
   for (const f of fxList) {
@@ -59,25 +61,12 @@ export function draw(ctx, g, ui, quality = 2) {
   }
 }
 
-function unit(ctx, b, u, selected) {
-  const p = SLOTS[u.slot], R = 36, [c1, c2] = [CLASS_INFO[u.type[0]].color, CLASS_INFO[u.type[1]].color];
-  const tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0;
-  ctx.save(); ctx.translate(p.x, p.y);
-  if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.arc(0, 0, R + 12, 0, 7); ctx.fill(); }
-  ctx.fillStyle = c1; ctx.beginPath(); ctx.arc(0, 0, R, Math.PI / 2, Math.PI * 1.5); ctx.fill();
-  ctx.fillStyle = c2; ctx.beginPath(); ctx.arc(0, 0, R, -Math.PI / 2, Math.PI / 2); ctx.fill();
-  ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(0, 0, R - 8, 0, 7); ctx.fill();
-  ctx.strokeStyle = selected ? '#fff' : ['#1a1f16', '#cfd6dc', '#ffd45e'][tier]; ctx.lineWidth = selected ? 5 : 3;
-  ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.stroke();
-  if (u.hidden) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 3; ctx.setLineDash([5, 5]);
-    ctx.beginPath(); ctx.arc(0, 0, R + 6, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
-  const rank = rankName(b, u);
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `800 ${rank.length > 3 ? 13 : 16}px sans-serif`; ctx.fillText(rank, 0, -5);
-  ctx.font = '700 11px sans-serif'; ctx.fillStyle = '#ffe9a6';
-  const k = typeKey(u.type); ctx.fillText(k.split('+').map(c => CLASS_INFO[c].short).join('·'), 0, 13);
-  ctx.fillStyle = '#10140e'; rr(ctx, 14, -R - 4, 30, 17, 8); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = '700 11px sans-serif'; ctx.fillText(u.hidden ? '히든' : 'Lv' + (u.level + 1), 29, -R + 5);
-  ctx.restore();
+function unit(ctx, b, u, selected, k) {
+  const p = SLOTS[u.slot], tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u);
+  if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.arc(p.x, p.y, 54, 0, 7); ctx.fill(); }
+  const cv = sprite(['u', b.id, u.type.join('+'), tier, rank, u.hidden ? 1 : 0].join(':'), 46, k,
+    c => drawUnitCard(c, { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden }));
+  ctx.drawImage(cv, p.x - 46, p.y - 46, 92, 92);
+  if (selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, p.x - 43, p.y - 43, 86, 86, 13); ctx.stroke(); }
 }
 function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
