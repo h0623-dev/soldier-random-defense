@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">털뭉치 수비대</string>
-    <string name="title_activity_main">털뭉치 수비대</string>
+    <string name="app_name">털뭉치수비대</string>
+    <string name="title_activity_main">털뭉치수비대</string>
     <string name="package_name">com.steey.soldierdefense</string>
     <string name="custom_url_scheme">com.steey.soldierdefense</string>
     <!-- AdMob 앱 ID: 구글 공개 시험용 값. 출시 전에 AdMob 계정에서 만든 앱 ID(ca-app-pub-…~…)로 바꾼다. 광고 단위 ID는 www/js/monetize.js -->

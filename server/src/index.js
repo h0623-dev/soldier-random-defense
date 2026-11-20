@@ -1,4 +1,4 @@
-// 털뭉치 수비대 서버 (Cloudflare Worker)
+// 털뭉치수비대 서버 (Cloudflare Worker)
 //  GET  /                      상태 확인
 //  GET  /rank?board=&week=1&id=  랭킹 상위 50 (+ 내 순위)
 //  POST /rank                  기록 올리기 { board, id, name, score, time, branch }

@@ -1,4 +1,4 @@
-// 털뭉치 수비대 — 게임 데이터 (군별 · 계급 · 병과 · 병기)
+// 털뭉치수비대 — 게임 데이터 (군별 · 계급 · 병과 · 병기)
 // 이 파일만 고치면 계급/병과/병기 이름과 군별 특성을 바꿀 수 있습니다.
 
 export const CLASS_IDS = ['inf', 'art', 'med', 'sig'];
@@ -96,11 +96,13 @@ export const HEROES = [
 const MIL_TIERS = [3, 5];
 const POLICE_TIERS = [3, 5];
 
+// 부대 이름은 동물(2026-11-20 사용자 결정: 육군 = 땅개, 의경 = 참수리, 나머지는 제안대로). id와 계급·병과·병기는 옛 군별 그대로다 — army 육군 · navy 해군 · marine 해병대 · sf 특공대 · air 공군 · police 의경
+//  name: 화면에 보이는 이름, short: 좁은 자리(탭·표)에 쓰는 이름
 // types 키: 순수 병과는 'inf', 혼성은 'inf+art' (CLASS_IDS 순서로 정렬)
 // 값: [병과 이름, [병·부사관 병기, 장교 병기, 장성 병기]]
 export const BRANCHES = [
   {
-    id: 'army', name: '육군', color: '#4b6b3a', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'army', name: '땅개 부대', short: '땅개', color: '#4b6b3a', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'artDmg', text: '포병 계열 공격력 +15%' },
     types: {
       'inf': ['보병', ['K2 소총', 'K808 차륜형장갑차', 'K2 흑표 전차']],
@@ -116,7 +118,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'navy', name: '해군', color: '#2f5d8a', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'navy', name: '물개 부대', short: '물개', color: '#2f5d8a', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'range', text: '모든 유닛 사거리 +10%' },
     types: {
       'inf': ['갑판병', ['K2 소총 함상경계', '참수리 고속정', '윤영하급 유도탄고속함']],
@@ -132,7 +134,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'marine', name: '해병대', color: '#b23a3a', grades: MARINE_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'marine', name: '악어 부대', short: '악어', color: '#b23a3a', grades: MARINE_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'infSpeed', text: '보병 계열 공격속도 +15%' },
     types: {
       'inf': ['상륙보병', ['K2 소총', 'KAAV 상륙돌격장갑차', '마린온 상륙기동헬기']],
@@ -148,7 +150,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'sf', name: '특공대', color: '#3b3b46', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'sf', name: '백호 부대', short: '백호', color: '#3b3b46', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'crit', text: '15% 확률로 2.5배 치명타' },
     types: {
       'inf': ['화기', ['K1A 기관단총', 'K7 소음기관단총', 'K13 특수작전 기관단총']],
@@ -164,7 +166,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'air', name: '공군', color: '#3f7fb5', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
+    id: 'air', name: '보라매 부대', short: '보라매', color: '#3f7fb5', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'splash', text: '광역 범위 +30% · 광역 피해 +10%' },
     types: {
       'inf': ['군사경찰', ['K2 소총', '기지방호 장갑차', '기지방어 체계']],
@@ -180,7 +182,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'police', name: '의경', color: '#27408b', grades: POLICE_GRADES, tiers: POLICE_TIERS, hidden: [],
+    id: 'police', name: '참수리 부대', short: '참수리', color: '#27408b', grades: POLICE_GRADES, tiers: POLICE_TIERS, hidden: [],
     trait: { key: 'slow', text: '둔화 효과 +30% · 처치 보상 +10% · 공격력 -15%' },
     types: {
       'inf': ['방범순찰', ['경찰봉', '테이저건', '순찰차']],
@@ -201,19 +203,19 @@ export const BRANCHES = [
 //  per: 단계당 효과 값 · vals: 단계별 값을 따로 적을 때 · branch: 그 군별로 출격할 때만 적용
 export const CM_NEED = [1, 3, 6, 10, 15];
 export const COMMENDS = [
-  { id: 'summon', name: '모병 유공 표창', per: 2, text: v => `신병 소집 비용 -${v}%` },
-  { id: 'luck', name: '행운의 군번줄', per: 1, text: v => `소집 때 한 등급 위가 나올 확률 +${v}%p` },
-  { id: 'tile', name: '공병 표창', per: 1, text: v => `특수 발판 +${v}칸` },
-  { id: 'depot', name: '군수 표창', per: 6, text: v => `보급병 수입 +${v}%` },
-  { id: 'supply', name: '보급 유공 표창', per: 1, text: v => `시작 보급품 +${v}개` },
-  { id: 'elite', name: '특임 표창', per: 10, text: v => `특수 임무 군자금 보상 +${v}%` },
-  { id: 'boss', name: '무공 표창', per: 2, text: v => `보스에게 주는 피해 +${v}%` },
-  { id: 'crit', name: '명사수 휘장', per: 6, text: v => `치명타 피해 +${v}%p (기본 250%)` },
-  { id: 'gamble', name: '심사 위원 표창', per: 1, text: v => `진급 심사 성공률 +${v}%p` },
-  { id: 'time', name: '방어 유공 표창', per: 1, text: v => `보스 제한 시간 +${v}초` },
-  { id: 'sell', name: '전역 지원 표창', per: 4, text: v => `전역 환급 +${v}%p (기본 40%)` },
-  { id: 'medal', name: '모범 부대 표창', per: 5, text: v => `훈장 획득 +${v}%` },
-  ...BRANCHES.map(b => ({ id: 'b_' + b.id, name: `${b.name} 부대 표창`, per: 2, branch: b.id, text: v => `${b.name}으로 출격하면 모든 유닛 공격력 +${v}%` })),
+  { id: 'summon', name: '새 식구 맞이 표창', per: 2, text: v => `신병 소집 비용 -${v}%` },
+  { id: 'luck', name: '행운의 방울 목걸이', per: 1, text: v => `소집 때 한 등급 위가 나올 확률 +${v}%p` },
+  { id: 'tile', name: '땅파기 명수 표창', per: 1, text: v => `특수 발판 +${v}칸` },
+  { id: 'depot', name: '도토리 창고지기 표창', per: 6, text: v => `보급병 수입 +${v}%` },
+  { id: 'supply', name: '간식 배달 표창', per: 1, text: v => `시작 보급품 +${v}개` },
+  { id: 'elite', name: '특별 임무 표창', per: 10, text: v => `특수 임무 군자금 보상 +${v}%` },
+  { id: 'boss', name: '용맹한 발톱 표창', per: 2, text: v => `보스에게 주는 피해 +${v}%` },
+  { id: 'crit', name: '매서운 눈 휘장', per: 6, text: v => `치명타 피해 +${v}%p (기본 250%)` },
+  { id: 'gamble', name: '진급 심사 표창', per: 1, text: v => `진급 심사 성공률 +${v}%p` },
+  { id: 'time', name: '꿋꿋한 꼬리 표창', per: 1, text: v => `보스 제한 시간 +${v}초` },
+  { id: 'sell', name: '따뜻한 배웅 표창', per: 4, text: v => `전역 환급 +${v}%p (기본 40%)` },
+  { id: 'medal', name: '모범 털뭉치 표창', per: 5, text: v => `훈장 획득 +${v}%` },
+  ...BRANCHES.map(b => ({ id: 'b_' + b.id, name: `${b.name} 표창`, per: 2, branch: b.id, text: v => `${b.name}로 출격하면 모든 유닛 공격력 +${v}%` })),
 ];
 export const cmVal = (c, lv) => (c.vals ? c.vals[lv] : c.per * lv);
 const CM_BY_ID = Object.fromEntries(COMMENDS.map(c => [c.id, c]));

@@ -18,7 +18,7 @@ const DEV = [
   for (const [name, w, h] of DEV) {
     const p = await b.newPage({ viewport: { width: w, height: h } });
     const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => m.type() === 'error' && !/favicon/.test(m.text()) && errs.push(m.text()));
-    await p.goto('http://localhost:8080/'); await p.click('text=출격'); await p.click('.bcard:has-text("육군")');
+    await p.goto('http://localhost:8080/'); await p.click('text=출격'); await p.click('.bcard:has-text("땅개")');
     await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C; g.gold = 5000; for (let i = 0; i < 9; i++) C.summon(g); });
     const fb = await p.locator('#field').boundingBox();
     const btnH = Math.round((await p.locator('#b-summon').boundingBox()).height);      // 유닛을 고르면 하단 버튼이 카드로 바뀌므로 먼저 잰다

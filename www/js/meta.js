@@ -114,7 +114,7 @@ export const modeOpen = (meta, id) => { const m = MODES.find(x => x.id === id); 
 // 기기마다 무작위 식별값과 별명을 하나 만든다(처음 쓸 때). 개인 정보는 담지 않는다
 export function ensureId(meta, rand = Math.random) {
   if (!meta.uid) meta.uid = Array.from({ length: 20 }, () => '0123456789abcdef'[rint(rand, 16)]).join('');
-  if (!meta.name) meta.name = '병사' + String(1000 + rint(rand, 9000));
+  if (!meta.name) meta.name = '털뭉치' + String(1000 + rint(rand, 9000));
   return meta;
 }
 export const cleanName = s => String(s || '').replace(/[\u0000-\u001f<>&"'`\\]/g, '').trim().slice(0, 10);

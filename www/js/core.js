@@ -1,4 +1,4 @@
-// 털뭉치 수비대 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
+// 털뭉치수비대 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
 import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL, HEROES, TYPE_SKILLS, cmOf } from './data.js';
 
 // ── 전장 ─────────────────────────────────────────────────
@@ -17,16 +17,16 @@ const L_ZIG = ['RRRRRRR', 'RPPPPPR', 'RRRPPPR', 'DPRPPPR', 'RRRPRRR', 'RPPPRPD',
 // 작전 지역 10곳: 10단계마다 다음 지역으로 넘어간다. 지역마다 맵 모양·배경이 다르고 마지막 단계에 그 지역의 보스가 나온다.
 // boss.hpMul: 보스마다 능력·맵 때문에 잡는 시간이 크게 달라서(봇 측정), 체력 배수를 따로 두어 단계가 오를수록 고르게 어려워지게 맞췄다
 export const AREAS = [
-  { name: '초원 훈련장', theme: 'meadow', layout: L_S, boss: { name: '지휘 전차', hpMul: 0.9, speed: 48, skill: { id: 'summon', label: '증원 호출', cd: 9, n: 3, kind: 'normal', hp: 0.6 }, text: '증원 호출 — 9초마다 호위병 3명을 부른다' } },
-  { name: '해안 교두보', theme: 'beach', layout: L_NOTCH, boss: { name: '상륙 공기부양정', hpMul: 1.3, speed: 58, skill: { id: 'dash', label: '고속 기동', cd: 8, dur: 2.5, cut: 0.5 }, text: '고속 기동 — 8초마다 2.5초간 빨라지고 받는 피해가 절반' } },
-  { name: '사막 보급로', theme: 'desert', layout: L_SIDE, boss: { name: '중자주포', hpMul: 0.9, speed: 42, skill: { id: 'stun', label: '포격', cd: 7, n: 4, dur: 3 }, text: '포격 — 7초마다 무작위 유닛 4명을 3초간 기절시킨다' } },
-  { name: '설원 고지', theme: 'snow', layout: L_ZIG, boss: { name: '설상 중장갑차', hpMul: 0.67, speed: 46, skill: { id: 'armor', cut: 0.3 }, text: '중장갑 — 체력이 절반 이상이면 받는 피해 30% 감소' } },
-  { name: '폐허 도심', theme: 'city', layout: flipH(L_S), boss: { name: '공격 헬기', hpMul: 0.85, speed: 60, fly: true, skill: { id: 'evade', p: 0.15 }, text: '회피 기동 — 공격의 15%를 피한다' } },
-  { name: '밀림 강변', theme: 'jungle', layout: flipV(L_NOTCH), boss: { name: '화염방사 장갑차', hpMul: 1.0, speed: 50, skill: { id: 'burn', label: '화염 방사', cd: 6, r: 260, dur: 3, slow: 0.5 }, text: '화염 방사 — 6초마다 주변 유닛의 공격 속도를 3초간 절반으로' } },
-  { name: '화산 지대', theme: 'volcano', layout: flipH(L_SIDE), boss: { name: '다연장 로켓차', hpMul: 0.85, speed: 44, skill: { id: 'stun', label: '일제 사격', cd: 10, n: 6, dur: 2.5 }, text: '일제 사격 — 10초마다 무작위 유닛 6명을 2.5초간 기절시킨다' } },
-  { name: '군항 부두', theme: 'harbor', layout: flipH(L_ZIG), boss: { name: '드론 모함', hpMul: 1.1, speed: 52, fly: true, skill: { id: 'summon', label: '드론 사출', cd: 7, n: 4, kind: 'fast', hp: 0.4 }, text: '드론 사출 — 7초마다 드론 4기를 내보낸다' } },
-  { name: '전방 비행장', theme: 'airfield', layout: flipV(L_S), boss: { name: '전략 폭격기', hpMul: 0.77, speed: 56, fly: true, skill: { id: 'bomb', label: '융단 폭격', cd: 9, r: 150, dur: 3 }, text: '융단 폭격 — 9초마다 한 구역의 유닛을 3초간 기절시킨다' } },
-  { name: '적 사령부', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', hpMul: 0.69, speed: 40, skill: { id: 'stun', label: '충격파', cd: 12, n: 5, dur: 2.5, regen: 0.004, rage: 0.3 }, text: '재생 장갑 · 충격파 — 체력을 조금씩 회복하고, 12초마다 유닛 5명을 기절시키며, 체력 30% 아래에서 빨라진다' } },
+  { name: '도토리 초원', theme: 'meadow', layout: L_S, boss: { name: '대장 전차', hpMul: 0.9, speed: 48, skill: { id: 'summon', label: '증원 호출', cd: 9, n: 3, kind: 'normal', hp: 0.6 }, text: '증원 호출 — 9초마다 호위병 3명을 부른다' } },
+  { name: '조개껍데기 해변', theme: 'beach', layout: L_NOTCH, boss: { name: '물보라 부양정', hpMul: 1.3, speed: 58, skill: { id: 'dash', label: '고속 기동', cd: 8, dur: 2.5, cut: 0.5 }, text: '고속 기동 — 8초마다 2.5초간 빨라지고 받는 피해가 절반' } },
+  { name: '선인장 사막길', theme: 'desert', layout: L_SIDE, boss: { name: '쿵쾅 대포차', hpMul: 0.9, speed: 42, skill: { id: 'stun', label: '포격', cd: 7, n: 4, dur: 3 }, text: '포격 — 7초마다 무작위 유닛 4명을 3초간 기절시킨다' } },
+  { name: '눈꽃 언덕', theme: 'snow', layout: L_ZIG, boss: { name: '눈덩이 장갑차', hpMul: 0.67, speed: 46, skill: { id: 'armor', cut: 0.3 }, text: '중장갑 — 체력이 절반 이상이면 받는 피해 30% 감소' } },
+  { name: '무너진 장터', theme: 'city', layout: flipH(L_S), boss: { name: '윙윙 헬기', hpMul: 0.85, speed: 60, fly: true, skill: { id: 'evade', p: 0.15 }, text: '회피 기동 — 공격의 15%를 피한다' } },
+  { name: '덩굴 강가', theme: 'jungle', layout: flipV(L_NOTCH), boss: { name: '불뿜는 장갑차', hpMul: 1.0, speed: 50, skill: { id: 'burn', label: '화염 방사', cd: 6, r: 260, dur: 3, slow: 0.5 }, text: '화염 방사 — 6초마다 주변 유닛의 공격 속도를 3초간 절반으로' } },
+  { name: '불꽃 화산', theme: 'volcano', layout: flipH(L_SIDE), boss: { name: '폭죽 로켓차', hpMul: 0.85, speed: 44, skill: { id: 'stun', label: '일제 사격', cd: 10, n: 6, dur: 2.5 }, text: '일제 사격 — 10초마다 무작위 유닛 6명을 2.5초간 기절시킨다' } },
+  { name: '등대 부두', theme: 'harbor', layout: flipH(L_ZIG), boss: { name: '드론 둥지', hpMul: 1.1, speed: 52, fly: true, skill: { id: 'summon', label: '드론 사출', cd: 7, n: 4, kind: 'fast', hp: 0.4 }, text: '드론 사출 — 7초마다 드론 4기를 내보낸다' } },
+  { name: '구름 활주로', theme: 'airfield', layout: flipV(L_S), boss: { name: '먹구름 폭격기', hpMul: 0.77, speed: 56, fly: true, skill: { id: 'bomb', label: '융단 폭격', cd: 9, r: 150, dur: 3 }, text: '융단 폭격 — 9초마다 한 구역의 유닛을 3초간 기절시킨다' } },
+  { name: '고철 요새', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', hpMul: 0.69, speed: 40, skill: { id: 'stun', label: '충격파', cd: 12, n: 5, dur: 2.5, regen: 0.004, rage: 0.3 }, text: '재생 장갑 · 충격파 — 체력을 조금씩 회복하고, 12초마다 유닛 5명을 기절시키며, 체력 30% 아래에서 빨라진다' } },
 ];
 export const areaOfWave = wave => Math.max(0, Math.floor((wave - 1) / 10)) % AREAS.length;      // 100단계를 넘으면(무한 작전) 첫 지역부터 다시 돈다
 
@@ -177,9 +177,9 @@ export function waveInfo(wave) {
   const hp = CFG.hpBase * CFG.hpGrowth ** (wave - 1) * (wave > CFG.maxWave ? CFG.endlessGrowth ** (wave - CFG.maxWave) : 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (wave - 1);
   if (wave % 10 === 0) { const n = areaOfWave(wave), b = AREAS[n].boss;      // 지역마다 다른 보스 (체력 배수는 같고 속도·모습이 다르다)
     return { kind: 'boss', boss: n + 1, fly: !!b.fly, skill: b.skill, name: b.name, count: 1, hp: hp * CFG.bossHp * (b.hpMul || 1), speed: b.speed, bounty: bounty * 25, gap: 1 }; }
-  if (wave % 5 === 0) return { kind: 'armor', name: '장갑차 부대', count: 14, hp: hp * 2.3, speed: 52, bounty: bounty * 1.5, gap: 0.85 };
-  if (wave % 3 === 0) return { kind: 'fast', name: '드론 편대', count: 26, hp: hp * 0.6, speed: 105, bounty: bounty * 0.75, gap: 0.42 };
-  return { kind: 'normal', name: '적 보병', count: 20, hp, speed: 70, bounty, gap: 0.6 };
+  if (wave % 5 === 0) return { kind: 'armor', name: '고철 장갑차', count: 14, hp: hp * 2.3, speed: 52, bounty: bounty * 1.5, gap: 0.85 };
+  if (wave % 3 === 0) return { kind: 'fast', name: '고철 드론 떼', count: 26, hp: hp * 0.6, speed: 105, bounty: bounty * 0.75, gap: 0.42 };
+  return { kind: 'normal', name: '고철 병정', count: 20, hp, speed: 70, bounty, gap: 0.6 };
 }
 
 // ── 게임 상태 ────────────────────────────────────────────

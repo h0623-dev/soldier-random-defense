@@ -401,7 +401,7 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   // 동료가 나가면 남은 사람이 전장 전체를 맡는다
   X.duo.solo = true; const other = X.units.find(u => u && u.o === 1); assert.ok(C.own(X, other)); assert.equal(C.mine(X, 24), true);
   assert.equal(M.rankBoard(A), 'coop'); assert.equal(M.rankBoard({ mode: 'normal', diff: 2 }), 'normal-2'); assert.equal(M.rankBoard({ mode: 'rush' }), 'rush');
-  const mm = M.ensureId(M.fillMeta({})); assert.equal(mm.uid.length, 20); assert.match(mm.name, /^병사\d{4}$/); assert.equal(M.ensureId(mm).uid, mm.uid); assert.equal(M.cleanName(' <b>가나다라마바사아자차카</b> '), 'b가나다라마바사아자');
+  const mm = M.ensureId(M.fillMeta({})); assert.equal(mm.uid.length, 20); assert.match(mm.name, /^털뭉치\d{4}$/); assert.equal(M.ensureId(mm).uid, mm.uid); assert.equal(M.cleanName(' <b>가나다라마바사아자차카</b> '), 'b가나다라마바사아자');
   const lite = M.metaLite(M.fillMeta({ atk: 3, medals: 99, xp: { army: { inf: 500 }, navy: { inf: 9 } }, cmN: { boss: 3 } }), 'army'); assert.deepEqual(Object.keys(lite).sort(), ['atk', 'bounty', 'cm', 'gold', 'xp']); assert.deepEqual(lite.xp, { army: { inf: 500 } }); assert.equal(lite.cm.boss, 2);
 }
 console.log('규칙·데이터 검사 통과');
