@@ -542,6 +542,7 @@ $('info').addEventListener('click', e => {
   const a = e.target.dataset.do; if (!a || !g) return;
   if (a === 'merge') doMerge();
   if (a === 'cancel') ui.target = null;
+  if (a === 'full') { ui.full = !ui.full; infoKey = ''; }      // 줄여 보이던 카드를 다 펼친다 / 다시 접는다
   if (a === 'gamble') { const r = C.gamble(g, ui.sel); infoKey = '';
     if (r === 'up') { toast(`진급 심사 통과! ${C.unitName(g.branch, g.units[ui.sel])}`); Sound.play('merge'); }
     else if (r === 'down') { toast(`심사 탈락 — ${C.unitName(g.branch, g.units[ui.sel])}(으)로 강등`); Sound.play('deny'); }
@@ -579,7 +580,8 @@ function statChips(st, prev, unit) {
 }
 function renderInfo() {
   const b = g.branch, A = ui.sel != null ? g.units[ui.sel] : null, B = ui.target != null ? g.units[ui.target] : null;
-  const key = [A && A.id + A.type.join('') + A.slot, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join(''), g.buff.haste, g.buff.dmg, g.buff.immune].join('|');
+  const key = [A && A.id + A.type.join('') + A.slot, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join(''), g.buff.haste, g.buff.dmg, g.buff.immune, ui.full ? 1 : 0].join('|');
+  if (!A) ui.full = false;
   if (key === infoKey) {      // 카드는 그대로 두고 누적 피해 숫자만 바꾼다 (카드를 통째로 다시 만들면 누르던 버튼이 사라진다)
     if (A && !B) { const d = $('u-dealt'), v = fmt(A.dealt); if (d && d.textContent !== v) d.textContent = v; }
     return;
@@ -597,23 +599,34 @@ function renderInfo() {
       ${p.random ? `<p class="note">병과가 다른 유닛끼리 조합하면 <b>${gr.name}</b> 등급으로 오르고, 병과는 10종 가운데 무작위로 정해집니다. 같은 병과끼리 조합하면 그 병과가 유지됩니다.</p>` : statChips(C.unitStats(b, p.level, p.type, meta, g.up), A.stats)}
       ${!p.random && C.typeSkill(p.type) ? `<p class="note skill"><b>${C.typeSkill(p.type).name}</b> ${C.typeSkill(p.type).text}</p>` : ''}
       ${h ? `<p class="note star">★ ${p.awaken ? `각성 — ${h.up}` : h.text}</p>` : ''}${lost.length ? `<p class="note">⚠ 재료로 쓰는 ${lost.map(x => C.rankName(b, x)).join(' · ')}의 능력은 조합하면 사라집니다</p>` : ''}
-      <div class="acts"><button class="btn" data-do="cancel">취소</button><button class="btn primary" data-do="merge">조합하기</button></div></div>`;
+      <div class="acts"><button class="more" data-do="full">자세히</button><button class="btn" data-do="cancel">취소</button><button class="btn primary" data-do="merge">조합하기</button></div></div>`;
   } else if (A) {
     const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean), tile = C.tileAt(g, A.slot), sk = C.typeSkill(A.type), ml = C.masteryOf(meta, b.id, C.typeKey(A.type));
     const bf = [g.buff.haste && `공격 속도 +${Math.round(g.buff.haste * 100)}%`, g.buff.dmg && `공격력 +${Math.round(g.buff.dmg * 100)}%`, g.buff.immune && '기절·화염 면역'].filter(Boolean);
     el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitSrc(b, A.type, C.rankGroup(b, A))}" alt="">
       <div><h3><i class="gdot" style="background:${GRADES[A.level].color}"></i>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? (h.hero ? `<span class="tag hero">${A.level > h.level ? '각성 용사' : '용사'}</span>` : '<span class="tag hid">히든</span>') : ''}</h3>
-        <small><b style="color:${GRADES[A.level].color}">${GRADES[A.level].name}</b> · ${C.unitWeapon(b, A)}${ml ? ` · 숙련 ${ml}단계` : ''}</small></div></div>
+        <small><b style="color:${GRADES[A.level].color}">${GRADES[A.level].name}</b> · ${C.unitWeapon(b, A)}${ml ? ` · 숙련 ${ml}단계` : ''}</small></div><button class="more" data-do="full">자세히</button></div>
       ${statChips(A.stats, null, A)}
       ${h ? `<p class="note star">★ ${h.text}${h.hero ? (A.level > h.level ? ` → <b>각성: ${h.up}</b>` : ` <span class="dim">(전설 등급 유닛과 조합하면 각성 — ${h.up})</span>`) : ''}</p>` : ''}${up.length ? `<p class="note star">주변 지원: ${up.join(' · ')}</p>` : ''}
       ${sk ? `<p class="note skill"><b>${sk.name}</b> ${sk.text}</p>` : ''}${A.guard ? '<p class="note star">응급 처치 지원: 기절·화염 시간 절반</p>' : ''}
       ${bf.length ? `<p class="note star">용사 지원: ${bf.join(' · ')}</p>` : ''}
       ${tile ? `<p class="note tile"><i style="background:${tile.color}"></i><b>${tile.name}</b> 위에 있습니다 — ${tile.text}</p>` : ''}
-      <p class="note">${A.level < C.maxLevel(b) ? '색칠된 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 그 자리로 이동(이동하면 선택이 풀립니다)' : '최고 계급입니다'}</p>
+      <p class="note hint">${A.level < C.maxLevel(b) ? '색칠된 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 그 자리로 이동(이동하면 선택이 풀립니다)' : '최고 계급입니다'}</p>
       <div class="acts three"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>심사 ${Math.round(C.gambleChance(A, meta) * 100)}% ${ic('box')}${C.CFG.gambleSupply}</button>
         <button class="btn blue" data-do="reroll" ${C.canReroll(g, ui.sel) ? '' : 'disabled'}>병과 교체 ${ic('box')}${C.CFG.rerollSupply}</button>
         <button class="btn red" data-do="sell">전역 ${ic('coin')}+${fmt(C.sellValue(g, A))}</button></div></div>`;
   } else el.innerHTML = '';      // 고른 유닛이 없으면 카드를 치우고 주둔지를 보여 준다
+  fitCard();
+}
+// 카드가 전장을 가리면 그 아래 유닛을 누를 수 없다. 주둔지 높이에 들어가지 않으면 카드를 단계적으로 줄인다:
+//  c1 = 안내 문구를 빼고 능력치·설명을 한 줄씩으로 → 그래도 넘치면 c2 = 이름과 버튼만.  '자세히'를 누르면(full) 다 펼쳐 보여 주고(이때만 전장 위로 올라온다) '접기'로 되돌린다
+function fitCard() {
+  const el = $('info'); el.classList.remove('c1', 'c2', 'full');
+  if (!el.firstElementChild) return;
+  const room = $('actions').offsetHeight + 1, mb = el.querySelector('.more');
+  if (el.offsetHeight <= room) return;
+  if (ui.full) { el.classList.add('full'); if (mb) mb.textContent = '접기'; return; }
+  el.classList.add('c1'); if (el.offsetHeight > room) el.classList.add('c2');
 }
 // 상단바·하단 버튼 글자는 매 프레임 다시 계산하지만, 값이 바뀐 것만 화면에 쓴다 (같은 값을 다시 쓰면 그때마다 화면 배치를 새로 계산한다)
 const hudEl = {}, hudVal = {};

@@ -247,3 +247,17 @@ img.u { filter: var(--skin, none); }
 .rk i { font-style: normal; width: 2.6rem; height: 2.6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; background: var(--sand); flex: none; } .rk i.top { background: var(--yellow); border: 0.15rem solid var(--ink); }
 .rk span { flex: 1; min-width: 0; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rk small { color: var(--mute); font-size: 1.1rem; } .rk b { font-weight: 900; color: #b96a00; } .rk.me { background: #fff3c9; }
 #b-coop { margin-right: 0.5rem; }
+/* ── 유닛 카드가 전장을 가리지 않게: 주둔지 높이에 안 들어가면 줄인다 (main.js fitCard) ── */
+.more { display: none; flex: none; align-items: center; height: 3.2rem; padding: 0 1rem; border: 0.2rem solid var(--ink); border-radius: 1.1rem; background: var(--paper2); color: var(--ink); font-weight: 800; font-size: 1.2rem; white-space: nowrap; }
+#info.c1 .more, #info.full .more { display: inline-flex; } .acts .more { height: auto; align-self: stretch; }
+#info.c1 .note.hint { display: none; }
+#info.c1 .stats { flex-wrap: nowrap; overflow-x: auto; margin: 0.5rem 0; scrollbar-width: none; } #info.c1 .stats::-webkit-scrollbar { display: none; }
+#info.c1 .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 0 0.5rem; }
+#info.c1 .unit img.u { width: 4.6rem; height: 4.6rem; } #info.c1 .pt img.u { width: 3.8rem; height: 3.8rem; } #info.c1 .pt.res img.u { width: 4.6rem; height: 4.6rem; } #info.c1 .pt.rnd .qm { height: 4.6rem; font-size: 3.4rem; }
+#info.c1 .ttl { margin-bottom: 0.2rem; } #info.c1 .mix + .note { margin-top: 0.5rem; } #info.c1 .pt .ins { display: none; } #info.c1 .pt.res { padding: 0.2rem; }
+#info.c2 .note, #info.c2 .stats, #info.c2 .ttl { display: none; }
+#info.c2 .unit h3 { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; font-size: 1.5rem; } #info.c2 .acts { margin-top: 0.6rem; } #info.c2 .unit img.u { width: 4rem; height: 4rem; }
+#info.c2 { padding-top: 0.3rem; } #info.c2 .card { padding: 0.5rem 1rem 0.7rem; } #info.c2 .btn { height: 3.8rem; }
+#info.c2 .mix { justify-content: flex-start; gap: 0.5rem; } #info.c2 .pt { width: auto; flex: none; } #info.c2 .pt:not(.res) b { display: none; } #info.c2 .pt img.u { width: 3.6rem; height: 3.6rem; margin: 0; }
+#info.c2 .pt.res { display: flex; align-items: center; gap: 0.4rem; flex: 0 1 auto; min-width: 0; padding: 0.1rem 0.7rem 0.1rem 0.2rem; } #info.c2 .pt.res img.u { width: 4rem; height: 4rem; margin: 0; flex: none; } #info.c2 .pt.rnd .qm { height: 4rem; width: 3rem; font-size: 3rem; flex: none; }
+#info.c2 .mix .op { flex: none; }
