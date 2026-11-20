@@ -424,20 +424,25 @@ const ACT = {
       <button class="wide sec" data-act="title">작전 본부로</button>`);
   },
   // 보급 상점: 무료 보상(광고) · 보석 충전(결제) · 보석으로 사는 것 · 고급 보급 상자(유료 뽑기) · 스킨
-  shop(msg, keep) {      // 상점 탭
+  shop(msg, keep) {      // 상점 탭 — 그림 카드(위 = 무엇을 얼마나, 가운데 = 그림, 아래 = 값). 그림은 img/shop/<이름>.webp, 없으면 기호로 대신한다
     const day = today(), odds = M.pullOdds();
-    const adRow = k => { const p = M.AD_PLACES[k], left = M.adLeft(meta, day, k); return `<div class="up"><div><b>${p.text}</b><br>오늘 ${left}/${p.limit}회 남음</div><button class="btn gold" data-act="ad" data-arg="${k}" ${left ? '' : 'disabled'}>${ic('play')}광고</button></div>`; };
+    // 카드 한 장: 제목 · 그림(없으면 기호) · 딱지(할인 등) · 버튼
+    const card = (title, pic, icon, btn, tag = '', sub = '') => `<div class="sc">${tag ? `<i class="stag">${tag}</i>` : ''}<b>${title}</b>
+      <span class="spic"><img src="img/shop/${pic}.webp" alt="" onerror="this.remove()">${ic(icon)}</span>${sub ? `<small>${sub}</small>` : ''}${btn}</div>`;
+    const sec = t => `<h3 class="shead"><span>${t}</span></h3>`;
+    const AD_PIC = { gem: ['gem1', 'gem'], energy: ['bolt1', 'bolt'], ticket: ['ticket1', 'ticket'] }, GEM_PIC = { gems_100: 'gem1', gems_550: 'gem2', gems_1200: 'gem3' }, BUY_PIC = { energy5: ['bolt5', 'bolt'], ticket5: ['ticket5', 'ticket'], medal30: ['medal', 'medal'] };
     tabPage('shop', 'shop', `<p class="note cmmsg">${typeof msg === 'string' && msg ? msg : '광고를 보거나 보석으로 재화를 얻습니다'}</p>
-      <h3>무료 보상 — 광고를 끝까지 보면 받습니다${Ads.testing ? ' (지금은 시험 광고)' : ''}</h3>
-      ${['gem', 'energy', 'ticket'].map(adRow).join('')}
-      <h3>보석 충전</h3>
-      ${Store.products.map(p => `<div class="up"><div><b>${ic('gem')}${p.name}</b>${p.note ? ` <em>${p.note}</em>` : ''}</div><button class="btn" data-act="pay" data-arg="${p.id}" ${Store.ready || Store.dev ? '' : 'disabled'}>${Store.ready ? '구매' : Store.dev ? '시험 구매' : '출시 후 이용'}</button></div>`).join('')}
-      ${Store.ready ? '' : '<p class="sub" style="margin:.2rem 0 0">결제는 스토어에 앱과 상품을 등록한 뒤에 연결됩니다</p>'}
-      <h3>보석으로 사기</h3>
-      ${M.GEM_SHOP.map(it => `<div class="up"><div><b>${it.name}</b></div><button class="btn gold" data-act="gembuy" data-arg="${it.id}" ${meta.gems < it.cost ? 'disabled' : ''}>${ic('gem')}${it.cost}</button></div>`).join('')}
-      <h3>고급 보급 상자</h3>
-      <div class="up cmbox"><div><b>1회 열기</b><br>표창 또는 스킨</div><button class="btn gold" data-act="pull" data-arg="1" ${meta.gems < M.PULL.cost ? 'disabled' : ''}>${ic('gem')}${M.PULL.cost}</button></div>
-      <div class="up cmbox"><div><b>10회 열기</b><br>10% 할인</div><button class="btn gold" data-act="pull" data-arg="10" ${meta.gems < M.PULL.cost10 ? 'disabled' : ''}>${ic('gem')}${M.PULL.cost10}</button></div>
+      ${sec(`무료 보상${Ads.testing ? ' (시험 광고)' : ''}`)}
+      <div class="sgrid">${['gem', 'energy', 'ticket'].map(k => { const p = M.AD_PLACES[k], left = M.adLeft(meta, day, k);
+        return card(p.text, AD_PIC[k][0], AD_PIC[k][1], `<button class="sbtn ad" data-act="ad" data-arg="${k}" ${left ? '' : 'disabled'}>${ic('play')}광고</button>`, '', `오늘 ${left}/${p.limit}`); }).join('')}</div>
+      ${sec('보석')}
+      <div class="sgrid">${Store.products.map(p => card(p.name, GEM_PIC[p.id] || 'gem1', 'gem', `<button class="sbtn" data-act="pay" data-arg="${p.id}" ${Store.ready || Store.dev ? '' : 'disabled'}>${Store.ready ? '구매' : Store.dev ? '시험 구매' : '출시 후'}</button>`, p.note || '')).join('')}</div>
+      ${Store.ready ? '' : '<p class="sub" style="margin:.6rem 0 0">결제는 스토어에 앱과 상품을 등록한 뒤에 연결됩니다</p>'}
+      ${sec('보석으로 사기')}
+      <div class="sgrid">${M.GEM_SHOP.map(it => card(it.name, (BUY_PIC[it.id] || ['gift', 'box'])[0], (BUY_PIC[it.id] || ['gift', 'box'])[1], `<button class="sbtn gem" data-act="gembuy" data-arg="${it.id}" ${meta.gems < it.cost ? 'disabled' : ''}>${ic('gem')}${it.cost}</button>`)).join('')}</div>
+      ${sec('고급 보급 상자')}
+      <div class="sgrid two">${card('1회 열기', 'crate1', 'box', `<button class="sbtn gem" data-act="pull" data-arg="1" ${meta.gems < M.PULL.cost ? 'disabled' : ''}>${ic('gem')}${M.PULL.cost}</button>`, '', '표창 또는 스킨')}
+        ${card('10회 열기', 'crate10', 'box', `<button class="sbtn gem" data-act="pull" data-arg="10" ${meta.gems < M.PULL.cost10 ? 'disabled' : ''}>${ic('gem')}${M.PULL.cost10}</button>`, '10% 할인', '표창 또는 스킨')}</div>
       <div class="list odds"><p><b>확률 정보</b></p>${odds.map(o => `<p>${o.name} — <b>${(o.p * 100).toFixed(1)}%</b>${o.each ? ` (종류마다 ${(o.each * 100).toFixed(2)}%)` : ''}</p>`).join('')}
         <p>이미 최고 단계인 표창이 나오면 훈장 ${M.PULL.dupMedals}개, 스킨을 모두 가졌으면 보석 ${M.PULL.dupGems}개로 바뀝니다.</p></div>
       <p class="sub" style="margin:1rem 0 0">스킨은 <b>부대 › 스킨</b>에서 사고 바꿉니다</p>`, '', keep === true);

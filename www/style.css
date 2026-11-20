@@ -343,3 +343,19 @@ img.u { filter: var(--skin, none); }
 @media (max-height: 480px) { .nav5 button { height: 4.6rem; } .nav5 .ic { font-size: 2.2rem; } .nav5 button.on .ic { font-size: 2.5rem; } .nav5 b { font-size: 0.95rem; } .subbar { padding: 0.4rem 1rem; } .subbar button { height: 3.4rem; } }
 @media (max-width: 380px) { .cgrid { gap: 1rem 0.6rem; } .cc img, .cc .cic { width: 4.6rem; height: 4.6rem; } .cc .cic .ic { font-size: 3.2rem; } }
 
+/* ── 상점: 그림 카드 (위 제목 · 가운데 그림 · 아래 값 버튼). 그림이 없으면 기호가 대신 보인다 ── */
+.shead { display: flex; justify-content: center; margin: 1.8rem 0 1rem; } .shead:first-of-type { margin-top: 0.6rem; }
+.shead span { position: relative; padding: 0.45rem 3.2rem; border-radius: 0.9rem; background: #5b4533; color: #fff; font-size: 1.5rem; font-weight: 900; border: var(--ln); box-shadow: 0 0.3rem 0 var(--ink); }
+.shead span::before, .shead span::after { content: ''; position: absolute; top: 50%; width: 0.9rem; height: 0.9rem; background: var(--yellow); transform: translateY(-50%) rotate(45deg); border: 0.15rem solid var(--ink); } .shead span::before { left: 1rem; } .shead span::after { right: 1rem; }
+.sgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem 0.8rem; } .sgrid.two { grid-template-columns: repeat(2, 1fr); }
+.sc { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; min-width: 0; padding: 0.9rem 0.6rem 0.7rem; border-radius: 1.6rem; border: var(--ln); background: var(--paper); box-shadow: 0 0.4rem 0 var(--ink); text-align: center; }
+.sc > b { font-size: 1.4rem; font-weight: 900; line-height: 1.2; word-break: keep-all; min-height: 3.4rem; display: flex; align-items: center; } .sc > small { font-size: 1.05rem; color: var(--mute); font-weight: 700; }
+.spic { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 8.6rem; } .spic img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0.3rem 0.2rem rgba(43, 33, 24, .25)); }
+.spic .ic { position: absolute; font-size: 5rem; opacity: 0.9; } .spic img + .ic { display: none; }      /* 그림이 있으면 기호는 숨긴다 */
+.sgrid.two .spic { height: 10.5rem; }
+.sbtn { display: flex; align-items: center; justify-content: center; gap: 0.3rem; width: 100%; height: 4rem; margin-top: 0.3rem; border-radius: 1.2rem; border: var(--ln); background: var(--green); color: #12300f; font-size: 1.45rem; font-weight: 900; box-shadow: 0 0.3rem 0 var(--ink); }
+.sbtn .ic { font-size: 1.8rem; } .sbtn.ad { background: var(--yellow); color: var(--ink); } .sbtn.gem { background: #7fd0ff; color: var(--ink); } .sbtn:disabled { background: var(--soft); color: var(--mute); box-shadow: none; }
+.stag { position: absolute; top: -1rem; right: -0.4rem; z-index: 2; padding: 0.15rem 0.7rem; border-radius: 0.7rem; background: var(--red); color: #fff; font-style: normal; font-size: 1.1rem; font-weight: 900; border: 0.2rem solid var(--ink); transform: rotate(4deg); }
+.tbody .list.odds { margin-top: 1.4rem; }
+@media (max-width: 380px) { .sc > b { font-size: 1.25rem; } .spic { height: 7.4rem; } .sbtn { font-size: 1.3rem; height: 3.7rem; } }
+
