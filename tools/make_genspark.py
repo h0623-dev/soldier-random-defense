@@ -55,3 +55,68 @@ document.addEventListener('click',async e=>{ const b=e.target.closest('button[da
 paint();
 </script></html>''')
 print(len(todo), '장 ·', len(groups), '묶음'); [print(' ', g, len(it)) for g, _, it in groups]
+
+# ── 그림 AI 에이전트(젠스파크 등)에게 zip 째로 맡길 때 읽히는 작업 지시서: GENSPARK_TASK.md + tasks.json ──
+# 급한 것(기본 그림·적·타이틀)을 먼저, 계급대 그림은 뒤 군별부터(Claude Code의 Figma 예약 작업은 앞 번호부터 그리므로 겹치지 않게)
+def gkey(g): return g[2][0][0]['n']
+base = [g for g in groups if '계급대' not in g[0]]; tiers = [g for g in groups if '계급대' in g[0]]
+order = ['police', 'air', 'sf', 'marine', 'navy', 'army']
+tiers.sort(key=lambda g: (order.index(re.search(r'\(([a-z]+) t\d\)', g[0]).group(1)), gkey(g)))
+batches = []
+if base:
+    b1 = [it for g in base if '기본 그림' in g[0] for it in g[2]]; b2 = [it for g in base if '기본 그림' not in g[0] for it in g[2]]
+    if b1: batches.append(('Base characters still missing (air force, police)', b1))
+    if b2: batches.append(('Enemies and title art', b2))
+EN = {'army': 'Army', 'navy': 'Navy', 'marine': 'Marines', 'sf': 'Special forces', 'air': 'Air force', 'police': 'Police'}
+TE = {'t1': 'NCO tier', 't2': 'junior officer tier', 't3': 'senior officer tier', 't4': 'general tier'}
+for g in tiers:
+    m = re.search(r'\(([a-z]+) (t\d)\)', g[0]); batches.append((f'{EN[m.group(1)]} — {TE[m.group(2)]} (rank-tier set of 5 sheets)', g[2]))
+def refs(j):
+    f = os.path.basename(j['file']); m = re.fullmatch(r'sheet_([a-z]+)_(?:(t\d)_)?([a-z-]+)__([a-z-]+)\.png', f)
+    if m and m.group(2): return [f'reference/sheet_{m.group(1)}_inf__art.png']
+    if m: return [f'reference/sheet_{m.group(1)}_inf__art.png', f'reference/sheet_{m.group(1)}_med__sig.png']
+    if f.startswith('enemies_'): return ['reference/enemies_boss__boss2__boss3__boss4.png', 'reference/enemies_normal__fast__armor__elite.png']
+    return ['reference/sheet_army_inf__inf-art.png', 'reference/sheet_navy_inf__art.png']
+t = [f'''# TASK FOR THE IMAGE AGENT — generate {len(todo)} game art images
+
+You are helping me finish the art for my own original mobile game. This file is the complete brief. Follow it exactly.
+
+## What to do
+1. Look at the images in the `reference/` folder first. They are finished sheets from the same game and show the exact art style to match.
+2. Work through the batches below **in order** (Batch 1, then Batch 2, ...). Inside a batch, do the jobs in order.
+3. For every job, generate **exactly one image** from the job's prompt. Use the prompt text **verbatim** (do not shorten, rewrite, merge or translate it).
+4. Save each image under the **exact file name** given for the job.
+5. When a batch is finished, give me a zip named `batch_NN.zip` containing that batch's images, then continue with the next batch without asking. If you reach a usage limit, stop and tell me the number of the last finished job.
+
+## Rules for every image
+- Image model: the newest GPT image model available (GPT Image 2). Do not switch models between jobs.
+- Size: 1024x1024 (square) unless the job says otherwise. PNG.
+- Art style: must match `reference/` — soft hand-drawn storybook chibi, thin dark brown outlines, gentle watercolor and colored-pencil shading, warm muted colors, rosy cheeks, small oval dark brown eyes. Never thick black outlines, never a 3D or glossy vector look.
+- Layout of character sheets: a clean 2x2 grid of **four separate figures** with wide empty gaps. Left column = idle pose, right column = action pose facing right. Figures must not overlap, touch the image edges, or cross the middle of the image.
+- Background: plain solid pure white (or transparent). No ground, no scenery, no borders, no panels.
+- No text of any kind: no labels, captions, arrows, numbers, watermarks or signatures.
+- No real military or police insignia, no emblems, no national flags, no letters on clothes. Original characters only; they must not resemble any existing anime, manga or game character.
+- Rank-tier sets (5 sheets each): all 5 sheets show the **same person in the same outfit**. After you generate the first sheet of a set, use that sheet as a visual reference for the other 4 so that the face, hat and outfit stay identical. Only the equipment and poses change.
+- Use the reference images only for style, proportions and colors. Do not copy their outfits unless the prompt describes the same outfit.
+
+## Self-check before saving (regenerate if any answer is "no")
+- Are there exactly four separate figures in a 2x2 grid (or the count the prompt asks for)?
+- Is the background plain and is there no text or label anywhere?
+- Does the style match the reference sheets?
+- In a rank-tier set, do the face and outfit match the first sheet of the set?
+
+## Batches
+| Batch | Content | Images |
+|---|---|---|
+''']
+for i, (name, items) in enumerate(batches, 1): t.append(f'| {i} | {name} | {len(items)} |\n')
+tasks = []
+for i, (name, items) in enumerate(batches, 1):
+    t.append(f'\n---\n\n## Batch {i:02d} — {name} ({len(items)} images) → deliver as `batch_{i:02d}.zip`\n')
+    for j, _ in items:
+        f = os.path.basename(j['file']); r = refs(j)
+        t.append(f"\n### Job {j['n']} — save as `{f}` — size {j['w']}x{j['h']}\nStyle reference: {', '.join('`' + x + '`' for x in r)}\n\nPrompt (use verbatim):\n```\n{j['prompt']}\n```\n")
+        tasks.append({'batch': i, 'job': j['n'], 'save_as': f, 'width': j['w'], 'height': j['h'], 'style_reference': r, 'prompt': j['prompt']})
+open(os.path.join(OUT, 'GENSPARK_TASK.md'), 'w').write(''.join(t))
+json.dump(tasks, open(os.path.join(OUT, 'tasks.json'), 'w'), ensure_ascii=False, indent=1)
+print('작업 지시서:', len(batches), '묶음,', len(tasks), '장')
