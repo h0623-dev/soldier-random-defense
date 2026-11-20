@@ -374,4 +374,6 @@ img.u { filter: var(--skin, none); }
 .ltop .hbtn .pic { width: 3rem; height: 3rem; } .ltop .hbtn.off { background: var(--paper); }
 .lcoop .pic { width: 4.6rem; height: 4.6rem; } .subbar .pic { width: 2.6rem; height: 2.6rem; margin-right: 0.2rem; }
 @media (max-height: 480px) { .nav5 .pic { width: 2.8rem; height: 2.8rem; } .nav5 button.on .pic { width: 3.2rem; height: 3.2rem; margin-top: -0.4rem; } }
+/* 전투 화면의 그림 기호: 단계 깃발 · 메뉴 · 임무 버튼은 조금 크게 */
+.area > .ic { font-size: 2.8rem; } #b-menu .ic { font-size: 2.5rem; } #actions .board .ic { font-size: 2rem; } .wide .ic { font-size: 2.4rem; }
 

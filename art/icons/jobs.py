@@ -1,5 +1,5 @@
 """표창 아이콘 18종 · 재화 기호 · 대기실 버튼 그림 (E 광택 캐주얼풍, 상점 그림과 같은 그림체). 한 장에 12개(4칸 × 3줄).
-사용: python3 art/icons/jobs.py && python3 tools/codex_art.py 2 99 art/icons/jobs.json  →  art/icons/raw/sheet_<cm|misc|ui>.png
+사용: python3 art/icons/jobs.py && python3 tools/codex_art.py 2 99 art/icons/jobs.json  →  art/icons/raw/sheet_<cm|misc|ui|battle>.png
 게임에 넣기: python3 art/icons/apply.py"""
 import json, os
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +28,15 @@ UI = ("These are menu button icons for a cute animal army game. Row 1, left to r
       "(7) three face-down cards fanned out, with olive-green backs and a gold star on each back; (8) an orange megaphone speaker with three blue sound waves coming out. "
       "Row 3, left to right: (9) a small camouflage uniform jacket hanging on a wooden clothes hanger; (10) an open training manual book with a big green upward arrow rising from it; "
       "(11) a dark iron blacksmith anvil with a golden hammer above it and orange sparks; (12) an orange megaphone speaker with a red diagonal cross over it, no sound waves.")
-jobs = [{'file': 'art/icons/raw/sheet_ui.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + UI},
+BATTLE = ("These are battle screen icons and small buildings for a cute animal army game. Row 1, left to right: (1) a red triangular flag on a golden pole; (2) a shiny golden gear cog; "
+          "(3) an open wooden door with a green arrow pointing out of it; (4) a round red button with a white cross mark on it. "
+          "Row 2, the first four of five small cute buildings, each seen from the front at a slight angle, each standing on a small round patch of grass: (5) an olive-green army training tent with a small red flag on top; "
+          "(6) a small brick blacksmith workshop with a smoking chimney and an anvil in front; (7) a headquarters house with white walls, a red tiled roof, a golden bell above the door and a green flag; "
+          "(8) a supply depot market stall with an olive canopy, wooden crates, barrels and sacks. "
+          "Row 3, left to right: (9) a tall steel radio tower with an antenna on top and a small blinking red light, standing on a small round patch of grass; (10) one silver sword with a golden hilt pointing up; "
+          "(11) a round red and white target with a crosshair; (12) a thick closed brown leather book with a golden star on the cover and a red bookmark.")
+jobs = [{'file': 'art/icons/raw/sheet_battle.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + BATTLE},
+        {'file': 'art/icons/raw/sheet_ui.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + UI},
         {'file': 'art/icons/raw/sheet_cm.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + CM},
         {'file': 'art/icons/raw/sheet_misc.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + MISC}]
 json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장')

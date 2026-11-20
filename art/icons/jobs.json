@@ -1,5 +1,11 @@
 [
  {
+  "file": "art/icons/raw/sheet_battle.png",
+  "w": 1536,
+  "h": 1024,
+  "prompt": "A game icon sprite sheet with exactly twelve separate item illustrations arranged in a clean grid of 4 columns and 3 rows with wide empty gaps between them, on a plain solid pure white background. No borders, no panels, no frames, no labels, no text, no letters, no numbers. Art style for every item: polished casual mobile game icon style, smooth vector shapes with glossy gradient shading, strong shiny highlights, vivid colors, thin dark outlines. Each item is centered in its own cell, all items about the same visual size, nothing overlapping, nothing touching the image edges or crossing into another cell. These are battle screen icons and small buildings for a cute animal army game. Row 1, left to right: (1) a red triangular flag on a golden pole; (2) a shiny golden gear cog; (3) an open wooden door with a green arrow pointing out of it; (4) a round red button with a white cross mark on it. Row 2, the first four of five small cute buildings, each seen from the front at a slight angle, each standing on a small round patch of grass: (5) an olive-green army training tent with a small red flag on top; (6) a small brick blacksmith workshop with a smoking chimney and an anvil in front; (7) a headquarters house with white walls, a red tiled roof, a golden bell above the door and a green flag; (8) a supply depot market stall with an olive canopy, wooden crates, barrels and sacks. Row 3, left to right: (9) a tall steel radio tower with an antenna on top and a small blinking red light, standing on a small round patch of grass; (10) one silver sword with a golden hilt pointing up; (11) a round red and white target with a crosshair; (12) a thick closed brown leather book with a golden star on the cover and a red bookmark."
+ },
+ {
   "file": "art/icons/raw/sheet_ui.png",
   "w": 1536,
   "h": 1024,
