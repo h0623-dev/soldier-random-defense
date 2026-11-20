@@ -58,6 +58,9 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .pt { width: 8.6rem; text-align: center; min-width: 0; } .pt img.u { width: 5.6rem; height: 5.6rem; display: block; margin: 0 auto -0.2rem; object-fit: contain; }
 .pt b { display: block; font-size: 1.15rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pt.res { width: 10.6rem; padding: 0.4rem 0.2rem 0.5rem; border-radius: 1.4rem; background: var(--paper2); border: var(--ln); } .pt.res img.u { width: 7rem; height: 7rem; } .pt.res b { font-size: 1.3rem; color: #c2410c; }
+.pt.rnd .qm { height: 7rem; display: flex; align-items: center; justify-content: center; font-size: 5.2rem; font-weight: 900; -webkit-text-stroke: 0.2rem var(--ink); } #app.short .pt.rnd .qm { height: 5.6rem; font-size: 4.2rem; }
+.rcp b.qm2 { width: 6rem; height: 6rem; flex: none; display: flex; align-items: center; justify-content: center; font-size: 4rem; font-weight: 900; color: var(--purple); border: var(--ln); border-radius: 1.4rem; background: var(--paper2); }
+.mix + .note { margin-top: 1rem; }
 .op { font-size: 1.8rem; color: var(--mute); } .op.go { font-size: 2.4rem; color: var(--orange); }
 .stats { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.8rem 0 0.9rem; }
 .stats span { font-size: 1.1rem; padding: 0.4rem 0.7rem; border-radius: 0.9rem; background: var(--sand); color: var(--mute); display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; white-space: nowrap; }

@@ -119,7 +119,7 @@ const ACT = {
   help() {
     show(`<h2>게임 방법</h2><div class="list">
       <p><b>1. 신병 소집</b> — 군자금으로 무작위 병과의 유닛을 뽑습니다. 빈 발판 가운데 무작위 자리에 배치됩니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
-      <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계이고, 두 병과에 따라 결과 병과가 달라집니다.</p>
+      <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 등급이 올라갑니다(최고 영웅). 그 위 등급은 조합으로만 올립니다.</p>
       <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
       <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기)과 <b>진급 심사</b>(유닛 선택 후 도전: 등급이 낮을수록 잘 붙고, 15%는 강등. 전설 등급부터는 받을 수 없음)에 씁니다.</p>
@@ -171,18 +171,20 @@ const ACT = {
     const b = g.branch, name = k => b.types[k][0];
     const uimg = (k, cls = 'ui') => `<img class="${cls}" src="img/units/${b.id}_${k.replace('+', '-')}.webp" alt="${name(k)}" onerror="this.style.visibility='hidden'">`;
     const chips = k => k.split('+').map(c => `<span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span>`).join('');
-    const mixes = []; CLASS_IDS.forEach((a, i) => CLASS_IDS.slice(i + 1).forEach(c => mixes.push([a, c, C.typeKey(C.combineTypes([a, a], [c, c]))])));
+    const mixKeys = C.TYPE_KEYS.filter(k => k.includes('+'));
     const eimg = (file, n) => `<img class="ui" src="img/${file}.webp" alt="" ${n > 1 && file === 'enemy_boss' ? `style="filter:hue-rotate(${(n - 1) * 36}deg)"` : ''}>`;
     show(`<h2>${b.name} 조합 도감</h2>
-      <p class="sub">같은 계급 두 유닛을 합치면 한 계급 위 유닛이 됩니다</p>
+      <p class="sub">같은 등급 두 유닛을 합치면 한 등급 위 유닛이 됩니다</p>
       <h3>기본 병과 4종 — 신병 소집으로 나옵니다</h3>
       <div class="cx4">${CLASS_IDS.map(c => `<div class="ucard">${uimg(c)}<b>${name(c)}</b><small>${chips(c)} ${CLASS_INFO[c].role}</small></div>`).join('')}</div>
-      <h3>같은 병과끼리 → 같은 병과</h3>
-      <div class="rcp">${uimg(CLASS_IDS[0], 'ui s')}<i>+</i>${uimg(CLASS_IDS[0], 'ui s')}<i>→</i>${uimg(CLASS_IDS[0])}<span><b>${name(CLASS_IDS[0])}</b><small>한 계급 위</small></span></div>
-      <h3>다른 병과끼리 → 혼성 병과 6종</h3>
-      ${mixes.map(([a, c, k]) => `<div class="rcp">${uimg(a, 'ui s')}<i>+</i>${uimg(c, 'ui s')}<i>→</i>${uimg(k)}<span><b>${name(k)}</b><small>${chips(k)}<br>${name(a)} + ${name(c)}</small></span></div>`).join('')}
+      <h3>같은 병과끼리 → 같은 병과로 진급</h3>
+      <div class="rcp">${uimg(CLASS_IDS[0], 'ui s')}<i>+</i>${uimg(CLASS_IDS[0], 'ui s')}<i>→</i>${uimg(CLASS_IDS[0])}<span><b>${name(CLASS_IDS[0])}</b><small>한 등급 위 · 병과 유지</small></span></div>
+      <h3>다른 병과끼리 → 무작위 병과로 진급</h3>
+      <div class="rcp">${uimg(CLASS_IDS[0], 'ui s')}<i>+</i>${uimg(CLASS_IDS[1], 'ui s')}<i>→</i><b class="qm2">?</b><span><b>무작위 병과</b><small>한 등급 위 · 아래 10종 가운데 하나</small></span></div>
+      <h3>특수 병과 6종 — 다른 병과끼리 조합할 때만 나옵니다</h3>
+      <div class="cx4">${mixKeys.map(k => `<div class="ucard">${uimg(k)}<b>${name(k)}</b><small>${chips(k)}</small></div>`).join('')}</div>
       <div class="list" style="margin-top:10px">
-      <p>혼성 병과끼리도 계속 조합됩니다. 재료 두 유닛의 병과 4칸을 세어 <b>3칸 이상이면 그 병과</b>, 아니면 <b>가장 많은 두 병과의 혼성</b>이 됩니다. 동률이면 먼저 고른 유닛의 병과가 우선합니다.</p></div>
+      <p>특수 병과는 두 기본 병과의 능력을 절반씩 가집니다(예: ${name('inf+art')} = ${name('inf')} + ${name('art')}). 원하는 병과를 지키려면 <b>같은 병과끼리</b> 조합하세요.</p></div>
       <h2>병과 · 병기</h2>
       ${Object.entries(b.types).map(([k, [n, w]]) => `<div class="wcard">${uimg(k)}<div><b>${n}</b> ${chips(k)}
         <p><em>${GRADES[0].name}~</em> ${w[0]}</p><p><em>${GRADES[b.tiers[0]].name}~</em> ${w[1]}</p><p><em>${GRADES[b.tiers[1]].name}~</em> ${w[2]}</p></div></div>`).join('')}
@@ -289,10 +291,12 @@ function renderInfo() {
   const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitSrc(b, u.type, C.rankGroup(b, u))}" alt=""><b><i class="gdot" style="background:${GRADES[u.level].color}"></i>${C.unitName(b, u)}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
   $('app').classList.toggle('sel', !!A);       // 유닛을 고른 동안에는 하단 버튼 자리까지 카드가 쓴다
   if (A && B) {
-    const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type, hidden: p.hidden }, h = C.hiddenDef(b, p.hidden);
-    el.innerHTML = `<div class="card"><div class="ttl"><b>조합 미리보기</b><span class="tag${h ? ' hid' : ''}">${h ? '★ 히든 조합' : `${C.rankName(b, A)} → ${C.rankName(b, nu)} 진급`}</span></div>
-      <div class="mix">${portrait(A)}<span class="op">${ic('plus')}</span>${portrait(B)}<span class="op go">${ic('arrow')}</span>${portrait(nu, 'res')}</div>
-      ${statChips(C.unitStats(b, p.level, p.type, meta, g.up), A.stats)}
+    const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type, hidden: p.hidden }, h = C.hiddenDef(b, p.hidden), gr = GRADES[p.level];
+    // 같은 병과끼리는 결과가 정해져 있고, 다른 병과끼리는 병과가 무작위라 물음표로 보여 준다
+    const result = p.random ? `<div class="pt res rnd" style="border-color:${gr.color}"><div class="qm" style="color:${gr.color}">?</div><b><i class="gdot" style="background:${gr.color}"></i>${h ? h.name + ' · ' : ''}무작위 병과</b></div>` : portrait(nu, 'res');
+    el.innerHTML = `<div class="card"><div class="ttl"><b>조합 미리보기</b><span class="tag${h ? ' hid' : ''}">${h ? '★ 히든 조합' : p.random ? `${gr.name} 등급 · 병과 무작위` : `${C.rankName(b, A)} → ${C.rankName(b, nu)} 진급`}</span></div>
+      <div class="mix">${portrait(A)}<span class="op">${ic('plus')}</span>${portrait(B)}<span class="op go">${ic('arrow')}</span>${result}</div>
+      ${p.random ? `<p class="note">병과가 다른 유닛끼리 조합하면 <b>${gr.name}</b> 등급으로 오르고, 병과는 10종 가운데 무작위로 정해집니다. 같은 병과끼리 조합하면 그 병과가 유지됩니다.</p>` : statChips(C.unitStats(b, p.level, p.type, meta, g.up), A.stats)}
       ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${A.hidden || B.hidden ? '<p class="note">⚠ 히든 계급의 능력은 조합하면 사라집니다</p>' : ''}
       <div class="acts"><button class="btn" data-do="cancel">취소</button><button class="btn primary" data-do="merge">조합하기</button></div></div>`;
   } else if (A) {

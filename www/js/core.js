@@ -95,19 +95,12 @@ function rng(seed) {
 // 유닛 병과 = 기본 병과 2칸 [a, b]. 순수 병과는 [a, a].
 export const sortType = t => [...t].sort((a, b) => CLASS_IDS.indexOf(a) - CLASS_IDS.indexOf(b));
 export const typeKey = t => (t[0] === t[1] ? t[0] : sortType(t).join('+'));
-// 조합 규칙: 재료 두 유닛의 병과 4칸을 세어
-//  · 한 병과가 3칸 이상 → 그 병과의 순수 유닛
-//  · 그 외 → 가장 많은 병과 2개의 혼성 유닛 (동률이면 먼저 고른 유닛의 병과 우선)
-//  · 4칸이 모두 다르면 → 두 유닛의 주병과끼리 혼성
-export function combineTypes(t1, t2) {
-  const tally = {}; for (const c of [...t1, ...t2]) tally[c] = (tally[c] || 0) + 1;
-  const pref = c => (t1.includes(c) ? 0 : 1);
-  const order = Object.keys(tally).sort((a, b) =>
-    tally[b] - tally[a] || pref(a) - pref(b) || CLASS_IDS.indexOf(a) - CLASS_IDS.indexOf(b));
-  if (tally[order[0]] >= 3) return [order[0], order[0]];
-  if (order.length === 4) return sortType([t1[0], t2[0]]);
-  return sortType([order[0], order[1]]);
-}
+// 조합 규칙 (2026-11-20 사용자 지정):
+//  · 같은 병과끼리 → 같은 병과로 한 등급 진급
+//  · 다른 병과끼리 → 한 등급 진급하되, 병과는 그 군별의 10개 병과 가운데 무작위
+export const TYPE_KEYS = ['inf', 'art', 'med', 'sig', 'inf+art', 'inf+med', 'inf+sig', 'art+med', 'art+sig', 'med+sig'];
+export const keyToType = k => (k.includes('+') ? k.split('+') : [k, k]);
+export const sameType = (t1, t2) => typeKey(t1) === typeKey(t2);
 
 // ── 수치 ─────────────────────────────────────────────────
 const expo = (branch, level) => level;       // 계급 한 단계 = 전투력 CFG.growth배. (18계급 시절에는 계급 수가 달라도 최종 전투력이 같게 늘려 썼다)
@@ -257,13 +250,15 @@ export function canMerge(g, a, b) {
 export function mergePreview(g, a, b) {
   if (!canMerge(g, a, b)) return null;
   const A = g.units[a], B = g.units[b];
-  return { level: A.level + 1, type: combineTypes(A.type, B.type), hidden: hiddenRecipe(g.branch, A, B) };
+  const same = sameType(A.type, B.type);      // type이 null이고 random이 true면 조합할 때 병과가 무작위로 정해진다
+  return { level: A.level + 1, type: same ? A.type : null, random: !same, hidden: hiddenRecipe(g.branch, A, B) };
 }
 // a = 먼저 고른 유닛(주재료), b = 결과가 놓일 자리
 export function merge(g, a, b) {
   const p = mergePreview(g, a, b); if (!p || g.over) return null;
   const sum = g.units[a].dealt + g.units[b].dealt;
-  g.units[a] = null; const u = placeUnit(g, b, p.level, p.type, p.hidden); u.dealt = sum; return u;      // 누적 피해는 두 유닛 것을 이어받는다
+  const type = p.type || keyToType(TYPE_KEYS[Math.floor(g.rand() * TYPE_KEYS.length)]);
+  g.units[a] = null; const u = placeUnit(g, b, p.level, type, p.hidden); u.dealt = sum; return u;      // 누적 피해는 두 유닛 것을 이어받는다
 }
 export function moveUnit(g, a, b) {
   if (!g.units[a] || a === b) return false;

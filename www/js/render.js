@@ -1,6 +1,6 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
-import { FIELD, CELL, CFG, AREAS, rankGroup, canMerge, rankName, rankInsig } from './core.js';
+import { FIELD, CELL, CFG, AREAS, rankGroup, canMerge, sameType, rankName, rankInsig } from './core.js';
 import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
@@ -198,8 +198,10 @@ export function draw(ctx, g, ui, quality = 2) {
   // 발판 강조: 조합할 수 있는 칸(노랑), 선택한 칸(흰색)
   SLOTS.forEach((s, i) => {
     const x = s.x - CELL.w / 2 + 4, y = s.y - CELL.h / 2 - 4, mergeable = sel && i !== ui.sel && canMerge(g, ui.sel, i);
-    if (mergeable) { ctx.fillStyle = `rgba(255,212,94,${0.32 + 0.18 * Math.sin(now * 6)})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill();
-      ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 4; ctx.stroke(); }
+    // 조합할 수 있는 칸: 같은 병과(병과 유지)는 노란색, 다른 병과(무작위)는 보라색 점선
+    if (mergeable) { const keep = sameType(sel.type, g.units[i].type), a = 0.32 + 0.18 * Math.sin(now * 6);
+      ctx.fillStyle = keep ? `rgba(255,212,94,${a})` : `rgba(190,150,255,${a * 0.8})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill();
+      ctx.strokeStyle = keep ? '#ffd45e' : '#c9a3ff'; ctx.lineWidth = 4; if (!keep) ctx.setLineDash([9, 7]); ctx.stroke(); ctx.setLineDash([]); }
     else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.stroke(); }
   });
   // 선택 유닛 사거리 · 지원 범위 (바닥에 눕힌 원)

@@ -3,15 +3,22 @@ import assert from 'node:assert';
 import { BRANCHES, CLASS_IDS, GRADES, rankOf } from '../www/js/data.js';
 import * as C from '../www/js/core.js';
 
-// 1) 조합 규칙
-const k = (a, b) => C.typeKey(C.combineTypes(a, b));
-assert.equal(k(['inf', 'inf'], ['inf', 'inf']), 'inf');          // 보병+보병 → 보병
-assert.equal(k(['inf', 'inf'], ['art', 'art']), 'inf+art');      // 보병+포병 → 혼성
-assert.equal(k(['art', 'art'], ['inf', 'inf']), 'inf+art');      // 순서 무관
-assert.equal(k(['inf', 'art'], ['inf', 'art']), 'inf+art');
-assert.equal(k(['inf', 'inf'], ['inf', 'art']), 'inf');
-assert.equal(k(['inf', 'art'], ['med', 'sig']), 'inf+med');
-assert.equal(k(['inf', 'art'], ['inf', 'med']), 'inf+art');
+// 1) 조합 규칙: 같은 병과끼리 → 같은 병과, 다른 병과끼리 → 10개 병과 가운데 무작위. 어느 쪽이든 한 등급 오른다
+{
+  const g = C.createGame({ branchId: 'army', seed: 7, fx: false });
+  const put = (slot, level, type) => { g.units[slot] = { id: g.uid++, slot, level, type, hidden: null, cd: 0, haste: 0, dmgUp: 0, rangeUp: 0, dealt: 0, stats: C.unitStats(g.branch, level, type), flash: 0 }; };
+  put(0, 0, ['inf', 'inf']); put(1, 0, ['inf', 'inf']);
+  let p = C.mergePreview(g, 0, 1); assert.deepEqual(p.type, ['inf', 'inf']); assert.equal(p.random, false); assert.equal(p.level, 1);
+  let u = C.merge(g, 0, 1); assert.equal(C.typeKey(u.type), 'inf'); assert.equal(u.level, 1);                    // 보병 + 보병 → 보병
+  put(2, 3, ['art', 'inf']); put(3, 3, ['inf', 'art']); assert.equal(C.mergePreview(g, 2, 3).random, false);        // 박격포병 + 박격포병(칸 순서만 다름) → 박격포병
+  assert.equal(C.typeKey(C.merge(g, 2, 3).type), 'inf+art');
+  const seen = {};
+  for (let i = 0; i < 600; i++) { put(4, 2, ['inf', 'inf']); put(5, 2, ['art', 'art']); p = C.mergePreview(g, 4, 5); assert.equal(p.random, true); assert.equal(p.type, null);
+    u = C.merge(g, 4, 5); assert.equal(u.level, 3); const k = C.typeKey(u.type); seen[k] = (seen[k] || 0) + 1; g.units[5] = null; }
+  assert.equal(Object.keys(seen).length, 10, '다른 병과끼리 조합하면 10개 병과가 모두 나올 수 있다');
+  for (const k of C.TYPE_KEYS) assert.ok(seen[k] > 30 && seen[k] < 95, `${k} ${seen[k]}/600`);                      // 대략 고르게
+  put(6, 1, ['inf', 'inf']); put(7, 2, ['inf', 'inf']); assert.equal(C.mergePreview(g, 6, 7), null);              // 등급이 다르면 조합 불가
+}
 // 2) 데이터 완전성: 모든 군별에 10개 병과 · 병기 3단계
 const keys = []; CLASS_IDS.forEach((a, i) => CLASS_IDS.slice(i).forEach(b => keys.push(a === b ? a : a + '+' + b)));
 for (const b of BRANCHES) for (const key of keys) {
@@ -43,7 +50,7 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
     stats: C.unitStats(g.branch, level, type), flash: 0 }; };
   put(0, 2, ['inf', 'art']); put(1, 2, ['med', 'sig']);
   assert.equal(C.mergePreview(g, 0, 1).hidden, 'wonsa');
-  const w = C.merge(g, 0, 1); assert.equal(C.unitName(g.branch, w), '원사 전투의무병'); assert.equal(w.level, 3);
+  const w = C.merge(g, 0, 1); assert.ok(C.unitName(g.branch, w).startsWith('원사 ')); assert.equal(w.level, 3);      // 병과가 다른 둘의 조합이라 병과는 무작위
   put(2, 1, ['inf', 'art']); put(3, 1, ['med', 'sig']); assert.equal(C.mergePreview(g, 2, 3).hidden, null);   // 상사가 아니면 일반 조합
   put(4, 2, ['inf', 'inf']); put(5, 2, ['art', 'med']); assert.equal(C.mergePreview(g, 4, 5).hidden, null);   // 3병과뿐이면 일반 조합
   put(6, 3, ['inf', 'inf']); const m = C.mergePreview(g, 1, 6); assert.equal(m.level, 4); assert.equal(m.hidden, null); // 히든을 재료로 쓰면 일반 진급
