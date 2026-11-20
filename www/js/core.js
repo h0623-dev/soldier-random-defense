@@ -182,7 +182,7 @@ export function waveInfo(wave) {
 }
 
 // ── 게임 상태 ────────────────────────────────────────────
-export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, diff = 0, mode = 'normal' }) {
+export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, diff = 0, mode = 'normal', coop = false }) {
   const branch = branchById(branchId), rush = mode === 'rush';
   const g = {
     branch, meta, rand: rng(seed), fx, diff, mode, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: rush ? CFG.rushPrep : CFG.prepTime,
@@ -191,6 +191,7 @@ export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, 
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
     tiles: {}, rerolls: 0, streak: 0, fastBoss: 0, crisis: 0,      // 특수 발판 {칸 번호: 종류} · 히든 임무용 기록
     depot: 0, depotGold: 0,                                        // 보급병 수 · 보급 기지로 번 군자금 합계
+    coop: coop ? { linked: false, ext: false, out: [], sent: 0, got: 0 } : null,      // 2인 협동(아래 '2인 협동' 참고). 혼자 하는 판은 null
     heroGot: 0, zones: [], buff: { haste: 0, dmg: 0, immune: false },   // 용사 탄생 횟수 · 화염 지대 · 용사가 아군 전체에 주는 효과
   };
   rollTiles(g); return g;
@@ -486,6 +487,24 @@ function heroCast(g, u, k, p, base) {
   u.skT = k.cd;
 }
 
+// ── 2인 협동 ─────────────────────────────────────────────
+// 두 사람이 각자 자기 전장에서 같은 단계를 함께 치른다. 내 전장을 한 바퀴 돌 때까지 못 잡은 적은 동료의 전장 입구로 넘어가고, 동료가 못 잡으면 다시 돌아온다.
+// 규칙(core)은 넘길 적을 g.coop.out에 쌓고 넘어온 적을 receiveEnemy로 받기만 한다. 주고받는 일은 화면 쪽(main.js)이 서버를 거쳐 한다.
+//  linked: 동료와 이어져 있다(끊기면 혼자 하는 판처럼 적이 계속 돈다) · ext: 단계 시작을 방장이 알려 준다(손님)
+// 승리는 두 전장이 모두 비었을 때(화면 쪽에서 판정), 패배는 어느 한쪽이든 무너졌을 때다.
+const packEnemy = e => ({ k: e.kind, hp: e.hp, mx: e.maxHp, sp: e.speed, bo: e.bounty, bs: e.boss || 0, fl: e.fly ? 1 : 0 });
+export function receiveEnemy(g, d) {
+  if (g.over || !g.coop || !d || !(d.hp > 0) || !(d.mx >= d.hp) || !(d.sp > 0 && d.sp < 400) || !['normal', 'fast', 'armor', 'boss'].includes(d.k)) return false;
+  const skill = d.k === 'boss' && AREAS[d.bs - 1] ? AREAS[d.bs - 1].boss.skill : undefined, p = g.map.pathPos(0);
+  g.enemies.push({ id: g.uid++, s: 0, x: p.x, y: p.y, hp: d.hp, maxHp: d.mx, speed: d.sp, bounty: +d.bo || 0, kind: d.k, boss: d.bs || undefined, fly: !!d.fl,
+    skill, skT: skill && skill.cd ? skill.cd * 0.6 : 0, dashT: 0, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
+  if (d.k === 'boss' && !(g.bossTimer > 10)) g.bossTimer = 10;      // 넘어온 보스에게 제한 시간이 거의 없으면 조금 준다
+  g.coop.got++; return true;
+}
+// 방장이 알려 준 단계까지 시작한다(손님)
+export function startWaveTo(g, n) { while (!g.over && g.wave < n && g.wave < maxWaveOf(g)) startWave(g); }
+export const fieldClear = g => g.wave >= maxWaveOf(g) && !!g.spawn && g.spawn.left === 0 && g.enemies.length === 0;
+
 export function step(g, dt) {
   if (g.over) return;
   g.time += dt;
@@ -493,7 +512,8 @@ export function step(g, dt) {
   // 보스 러시: 보스를 잡으면 다음 지역으로 옮기고 다음 판 군자금·보급품을 받는다. 다음 보스는 rushGap초 뒤에 나오고, 보스가 살아 있는 동안에는 시간이 가지 않는다
   if (g.rushNext) { g.rushNext = false;
     if (g.wave < maxWaveOf(g)) { const gold = rushStipend(g.wave + 1); g.gold += gold; g.supply += CFG.rushSupply; g.nextWave = CFG.rushGap; enterArea(g, areaOf(g, g.wave + 1)); g.log.push({ t: 'rush', gold, sup: CFG.rushSupply }); } }
-  if (g.wave < maxWaveOf(g) && !(g.mode === 'rush' && g.enemies.some(e => e.kind === 'boss'))) { g.nextWave -= dt; if (g.nextWave <= 0) startWave(g); }
+  if (g.wave < maxWaveOf(g) && !(g.mode === 'rush' && g.enemies.some(e => e.kind === 'boss'))) { g.nextWave -= dt;
+    if (g.nextWave <= 0) { if (g.coop && g.coop.ext) g.nextWave = 0; else startWave(g); } }      // 협동의 손님은 방장이 알려 줄 때 단계를 시작한다
   if (g.spawn && g.spawn.left > 0) {
     g.spawn.cd -= dt;
     if (g.spawn.cd <= 0) {
@@ -538,6 +558,7 @@ export function step(g, dt) {
     g.auraDirty = false;
   }
   // 적 이동
+  const link = !!(g.coop && g.coop.linked);
   for (const e of g.enemies.slice()) if (e.skill && !e.dead) bossSkill(g, e, dt);
   for (const e of g.enemies) {
     e.slowT -= dt; e.vulnT -= dt;
@@ -547,6 +568,7 @@ export function step(g, dt) {
         credit(g, o, e.dotC, d); } }
     const fast = e.dashT > 0 ? 2.2 : e.skill && e.skill.rage && e.hp < e.maxHp * e.skill.rage ? 1.5 : 1;
     if (!(e.freezeT > 0)) e.s += e.speed * fast * (1 - (e.slowT > 0 && !(e.dashT > 0) ? e.slow : 0)) * dt;
+    if (link && e.s >= g.map.len && e.kind !== 'elite' && !e.dead) { e.dead = true; g.coop.out.push(packEnemy(e)); g.coop.sent++; continue; }      // 협동: 한 바퀴를 돈 적은 동료의 전장으로 넘어간다
     const p = g.map.pathPos(e.s); e.x = p.x; e.y = p.y; e.left = p.dx < 0;
   }
   // 아군 공격
@@ -593,7 +615,7 @@ export function step(g, dt) {
   const boss = g.enemies.some(e => e.kind === 'boss');
   if (boss) { g.bossTimer -= dt; if (g.bossTimer <= 0) g.over = { win: false, reason: '보스를 제한 시간 안에 막지 못했습니다' }; }
   if (g.enemies.length > CFG.enemyLimit) g.over = { win: false, reason: `적이 ${CFG.enemyLimit}명을 넘어 방어선이 무너졌습니다` };
-  if (!g.over && g.wave >= maxWaveOf(g) && g.spawn.left === 0 && g.enemies.length === 0) g.over = { win: true, reason: g.mode === 'rush' ? '보스 10종 격파!' : '100단계 방어 성공!' };
+  if (!g.over && !link && fieldClear(g)) g.over = { win: true, reason: g.mode === 'rush' ? '보스 10종 격파!' : '100단계 방어 성공!' };
 }
 
 // 훈장: 5단계마다 1개(보스 러시는 보스 하나에 2개), 승리하면 +20(보스 러시 +10). 난이도 배수와 모범 부대 표창이 곱해진다
@@ -606,7 +628,7 @@ export const reached = g => (g.mode === 'rush' ? g.bossKills || 0 : g.over && g.
 // 진행 중인 게임을 글자로 바꿀 수 있는 값으로 만든다. 군별·맵·난수 함수처럼 다시 만들 수 있는 것은 빼고, 능력치는 불러올 때 다시 계산한다.
 const SAVE_V = 2, SAVE_SKIP = new Set(['branch', 'meta', 'rand', 'map', 'effects', 'sfx', 'log']);
 export function saveGame(g) {
-  if (!g || g.over) return null;
+  if (!g || g.over || g.coop) return null;      // 협동 판은 저장하지 않는다(이어할 수 없다)
   const o = { v: SAVE_V, branchId: g.branch.id, seed: g.rand.state() };
   for (const k in g) if (!SAVE_SKIP.has(k)) o[k] = g[k];
   return JSON.parse(JSON.stringify(o, (k, v) => (k === 'stats' ? undefined : v)));

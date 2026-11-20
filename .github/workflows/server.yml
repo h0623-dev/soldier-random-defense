@@ -1,0 +1,23 @@
+name: 서버 배포 (랭킹 · 2인 협동)
+# server/ 폴더의 Cloudflare Worker를 배포한다. 저장소 Settings → Secrets and variables → Actions 에
+# CLOUDFLARE_API_TOKEN(Workers 편집 권한)과 CLOUDFLARE_ACCOUNT_ID 가 있을 때만 돈다. 없으면 건너뛴다. (방법은 docs/SERVER.md)
+on:
+  push: { branches: [main], paths: ["server/**", ".github/workflows/server.yml"] }
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: 배포 (비밀 값이 있을 때만)
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: server
+        run: npm install --no-audit --no-fund && npx wrangler deploy
+      - name: 건너뜀 안내
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "CLOUDFLARE_API_TOKEN 이 없어 서버 배포를 건너뜁니다 (docs/SERVER.md 참고)"

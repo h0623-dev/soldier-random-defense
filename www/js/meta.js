@@ -5,7 +5,7 @@ import { TYPE_KEYS, DIFFS, MODES, masteryInfo, reached } from './core.js';
 
 export const ENERGY = { max: 10, regenMs: 3600e3 };
 export const META_DEFAULT = () => ({
-  medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, bestE: {}, bestR: {}, diff: 0, mode: 'normal', found: {}, foundM: {}, mute: false,
+  medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, bestE: {}, bestR: {}, bestC: {}, diff: 0, mode: 'normal', found: {}, foundM: {}, mute: false,
   xp: {},                                   // 병과 숙련도 경험치 { 군별: { 병과 키: 값 } }
   cmN: {}, cm: {},                          // 부대 표창: 모은 장수 · 단계(장수에서 계산해 둔 값 — core가 읽는다)
   tickets: 0, flips: 0, board: null,        // 뽑기판: 티켓 · 누적 뒤집은 수 · 지금 판
@@ -22,7 +22,7 @@ export const META_DEFAULT = () => ({
 // 저장된 값에 기본값을 채워 넣는다 (예전 버전의 저장에는 없는 칸이 있다)
 export function fillMeta(saved) {
   const d = META_DEFAULT(), m = { ...d, ...(saved || {}) };
-  for (const k of ['best', 'bestD', 'bestE', 'bestR', 'found', 'foundM', 'xp', 'cmN', 'cm', 'att', 'daily', 'energy', 'ad', 'skins']) if (!m[k] || typeof m[k] !== 'object') m[k] = d[k];
+  for (const k of ['best', 'bestD', 'bestE', 'bestR', 'bestC', 'found', 'foundM', 'xp', 'cmN', 'cm', 'att', 'daily', 'energy', 'ad', 'skins']) if (!m[k] || typeof m[k] !== 'object') m[k] = d[k];
   m.att = { ...d.att, ...m.att }; m.daily = { ...d.daily, ...m.daily }; m.energy = { ...d.energy, ...m.energy }; m.ad = { ...d.ad, ...m.ad }; m.skins = { ...d.skins, ...m.skins };
   if (!SKINS.some(x => x.id === m.skins.on)) m.skins.on = 'base';
   if (!MODES.some(x => x.id === m.mode)) m.mode = 'normal';
@@ -101,12 +101,25 @@ export function useSkin(meta, id) { if (!skinOwned(meta, id)) return false; meta
 // ── 기록 · 모드 열림 ─────────────────────────────────────
 // 모드·난이도별 최고 기록이 담긴 칸. 기본 작전은 난이도별(best, bestD[난이도]), 무한 작전·보스 러시는 모드별
 export function bestMap(meta, mode, diff) {
-  if (mode === 'endless') return meta.bestE; if (mode === 'rush') return meta.bestR;
+  if (mode === 'coop') return meta.bestC; if (mode === 'endless') return meta.bestE; if (mode === 'rush') return meta.bestR;
   return diff === 0 ? meta.best : (meta.bestD[DIFFS[diff].id] || (meta.bestD[DIFFS[diff].id] = {}));
 }
 // 지금까지 가 본 가장 높은 단계 (기본·무한 작전 통틀어)
-export const topWave = meta => Math.max(0, ...Object.values(meta.best), ...Object.values(meta.bestE), ...Object.values(meta.bestD).flatMap(o => Object.values(o)));
+export const topWave = meta => Math.max(0, ...Object.values(meta.best), ...Object.values(meta.bestE), ...Object.values(meta.bestC), ...Object.values(meta.bestD).flatMap(o => Object.values(o)));
 export const modeOpen = (meta, id) => { const m = MODES.find(x => x.id === id); return !!m && (!m.need || topWave(meta) >= m.need); };
+
+// ── 랭킹 · 협동에 쓰는 이름 ──────────────────────────────
+// 기기마다 무작위 식별값과 별명을 하나 만든다(처음 쓸 때). 개인 정보는 담지 않는다
+export function ensureId(meta, rand = Math.random) {
+  if (!meta.uid) meta.uid = Array.from({ length: 20 }, () => '0123456789abcdef'[rint(rand, 16)]).join('');
+  if (!meta.name) meta.name = '병사' + String(1000 + rint(rand, 9000));
+  return meta;
+}
+export const cleanName = s => String(s || '').replace(/[\u0000-\u001f<>&"'`\\]/g, '').trim().slice(0, 10);
+// 랭킹 판 이름: 기본 작전은 난이도별, 그 밖은 모드별
+export const rankBoard = g => (g.coop ? 'coop' : g.mode === 'normal' ? 'normal-' + (g.diff || 0) : g.mode);
+export const RANK_BOARDS = [['normal-0', '보통'], ['normal-1', '어려움'], ['normal-2', '지옥'], ['endless', '무한'], ['rush', '보스 러시'], ['coop', '2인 협동']];
+export const COOP_MEDAL = 1.2;      // 협동 판의 훈장 배수
 
 // ── 병과 숙련도 ─────────────────────────────────────────
 // 한 판의 경험치 = 도달 단계 × 10 × 난이도 훈장 배수 (보스 러시는 보스 하나에 100). 그 판에서 준 피해 비율대로 병과에 나눈다

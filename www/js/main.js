@@ -5,6 +5,7 @@ import * as M from './meta.js';
 import { draw, areaColors, setSkin } from './render.js';
 import { insigUrl, hasArt, unitArtName, loadBranchArt } from './sprites.js';
 import { Ads, Store } from './monetize.js';
+import { Net } from './net.js';
 import { initLayout } from './layout.js';
 import { Sound } from './sound.js';
 import { checkUpdate, buildInfo } from './update.js';
@@ -26,6 +27,52 @@ const view = initLayout(() => { infoKey = ''; });
 function loadMeta() { try { return M.fillMeta(JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch { return M.fillMeta({}); } }
 const today = () => { const d = new Date(), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };      // 기기 시계 기준 오늘 날짜
 const rnd = Math.random;
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));      // 다른 사람이 정한 글(별명)을 화면에 넣을 때
+// ── 2인 협동 연결 ──────────────────────────────────────
+// coop = { code 방 번호, host 내가 방장인지, peer 동료 {name, branch}, stat 동료 전장 상태 {e 적 수, w 단계, c 다 막았는지}, conn 연결, dead 끊김 }
+// 주고받는 글: start(방장→손님: 시작) · wave(방장→손님: 단계 시작) · xfer(넘어가는 적) · stat(1초마다 상태) · speed(방장의 배속) · gold(군자금 선물) · emote(한마디) · over(끝)
+let coop = null;
+const EMOTES = ['도와줘!', '좋아!', '보스 집중!', '고마워!'];
+const linked = () => !!(g && g.coop && g.coop.linked && coop && !coop.dead);
+const myBranch = () => (BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0]);
+function coopLeave() { if (coop) { const c = coop; coop = null; if (c.conn) c.conn.close(); } }
+function coopLost() {      // 동료가 나갔거나 연결이 끊겼다
+  if (!coop || coop.dead) return;
+  if (g && g.coop) { coop.dead = true; g.coop.linked = false; g.coop.ext = false; if (coop.conn) coop.conn.close(); if (!g.over) toast('동료와의 연결이 끊겼습니다 — 혼자 이어갑니다', 3200); }
+  else { coopLeave(); ACT.coop('동료가 나갔습니다'); }
+}
+function coopBegin(seed, sp) {
+  if (!M.spendEnergy(meta, Date.now())) { coopLeave(); return ACT.noenergy(); }
+  saveMeta(); const b = myBranch(); loadBranchArt(b.id);
+  g = C.createGame({ branchId: b.id, meta, seed, coop: true }); g.coop.linked = true; g.coop.ext = !coop.host; enter(); setSpeed(sp); hide();
+  toast(`${coop.peer.name}와(과) 협동 작전 시작!`, 2600);
+}
+function coopMsg(m) {
+  if (m.t === 'refused') { coopLeave(); ACT.coop(m.why === 'full' ? '방이 가득 찼습니다' : '없는 방 번호입니다'); }
+  else if (m.t === 'hello') { coop.host = !!m.host; coop.peer = m.peer; if (!g) ACT.cowait(); }
+  else if (m.t === 'peer') { coop.peer = m.peer; if (coop.host && !g) { const seed = Math.floor(Math.random() * 2 ** 31); coop.conn.send({ t: 'start', seed, speed: 2 }); coopBegin(seed, 2); } }
+  else if (m.t === 'start') { if (!g && coop.peer) coopBegin((m.seed ^ 0x5bd1e995) >>> 0, [1, 2, 4].includes(m.speed) ? m.speed : 2); }
+  else if (m.t === 'left') coopLost();
+  else if (!g || !g.coop || coop.dead) return;
+  else if (m.t === 'wave') C.startWaveTo(g, m.n | 0);
+  else if (m.t === 'xfer') C.receiveEnemy(g, m);
+  else if (m.t === 'stat') coop.stat = { e: m.e | 0, w: m.w | 0, c: !!m.c };
+  else if (m.t === 'speed') { if (!coop.host && [1, 2, 4].includes(m.v)) setSpeed(m.v); }
+  else if (m.t === 'gold') { const n = Math.max(0, Math.min(1e9, Math.floor(+m.n || 0))); if (n && !g.over) { g.gold += n; toast(`${coop.peer.name}이(가) 군자금 ${fmt(n)}을(를) 보냈습니다`, 2400); Sound.play('camp'); } }
+  else if (m.t === 'emote') { if (EMOTES[m.i]) { toast(`${coop.peer.name}: ${EMOTES[m.i]}`, 2400); Sound.play('summon'); } }
+  else if (m.t === 'over') { if (!g.over) g.over = m.win ? { win: true, reason: '협동 작전 성공!' } : { win: false, reason: '동료의 방어선이 무너졌습니다' }; }
+}
+async function coopJoin(getCode) {
+  if (M.energyNow(meta, Date.now()) < 1) return ACT.noenergy();
+  const nm = document.getElementById('nm'); if (nm) { const v = M.cleanName(nm.value); if (v.length >= 2) meta.name = v; } saveMeta();
+  ACT.coop('연결하는 중…');
+  try {
+    const r = await getCode(), me = { code: r.code, host: null, peer: null, stat: null, statT: 0, conn: null }; coop = me;
+    me.conn = await Net.join(r.code, { name: meta.name, branch: myBranch().id }, { msg: m => { if (coop === me) coopMsg(m); }, close: () => { if (coop === me) coopLost(); } });
+    if (coop === me && !g) ACT.cowait();
+  } catch { coopLeave(); ACT.coop('연결하지 못했습니다 — 잠시 뒤에 다시 해 보세요'); }
+}
+let rankReq = 0;
 // 스킨(도색): 전장의 내 유닛 그림과 카드의 초상에 같은 색 필터를 입힌다
 function applySkin() { const f = M.skinOf(meta).filter; setSkin(f); document.documentElement.style.setProperty('--skin', f || 'none'); }
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -92,6 +139,7 @@ const ACT = {
         ${resBar()}
         ${run ? `<button class="wide cont" data-act="cont">${ic('play')}이어하기 <small>${runLabel(run)}</small></button>` : ''}
         <button class="wide${run ? ' sec' : ''}" data-act="branches">${ic('play')}${run ? '새로 출격' : '출격'}</button>
+        <div class="tgrid two"><button class="wide sec" data-act="coop">${ic('hand')}2인 협동</button><button class="wide sec" data-act="rank">${ic('medal')}랭킹</button></div>
         <div class="hq">
           <div class="hqr${can ? ' can' : ' got'}"><span><b>출석 ${can ? `${meta.att.n % M.ATTEND.length + 1}일차` : '완료'}</b>${can ? M.rewardText(ar) : `다음 보상 · ${M.rewardText(ar)}`}</span><button class="btn gold" data-act="attend" ${can ? '' : 'disabled'}>${can ? '받기' : '내일'}</button></div>
           ${ds.map(m => `<div class="hqr${m.got ? ' got' : m.done ? ' can' : ''}"><span><b>일일</b>${m.text} <em>${m.cur}/${m.need}</em></span><button class="btn gold" data-act="dclaim" data-arg="${m.id}" ${m.done && !m.got ? '' : 'disabled'}>${m.got ? '완료' : `${ic('ticket')}${dr.t} ${ic('medal')}${dr.m}`}</button></div>`).join('')}
@@ -139,9 +187,67 @@ const ACT = {
   },
   resume() { hide(); },
   mute(back) { meta.mute = !meta.mute; saveMeta(); Sound.setMuted(meta.mute); if (!meta.mute) Sound.play('summon'); ACT[back](); },
-  quit() { g = null; $('app').classList.remove('sel'); ACT.title(); },
+  quit() { coopLeave(); g = null; $('app').classList.remove('sel'); ACT.title(); },
   leave() { saveRun(); ACT.quit(); },                                             // 저장하고 나가기 → 처음 화면의 '이어하기'로 돌아올 수 있다
-  giveup() { g.over = { win: false, reason: '작전을 포기했습니다' }; hide(); },   // 포기 → 지금까지의 기록으로 결과 화면
+  giveup() { coopLeave(); g.over = { win: false, reason: '작전을 포기했습니다' }; hide(); },      // 협동이면 연결을 끊고 나온다(동료는 혼자 이어간다)   // 포기 → 지금까지의 기록으로 결과 화면
+  // ── 2인 협동 대기실 ──
+  async coop(msg) {
+    M.ensureId(meta); if (!meta.lastBranch) meta.lastBranch = BRANCHES[0].id; saveMeta(); if (coop && !g) coopLeave();
+    const b = myBranch(), on = await Net.on(), busy = msg === '연결하는 중…';
+    show(`<h2>2인 협동</h2><p class="sub">두 사람이 각자의 전장에서 같은 단계를 함께 막습니다 · 행동력 1</p>
+      <div class="list"><p>· 내 전장을 <b>한 바퀴 돌 때까지 못 잡은 적</b>은 동료의 전장으로 넘어갑니다. 동료가 못 잡으면 다시 돌아옵니다.</p>
+        <p>· 어느 한쪽이든 무너지면 <b>함께 패배</b>하고, 두 전장을 모두 비우면 승리합니다. 훈장 ${M.COOP_MEDAL}배.</p>
+        <p>· 군자금을 보내거나 한마디를 건넬 수 있습니다. 배속은 방장이 정합니다(기본 ×2). 중간 저장은 되지 않습니다.</p></div>
+      <h3>내 군별</h3><div class="tabs">${BRANCHES.map(x => `<button class="${x.id === b.id ? 'on' : ''}" data-act="cobranch" data-arg="${x.id}">${x.name}</button>`).join('')}</div>
+      <h3>별명 (동료와 랭킹에 보입니다)</h3><div class="namerow"><input id="nm" maxlength="10" value="${esc(meta.name)}" autocomplete="off"><button class="btn" data-act="setname" data-arg="coop">저장</button></div>
+      <p class="note cmmsg">${on ? msg || '빠른 매칭은 기다리는 사람과 바로 이어 줍니다' : '서버가 아직 연결되지 않아 협동을 할 수 없습니다 (서버 배포 대기)'}</p>
+      <button class="wide" data-act="comatch" ${on && !busy ? '' : 'disabled'}>빠른 매칭</button>
+      <button class="wide sec" data-act="comake" ${on && !busy ? '' : 'disabled'}>방 만들기</button>
+      <div class="namerow" style="margin-top:1.1rem"><input id="rc" inputmode="numeric" maxlength="4" placeholder="방 번호 4자리" autocomplete="off"><button class="btn" data-act="cojoin" ${on && !busy ? '' : 'disabled'}>참가</button></div>
+      <button class="wide sec" data-act="title">뒤로</button>`);
+  },
+  cobranch(id) { if (BRANCHES.some(x => x.id === id)) { meta.lastBranch = id; saveMeta(); } ACT.coop(); },
+  setname(back) { const el = document.getElementById('nm'), v = M.cleanName(el && el.value); if (v.length < 2) return toast('별명은 두 글자 이상으로 정하세요'); meta.name = v; saveMeta(); toast('별명을 저장했습니다'); ACT[back](); },
+  comatch() { coopJoin(() => Net.match()); },
+  comake() { coopJoin(() => Net.createRoom()); },
+  cojoin() { const v = (document.getElementById('rc').value || '').trim(); if (!/^\d{4}$/.test(v)) return toast('방 번호 네 자리를 입력하세요'); coopJoin(async () => ({ code: v })); },
+  cowait() {
+    show(`<h2>2인 협동</h2><p class="sub">방 번호 — 동료에게 알려 주세요</p><div class="roomcode">${coop.code}</div>
+      <p class="note cmmsg">${coop.peer ? `${esc(coop.peer.name)} 입장 — 곧 시작합니다` : '동료를 기다리는 중…'}</p>
+      <button class="wide sec" data-act="coop">취소</button>`);
+  },
+  // 전투 중 협동 창: 동료 상태 · 군자금 보내기 · 한마디
+  cosheet() {
+    if (!g || !g.coop || !coop) return;
+    const cost = C.summonCost(g.branch, g.camp, meta), pb = BRANCHES.find(x => x.id === coop.peer.branch), st = coop.stat, ok = linked() && !g.over;
+    show(`${sheetHead('2인 협동', `${esc(coop.peer.name)}${pb ? ' · ' + pb.name : ''} · 방 ${coop.code}${coop.host ? ' · 내가 방장' : ''}`)}
+      <div class="list"><p>${ok ? `동료 전장 — 적 <b>${st ? st.e : '?'}/${C.CFG.enemyLimit}</b> · ${st ? st.w : '?'}단계` : '<b>연결이 끊겼습니다</b> — 혼자 이어가는 중'}</p><p>내가 넘긴 적 <b>${g.coop.sent}</b> · 넘겨받은 적 <b>${g.coop.got}</b></p></div>
+      <div class="up"><div><b>군자금 보내기</b><br>신병 한 명 값을 동료에게 보냅니다</div><button class="btn gold" data-act="cogift" ${ok && g.gold >= cost ? '' : 'disabled'}>${ic('coin')}${fmt(cost)}</button></div>
+      <div class="emotes">${EMOTES.map((t, i) => `<button class="btn" data-act="coemote" data-arg="${i}" ${ok ? '' : 'disabled'}>${t}</button>`).join('')}</div>
+      <div class="sfoot"><div class="pill gold">${ic('coin')}<b>${fmt(g.gold)}</b></div><button class="btn primary" data-act="resume">전장으로</button></div>`, true);
+  },
+  cogift() { const cost = C.summonCost(g.branch, g.camp, meta); if (!linked() || g.over || g.gold < cost) return; g.gold -= cost; coop.conn.send({ t: 'gold', n: cost }); Sound.play('camp'); toast(`군자금 ${fmt(cost)}을(를) 보냈습니다`); ACT.cosheet(); },
+  coemote(i) { if (!linked()) return; coop.conn.send({ t: 'emote', i: +i }); hide(); toast(`나: ${EMOTES[+i]}`); },
+  // ── 랭킹 ── arg = '판 이름|주간(1)·전체(0)'
+  async rank(arg) {
+    M.ensureId(meta); saveMeta();
+    const [board, wk] = (typeof arg === 'string' && arg.includes('|') ? arg : 'normal-0|1').split('|'), week = wk === '1', req = ++rankReq, unit = board === 'rush' ? '마리' : '단계';
+    const page = body => show(`<h2>랭킹</h2>
+      <div class="tabs t3">${M.RANK_BOARDS.map(([k, n]) => `<button class="${k === board ? 'on' : ''}" data-act="rank" data-arg="${k}|${wk}">${n}</button>`).join('')}</div>
+      <div class="tabs t2"><button class="${week ? 'on' : ''}" data-act="rank" data-arg="${board}|1">이번 주</button><button class="${week ? '' : 'on'}" data-act="rank" data-arg="${board}|0">전체</button></div>
+      ${body}
+      <h3>내 별명</h3><div class="namerow"><input id="nm" maxlength="10" value="${esc(meta.name)}" autocomplete="off"><button class="btn" data-act="setname" data-arg="rank">저장</button></div>
+      <p class="sub" style="margin:.8rem 0 0">판을 마치면 기록이 자동으로 올라갑니다. 점수가 같으면 빨리 끝낸 쪽이 위입니다. 별명은 다음 기록부터 반영됩니다</p>
+      <button class="wide sec" data-act="title">뒤로</button>`);
+    page('<p class="note cmmsg">불러오는 중…</p>');
+    try {
+      if (!(await Net.on())) { if (req === rankReq) page('<p class="note cmmsg">서버가 아직 연결되지 않아 랭킹을 볼 수 없습니다 (서버 배포 대기)</p>'); return; }
+      const r = await Net.rank(board, week, meta.uid); if (req !== rankReq || !overlay.querySelector('.tabs.t3')) return;
+      page(`${r.top.length ? `<div class="rks">${r.top.map((e, i) => { const eb = BRANCHES.find(x => x.id === e.branch);
+        return `<div class="rk${e.me ? ' me' : ''}"><i class="${i < 3 ? 'top' : ''}">${i + 1}</i><span>${esc(e.name)}</span><small>${eb ? eb.name : ''}</small><b>${e.score}${unit}</b></div>`; }).join('')}</div>` : '<p class="note cmmsg">아직 기록이 없습니다 — 첫 기록을 남겨 보세요</p>'}
+        <p class="sub" style="margin:.8rem 0 0">${r.rank ? `내 순위 ${r.rank}위` : '내 기록 없음'} · 상위 ${r.top.length}명 표시</p>`);
+    } catch { if (req === rankReq) page('<p class="note cmmsg">랭킹을 불러오지 못했습니다 — 연결을 확인하세요</p>'); }
+  },
   // ── 작전 본부의 화면들 ──
   attend() { const r = M.attend(meta, today(), rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.title(); toast(`출석 보상 — ${M.rewardText(r.reward)}${r.cms.length ? ` (${r.cms.map(c => c.name).join(', ')})` : ''}`, 2600); } },
   dclaim(id) { const r = M.dailyClaim(meta, today(), id, rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.title(); toast(`일일 임무 보상 — ${M.rewardText(r)}`, 2200); } },
@@ -267,6 +373,8 @@ const ACT = {
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>작전 본부</b> — 처음 화면입니다. <b>출석</b>과 <b>일일 임무</b>로 훈장·뽑기 티켓을 받고, <b>부대 표창</b>(모든 판에 적용되는 영구 효과), <b>병과 숙련도</b>(판을 마치면 싸운 병과에 경험치), <b>보급 뽑기판</b>(티켓으로 칸 뒤집기), <b>영구 강화</b>로 부대를 키웁니다.</p>
+      <p><b>2인 협동</b> — 본부의 <b>2인 협동</b>에서 빠른 매칭을 하거나 방 번호로 만납니다. 각자의 전장에서 싸우고, 내 전장을 한 바퀴 돌 때까지 못 잡은 적은 동료에게 넘어갑니다. 한쪽이 무너지면 함께 집니다.</p>
+      <p><b>랭킹</b> — 판을 마치면 기록이 자동으로 올라갑니다(이번 주 · 전체). 별명은 랭킹 화면에서 바꿉니다.</p>
       <p><b>행동력</b> — 한 판을 시작할 때 1이 듭니다(이어하기는 들지 않음). 1시간에 1씩 차고 최대 ${M.ENERGY.max}까지 모입니다. 광고나 보석으로 더 받을 수 있습니다.</p>
       <p><b>보급 상점</b> — 광고를 끝까지 보면 보석·행동력·티켓을 받습니다(하루 횟수 제한). 보석으로 행동력·티켓·훈장·스킨을 사고 고급 보급 상자(표창·스킨)를 엽니다. 상자의 확률은 상점에 적혀 있습니다.</p>
       <p><b>작전 종류</b> — <b>기본 작전</b>(100단계) · <b>무한 작전</b>(100단계를 넘어 끝없이, ${C.MODES[1].need}단계 도달 시 열림) · <b>보스 러시</b>(보스 10종만 연달아, ${C.MODES[2].need}단계 도달 시 열림). 출격 화면에서 고릅니다.</p>
@@ -323,8 +431,8 @@ const ACT = {
       <button class="wide" data-act="resume">${ic('play')}계속하기</button>
       <button class="wide sec" data-act="missions">${ic('list')}임무</button><button class="wide sec" data-act="codex">${ic('book')}조합 도감</button><button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
       <button class="wide sec" data-act="mute" data-arg="menu">${ic('sound')}소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
-      <button class="wide sec" data-act="leave">${ic('exit')}저장하고 나가기</button>
-      <button class="wide sec danger" data-act="giveup">포기하고 결과 보기</button>`, true); paused = true; saveRun();
+      ${g.coop ? '' : `<button class="wide sec" data-act="leave">${ic('exit')}저장하고 나가기</button>`}
+      <button class="wide sec danger" data-act="giveup">${g.coop ? '협동에서 나가기 (결과 보기)' : '포기하고 결과 보기'}</button>`, true); paused = true; saveRun();
   },
   // 조합 도감: 그림으로 보는 조합 결과 · 병과와 병기 · 계급장 · 히든 계급 · 지역 보스
   codex() {
@@ -371,25 +479,30 @@ const ACT = {
       <button class="wide" data-act="resume">전장으로</button>`);
   },
   result() {
-    const medals = C.medalsFor(g), b = g.branch, d = g.diff || 0, mode = g.mode, best = M.bestMap(meta, mode, d), nextWasOpen = d + 1 < C.DIFFS.length && diffOpen(d + 1);
+    const medals = Math.floor(C.medalsFor(g) * (g.coop ? M.COOP_MEDAL : 1)), b = g.branch, d = g.diff || 0, mode = g.mode, best = M.bestMap(meta, g.coop ? 'coop' : mode, d), nextWasOpen = d + 1 < C.DIFFS.length && diffOpen(d + 1);
     const modesBefore = C.MODES.map(m => M.modeOpen(meta, m.id)), rec = C.reached(g), newBest = rec > (best[b.id] || 0), tickets = M.runTickets(g);
     // 판을 마친 보상: 훈장 · 뽑기 티켓 · 병과 숙련 경험치 · 일일 임무 진행 · 최고 기록
     meta.medals += medals; meta.tickets += tickets; best[b.id] = Math.max(best[b.id] || 0, rec);
     const gains = M.addRunXp(meta, g); M.dailyRecord(meta, today(), g); meta.runs++; meta.lastBranch = b.id; saveMeta(); clearRun();
     const opened = d + 1 < C.DIFFS.length && !nextWasOpen && diffOpen(d + 1), modesOpened = C.MODES.filter((m, i) => !modesBefore[i] && M.modeOpen(meta, m.id));
-    g.res = { medals, tickets, gains, opened, modesOpened, newBest, rec, doubled: false }; g.reported = true;
+    g.res = { medals, tickets, gains, opened, modesOpened, newBest, rec, doubled: false, rank: null }; g.reported = true;
     Sound.play(g.over.win ? 'win' : 'lose'); ACT.resultView();
+    // 랭킹에 올린다(서버가 연결돼 있을 때). 순위가 오면 결과 화면에 적는다
+    if (rec >= 1) { M.ensureId(meta); saveMeta(); const run = g;
+      Net.on().then(on => on && Net.submit({ board: M.rankBoard(run), id: meta.uid, name: meta.name, score: rec, time: Math.round(run.time), branch: b.id }))
+        .then(r => { if (r && r.rank && g === run) { run.res.rank = r.rank; if (overlay.classList.contains('on') && overlay.querySelector('.resbox')) ACT.resultView(); } }).catch(() => {}); }
   },
   // 광고를 보면 이번 판 훈장을 한 번 더 받는다
   adx2() { if (!g || !g.res || g.res.doubled) return; watchAd(() => { g.res.doubled = true; meta.medals += g.res.medals; saveMeta(); Sound.play('merge'); ACT.resultView(); }); },
   resultView() {
-    const b = g.branch, d = g.diff || 0, mode = g.mode, { medals, tickets, gains, opened, modesOpened, newBest, rec, doubled } = g.res;
+    const b = g.branch, d = g.diff || 0, mode = g.mode, { medals, tickets, gains, opened, modesOpened, newBest, rec, doubled, rank } = g.res;
     // 최우수 유닛(누적 피해 1위)과 병과별 피해 비율
     const mvp = g.units.filter(Boolean).sort((x, y) => y.dealt - x.dealt)[0], tot = g.dealt || 1;
     const shares = CLASS_IDS.map(c => [c, g.dmg[c] / tot]).filter(x => x[1] > 0.005);
     show(`<h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
-      <div class="card" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${b.name}</b>${mode !== 'normal' ? ` · ${C.MODES.find(m => m.id === mode).name}` : ''}${d ? ` · ${C.DIFFS[d].name}` : ''} · ${mode === 'rush' ? `격파한 보스 ${rec}/${C.AREAS.length}` : `도달 ${g.wave}단계`} · 처치 ${g.kills}${newBest ? ' · <b class="nb">최고 기록!</b>' : ''}</p>
-        <p>${ic('medal')}훈장 <b>+${medals * (doubled ? 2 : 1)}</b>${doubled ? ' (광고 2배)' : d ? ` (${C.DIFFS[d].name} ${C.DIFFS[d].medal}배)` : ''} · ${ic('ticket')}뽑기 티켓 <b>+${tickets}</b></p></div></div>
+      <div class="card resbox" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${b.name}</b>${g.coop ? ' · 2인 협동' : ''}${mode !== 'normal' ? ` · ${C.MODES.find(m => m.id === mode).name}` : ''}${d ? ` · ${C.DIFFS[d].name}` : ''} · ${mode === 'rush' ? `격파한 보스 ${rec}/${C.AREAS.length}` : `도달 ${g.wave}단계`} · 처치 ${g.kills}${newBest ? ' · <b class="nb">최고 기록!</b>' : ''}</p>
+        <p>${ic('medal')}훈장 <b>+${medals * (doubled ? 2 : 1)}</b>${doubled ? ' (광고 2배)' : g.coop ? ` (협동 ${M.COOP_MEDAL}배)` : d ? ` (${C.DIFFS[d].name} ${C.DIFFS[d].medal}배)` : ''} · ${ic('ticket')}뽑기 티켓 <b>+${tickets}</b></p>
+        ${rank ? `<p>랭킹 · 이번 주 <b>${rank.week ? rank.week + '위' : '100위 밖'}</b> · 전체 <b>${rank.all ? rank.all + '위' : '100위 밖'}</b></p>` : ''}</div></div>
       ${medals > 0 && !doubled ? `<button class="wide sec adx" data-act="adx2">${ic('play')}광고 보고 훈장 한 번 더 <b>+${medals}</b></button>` : ''}
       ${opened ? `<p class="note star" style="text-align:center;font-size:1.4rem">🔓 <b>${C.DIFFS[d + 1].name}</b> 난이도가 열렸습니다</p>` : ''}
       ${modesOpened.map(m => `<p class="note star" style="text-align:center;font-size:1.4rem">🔓 <b>${m.name}</b>이(가) 열렸습니다</p>`).join('')}
@@ -398,7 +511,7 @@ const ACT = {
         <div><small>최우수 유닛</small><b>${C.unitName(b, mvp)}</b><span>누적 피해 ${fmt(mvp.dealt)} · 전체의 ${Math.round(mvp.dealt / tot * 100)}%</span></div></div>
       <div class="share">${shares.map(([c, v]) => `<i style="flex:${v};background:${CLASS_INFO[c].color}">${v > 0.09 ? `${CLASS_INFO[c].short} ${Math.round(v * 100)}%` : ''}</i>`).join('')}</div>
       <p class="sub" style="margin:.5rem 0 0">병과별 피해 비율 · 전체 피해 ${fmt(g.dealt)}</p>` : ''}
-      <button class="wide" data-act="start" data-arg="${b.id}">다시 도전</button>
+      ${g.coop ? '<button class="wide" data-act="coop">다시 협동</button>' : `<button class="wide" data-act="start" data-arg="${b.id}">다시 도전</button>`}
       <button class="wide sec" data-act="quit">작전 본부로</button>`);
   },
 };
@@ -447,8 +560,11 @@ $('b-up').onclick = () => g && ACT.upg();
 $('b-mission').onclick = () => g && ACT.missions();
 $('b-elite').onclick = () => { if (g && C.callElite(g)) { toast(`특수 임무 — ${C.CFG.eliteTime}초 안에 정예 표적을 격파하라`); Sound.play('boss'); } };
 $('b-menu').onclick = () => g && ACT.menu();
-$('b-speed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; $('b-speed').textContent = '×' + speed; };
-document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over) { saveRun(); if (!paused) ACT.menu(); } });
+function setSpeed(v) { speed = v; $('b-speed').textContent = '×' + v; }
+$('b-speed').onclick = () => { if (linked() && !coop.host) return toast('협동에서는 방장이 배속을 정합니다');
+  setSpeed(speed === 1 ? 2 : speed === 2 ? 4 : 1); if (linked()) coop.conn.send({ t: 'speed', v: speed }); };
+$('b-coop').onclick = () => g && g.coop && coop && ACT.cosheet();
+document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over && !linked()) { saveRun(); if (!paused) ACT.menu(); } });      // 협동 중에는 멈추지 않는다
 window.addEventListener('pagehide', () => { if (g && !g.over) saveRun(); });
 
 // ── 표시 갱신 ───────────────────────────────────────────
@@ -525,7 +641,9 @@ function renderHud() {
   put('t-camp', `훈련소 Lv${g.camp + 1}`); put('c-camp', maxed ? '최대' : fmt(cc));
   // 주둔지 위 한 줄 안내: 다음 단계와 이 지역 보스
   const nw = g.wave < maxW ? C.waveOf(g, g.wave + 1) : null, ar = C.AREAS[g.area], bossAt = bossLabel();
-  put('t-info', !nw ? '마지막 단계입니다' : rush ? `다음 보스 ${g.wave + 1}/${maxW} · ${nw.name}` : `다음 ${g.wave + 1}단계 ${nw.name} ${nw.count}기 · ${bossAt} ${ar.boss.name}`);
+  const co = !!(g.coop && coop); if (hudVal.co !== co) { hudVal.co = co; $('b-coop').hidden = !co; }
+  if (linked() && coop.stat) put('t-info', `동료 ${coop.peer.name} · 적 ${coop.stat.e}/${lim} · ${coop.stat.w}단계`);
+  else put('t-info', !nw ? '마지막 단계입니다' : rush ? `다음 보스 ${g.wave + 1}/${maxW} · ${nw.name}` : `다음 ${g.wave + 1}단계 ${nw.name} ${nw.count}기 · ${bossAt} ${ar.boss.name}`);
   // 주둔지 땅과 건물 판은 지금 지역의 전장과 같은 색
   if (hudVal.area !== g.area + bossAt) { hudVal.area = g.area + bossAt; const col = areaColors(g.area), st = $('app').style; st.setProperty('--g1', col.ground[0]); st.setProperty('--g2', col.ground[1]); st.setProperty('--p1', col.pad[0]); st.setProperty('--p3', col.pad[3]);
     // 이 지역 보스 안내 (세로로 긴 화면에서만 보인다)
@@ -543,8 +661,9 @@ function renderHud() {
 function frame(now) {
   requestAnimationFrame(frame);
   if (!g) return;
-  if (!paused && !g.over) {
-    const real = Math.min(0.1, (now - last) / 1000);
+  const lk = linked();
+  if ((!paused || lk) && !g.over) {      // 협동 중에는 창을 열어도 멈추지 않고, 화면이 잠깐 가려졌다 돌아오면 그동안(최대 20초)을 한꺼번에 따라잡는다
+    const real = Math.min(lk ? 20 : 0.1, (now - last) / 1000);
     // 지역 이동 연출: 알림이 뜨는 동안 잠깐 멈췄다가(hold) 다시 진행한다
     if (ui.trans) { ui.trans.t -= real; if (ui.trans.t <= 0) ui.trans = null; }
     if (hold > 0) hold -= real;
@@ -556,10 +675,17 @@ function frame(now) {
     if (frameMs > 28) { slowT += now - last; if (slowT > 2500 && view.quality > 0) { view.setQuality(view.quality - 1); slowT = 0; frameMs = 16; } } else slowT = 0;
   }
   last = now;
+  // 협동: 넘어가는 적과 내 전장 상태를 동료에게 보낸다. 두 전장이 모두 비면 승리, 끝나면 알린다
+  if (g.coop && coop && !coop.dead && coop.conn) {
+    for (const d of g.coop.out.splice(0)) coop.conn.send({ t: 'xfer', ...d });
+    if (now - coop.statT > 1000) { coop.statT = now; coop.conn.send({ t: 'stat', e: g.enemies.length, w: g.wave, c: C.fieldClear(g) }); }
+    if (!g.over && g.coop.linked && C.fieldClear(g) && coop.stat && coop.stat.c) g.over = { win: true, reason: '협동 작전 성공!' };
+    if (g.over && !coop.sentOver) { coop.sentOver = true; coop.conn.send({ t: 'over', win: !!g.over.win }); }
+  }
   // 소리: 사격음은 프레임당 몇 개만, 웨이브 시작·보스 등장은 기록을 보고 낸다
   for (const s of g.sfx.splice(0)) Sound.play(s);
   for (; logAt < g.log.length; logAt++) { const l = g.log[logAt];
-    if (l.t === 'wave') { const boss = C.waveOf(g, l.wave).kind === 'boss'; saveRun(); Sound.play(boss ? 'boss' : 'wave'); if (boss) toast(`보스 출현 — ${C.AREAS[g.area].boss.text}`, 3200); }
+    if (l.t === 'wave') { const boss = C.waveOf(g, l.wave).kind === 'boss'; saveRun(); if (lk && coop.host) coop.conn.send({ t: 'wave', n: l.wave }); Sound.play(boss ? 'boss' : 'wave'); if (boss) toast(`보스 출현 — ${C.AREAS[g.area].boss.text}`, 3200); }
     else if (l.t === 'rush') toast(`보스 격파! 다음 지역으로 — 군자금 +${fmt(l.gold)} · 보급품 +${l.sup}`, 2600);
     else if (l.t === 'area') { ui.trans = { t: 2.6, total: 2.6, area: l.area, label: `${bossLabel()} — ${C.AREAS[l.area].boss.name}` }; hold = 1.3; ui.sel = ui.target = null; infoKey = '';
       for (const u of g.units) if (u) u.flash = 0.9; Sound.play('hidden'); }

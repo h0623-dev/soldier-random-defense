@@ -4,4 +4,6 @@
     <string name="title_activity_main">군인 랜덤 디펜스</string>
     <string name="package_name">com.steey.soldierdefense</string>
     <string name="custom_url_scheme">com.steey.soldierdefense</string>
+    <!-- AdMob 앱 ID: 구글 공개 시험용 값. 출시 전에 AdMob 계정에서 만든 앱 ID(ca-app-pub-…~…)로 바꾼다. 광고 단위 ID는 www/js/monetize.js -->
+    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
 </resources>

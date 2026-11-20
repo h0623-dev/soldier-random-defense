@@ -353,6 +353,30 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   const s = M.fillMeta({ gems: 300 }); assert.equal(M.skinOf(s).id, 'base'); assert.equal(M.useSkin(s, 'desert'), false); assert.equal(M.buySkin(s, 'gold'), false); assert.equal(M.buySkin(s, 'desert'), true); assert.equal(s.gems, 0);
   assert.equal(M.buySkin(s, 'desert'), false); assert.equal(M.useSkin(s, 'desert'), true); assert.equal(M.skinOf(s).filter, M.SKINS[1].filter); assert.equal(M.fillMeta({ skins: { own: {}, on: 'nope' } }).skins.on, 'base');
 }
+// 3-14) 2인 협동: 한 바퀴를 돈 적은 동료에게 넘어가고, 넘어온 적을 받는다. 손님은 방장이 알릴 때 단계를 시작한다
+{
+  const mk = (seed, ext) => { const g = C.createGame({ branchId: 'army', seed, fx: false, coop: true }); g.coop.linked = true; g.coop.ext = ext; return g; };
+  const host = mk(1, false), guest = mk(2, true);
+  assert.equal(C.saveGame(host), null, '협동 판은 저장하지 않는다'); assert.equal(C.createGame({ branchId: 'army', seed: 1, fx: false }).coop, null);
+  for (let i = 0; i < 400; i++) { C.step(host, 0.05); C.step(guest, 0.05); }      // 20초
+  assert.equal(host.wave, 1); assert.equal(guest.wave, 0, '손님은 스스로 단계를 시작하지 않는다'); C.startWaveTo(guest, host.wave); assert.equal(guest.wave, 1);
+  // 유닛이 없으면 적이 한 바퀴 돌고 동료에게 넘어간다. 넘어간 적은 내 전장에서 사라지고 처치로 세지 않는다
+  for (let i = 0; i < 20 * 50; i++) C.step(host, 0.05);
+  assert.ok(host.coop.out.length > 0 && host.coop.sent === host.coop.out.length); assert.equal(host.kills, 0); const d = host.coop.out[0]; assert.equal(d.k, 'normal'); assert.ok(d.hp > 0 && d.mx >= d.hp);
+  const n0 = guest.enemies.length; assert.equal(C.receiveEnemy(guest, JSON.parse(JSON.stringify(d))), true); assert.equal(guest.enemies.length, n0 + 1); assert.equal(guest.enemies.at(-1).s, 0); assert.equal(guest.coop.got, 1);
+  assert.equal(C.receiveEnemy(guest, { k: 'elite', hp: 1, mx: 1, sp: 50 }), false); assert.equal(C.receiveEnemy(guest, { k: 'normal', hp: -1, mx: 1, sp: 50 }), false); assert.equal(C.receiveEnemy(guest, { k: 'normal', hp: 5, mx: 5, sp: 9999 }), false);
+  const boss = { k: 'boss', hp: 100, mx: 200, sp: 48, bo: 3, bs: 3, fl: 0 }; C.receiveEnemy(guest, boss); assert.equal(guest.enemies.at(-1).skill.id, C.AREAS[2].boss.skill.id); assert.ok(guest.bossTimer >= 10);
+  // 이어져 있는 동안에는 혼자 이기지 않는다. 끊기면 혼자 하는 판처럼 돈다(적이 넘어가지 않고 계속 돈다)
+  const w = mk(3, false); w.wave = 100; w.spawn = { left: 0 }; C.step(w, 0.05); assert.equal(w.over, null); assert.equal(C.fieldClear(w), true); w.coop.linked = false; C.step(w, 0.05); assert.equal(w.over.win, true);
+  const solo = mk(4, false); solo.coop.linked = false; for (let i = 0; i < 20 * 80; i++) C.step(solo, 0.05); assert.equal(solo.coop.out.length, 0); assert.ok(solo.enemies.length > 0);
+  // 두 전장을 이어 돌려도 적 수가 보존된다(넘긴 수 = 받은 수)
+  const A = mk(5, false), B = mk(6, true); A.gold = B.gold = 400; for (let i = 0; i < 8; i++) { C.summon(A); C.summon(B); }
+  for (let i = 0; i < 20 * 150; i++) { C.step(A, 0.05); if (B.wave < A.wave) C.startWaveTo(B, A.wave); C.step(B, 0.05);
+    for (const x of A.coop.out.splice(0)) C.receiveEnemy(B, x); for (const x of B.coop.out.splice(0)) C.receiveEnemy(A, x); }
+  assert.equal(A.wave, B.wave); assert.equal(A.coop.sent, B.coop.got); assert.equal(B.coop.sent, A.coop.got); assert.ok(A.kills + B.kills > 20);
+  assert.equal(M.rankBoard(A), 'coop'); assert.equal(M.rankBoard({ mode: 'normal', diff: 2 }), 'normal-2'); assert.equal(M.rankBoard({ mode: 'rush' }), 'rush');
+  const m = M.ensureId(M.fillMeta({})); assert.equal(m.uid.length, 20); assert.match(m.name, /^병사\d{4}$/); assert.equal(M.ensureId(m).uid, m.uid); assert.equal(M.cleanName(' <b>가나다라마바사아자차카</b> '), 'b가나다라마바사아자');
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;

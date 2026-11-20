@@ -236,3 +236,14 @@ img.u { filter: var(--skin, none); }
 #fakead { position: fixed; inset: 0; z-index: 99; background: rgba(10,10,14,.94); display: flex; align-items: center; justify-content: center; color: #fff; text-align: center; }
 #fakead > div { display: grid; gap: 1.4rem; padding: 2rem; } #fakead small { font-size: 1.2rem; color: #ffd45e; } #fakead b { font-size: 3.4rem; font-weight: 900; } #fakead p { margin: 0; font-size: 1.5rem; }
 #fakead button { height: 5rem; padding: 0 2rem; border-radius: 1.5rem; border: 0.2rem solid #fff; background: transparent; color: #fff; font-size: 1.4rem; font-weight: 800; } #fakead button.ok { background: var(--green); color: #12300f; border-color: var(--ink); }
+/* ── 2인 협동 · 랭킹 ── */
+.tmenu .tgrid.two .wide.sec { height: 4.8rem; font-size: 1.5rem; margin-top: 0.9rem; }
+.namerow { display: flex; gap: 0.7rem; align-items: center; } .namerow input { flex: 1; min-width: 0; height: 4.4rem; padding: 0 1.1rem; border: var(--ln); border-radius: 1.3rem; background: #fff; font: inherit; font-size: 1.6rem; font-weight: 800; color: var(--ink); }
+.namerow .btn { height: 4.4rem; background: var(--paper); border: var(--ln); box-shadow: 0 0.3rem 0 var(--ink); }
+.roomcode { text-align: center; font-size: 7rem; font-weight: 900; letter-spacing: 0.8rem; margin: 0.5rem 0 1rem; color: var(--ink); }
+.emotes { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.8rem 0; } .emotes .btn { background: var(--paper); border: var(--ln); box-shadow: 0 0.3rem 0 var(--ink); }
+.tabs.t3 { grid-template-columns: repeat(3, 1fr); } .tabs.t2 { grid-template-columns: repeat(2, 1fr); }
+.rks { border: var(--ln); border-radius: 1.4rem; overflow: hidden; background: var(--paper); } .rk { display: flex; align-items: center; gap: 0.8rem; padding: 0.7rem 1.1rem; border-top: 0.15rem solid #e3d0a4; font-size: 1.35rem; } .rk:first-child { border-top: 0; }
+.rk i { font-style: normal; width: 2.6rem; height: 2.6rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; background: var(--sand); flex: none; } .rk i.top { background: var(--yellow); border: 0.15rem solid var(--ink); }
+.rk span { flex: 1; min-width: 0; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rk small { color: var(--mute); font-size: 1.1rem; } .rk b { font-weight: 900; color: #b96a00; } .rk.me { background: #fff3c9; }
+#b-coop { margin-right: 0.5rem; }
