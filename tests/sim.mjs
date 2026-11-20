@@ -324,6 +324,35 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   assert.equal(M.runXp({ mode: 'normal', wave: 51, diff: 1, over: { win: false } }), 800); assert.equal(M.runXp({ mode: 'rush', bossKills: 4, diff: 0 }), 400);
   const old = M.fillMeta({ medals: 9, best: { army: 12 }, found: { wonsa: 1 } }); assert.equal(old.medals, 9); assert.deepEqual(old.xp, {}); assert.deepEqual(old.daily, { date: '', prog: {}, got: {} });      // 예전 저장도 그대로 읽는다
 }
+// 3-13) 행동력 · 보상형 광고 · 보석 상점 · 고급 보급 상자 · 스킨
+{
+  let seed = 3; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const H = M.ENERGY.regenMs, t0 = 1e12, m = M.fillMeta({});
+  assert.equal(M.ENERGY.max, 10); assert.equal(H, 3600e3); assert.equal(M.energyNow(m, t0), 10); assert.equal(M.energyWait(m, t0), 0);
+  for (let i = 0; i < 10; i++) assert.equal(M.spendEnergy(m, t0), true); assert.equal(M.spendEnergy(m, t0), false); assert.equal(M.energyNow(m, t0), 0);      // 10판
+  assert.equal(M.energyWait(m, t0 + 600e3), H - 600e3); assert.equal(M.energyNow(m, t0 + H - 1), 0); assert.equal(M.energyNow(m, t0 + H), 1); assert.equal(M.energyNow(m, t0 + 3.5 * H), 3);      // 1시간에 1
+  assert.equal(M.energyWait(m, t0 + 3.5 * H), H / 2); assert.equal(M.energyNow(m, t0 + 99 * H), 10); assert.equal(M.energyNow(m, t0 + 200 * H), 10);      // 최대 10
+  M.addEnergy(m, 3, t0 + 200 * H); assert.equal(M.energyNow(m, t0 + 201 * H), 13);      // 광고·보석으로 받은 것은 최대를 넘겨 쌓인다
+  M.spendEnergy(m, t0 + 201 * H); assert.equal(m.energy.n, 12); assert.equal(M.energyNow(m, t0 + 300 * H), 12);
+  const b = M.fillMeta({ energy: { n: 2, t: t0 } }); assert.equal(M.energyNow(b, t0 - 5 * H), 2); assert.equal(M.energyNow(b, t0 - 5 * H + H), 3);      // 시계가 뒤로 가면 그때부터 다시 센다
+  // 광고: 자리마다 하루 횟수 제한
+  const a = M.fillMeta({}); assert.equal(M.adLeft(a, 'd1', 'gem'), 5);
+  for (let i = 0; i < 5; i++) assert.deepEqual(M.adReward(a, 'd1', 'gem', t0), { g: 10 }); assert.equal(M.adReward(a, 'd1', 'gem', t0), null); assert.equal(a.gems, 50); assert.equal(M.adLeft(a, 'd1', 'ticket'), 3);
+  assert.equal(M.adLeft(a, 'd2', 'gem'), 5); M.adReward(a, 'd2', 'energy', t0); assert.equal(a.energy.n, 11); assert.equal(M.adLeft(a, 'd2', 'double'), Infinity);
+  // 보석 상점
+  a.gems = 100; assert.ok(M.buyGem(a, 'medal30', t0)); assert.equal(a.gems, 60); assert.equal(a.medals, 30); assert.ok(M.buyGem(a, 'ticket5', t0)); assert.equal(M.buyGem(a, 'ticket5', t0), null); assert.equal(a.tickets, 5);
+  // 고급 보급 상자: 보석이 모자라면 못 열고, 확률의 합은 1, 스킨은 약 4%, 다 가진 것은 환급
+  const g = M.fillMeta({ gems: 29 }); assert.equal(M.pull(g, 1, rand), null); g.gems = M.PULL.cost + M.PULL.cost10;
+  assert.equal(M.pull(g, 1, rand).length, 1); assert.equal(M.pull(g, 10, rand).length, 10); assert.equal(g.gems, 0); assert.equal(g.pulls, 11);
+  assert.ok(Math.abs(M.pullOdds().reduce((x, o) => x + o.p, 0) - 1) < 1e-12); assert.ok(Math.abs(M.pullOdds()[0].each * 18 + M.PULL.skin - 1) < 1e-12);
+  let skins = 0; const many = M.fillMeta({}); for (let i = 0; i < 20000; i++) { many.gems = 30; many.skins.own = {}; const r = M.pull(many, 1, rand)[0]; if (r.kind === 'skin') skins++; }
+  assert.ok(Math.abs(skins / 20000 - M.PULL.skin) < 0.006, `스킨 확률 ${skins / 20000}`); assert.ok(many.medals > 0, '최고 단계 표창은 훈장으로 환급');
+  const allS = M.fillMeta({ gems: 3000, skins: { own: { desert: 1, snow: 1, night: 1, gold: 1 }, on: 'gold' } }); let refund = 0; for (let i = 0; i < 100; i++) for (const r of M.pull(allS, 1, rand)) if (r.kind === 'gems') refund++;
+  assert.ok(refund > 0 && allS.gems === 3000 - 3000 + refund * M.PULL.dupGems);
+  // 스킨: 사야 쓸 수 있다
+  const s = M.fillMeta({ gems: 300 }); assert.equal(M.skinOf(s).id, 'base'); assert.equal(M.useSkin(s, 'desert'), false); assert.equal(M.buySkin(s, 'gold'), false); assert.equal(M.buySkin(s, 'desert'), true); assert.equal(s.gems, 0);
+  assert.equal(M.buySkin(s, 'desert'), false); assert.equal(M.useSkin(s, 'desert'), true); assert.equal(M.skinOf(s).filter, M.SKINS[1].filter); assert.equal(M.fillMeta({ skins: { own: {}, on: 'nope' } }).skins.on, 'base');
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;

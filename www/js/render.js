@@ -169,15 +169,20 @@ function contentBox(im) {      // 내용이 있는 범위 (0~1). 48px로 줄여 
   b = x1 < 0 ? [0, 0, 1, 1] : [Math.max(0, x0 - 1) / N, Math.max(0, y0 - 1) / N, Math.min(N, x1 + 2) / N, Math.min(N, y1 + 2) / N];
   boxCache.set(im, b); return b;
 }
-function fit(im, w, k, flip = false) {
+// skin = true면 지금 쓰는 스킨의 색 필터를 입혀 둔다(내 유닛 그림에만 쓴다)
+let skinFilter = '';
+export function setSkin(filter) { if (filter !== skinFilter) { skinFilter = filter || ''; fitCache.clear(); fitCount = 0; } }
+function fit(im, w, k, flip = false, skin = false) {
   let m = fitCache.get(im); if (!m) fitCache.set(im, m = new Map());
-  const key = (flip ? -1 : 1) * Math.round(w * k); let f = m.get(key);
+  const key = (flip ? -1 : 1) * Math.round(w * k) + (skin ? 0.5 : 0); let f = m.get(key);
   if (!f) {
     if (++fitCount > 500) { fitCache.clear(); fitCount = 1; fitCache.set(im, m = new Map()); }      // 화면 크기·품질이 바뀌어 쌓인 것 정리
     const px = Math.max(1, Math.round(w * k)), b = contentBox(im), bx = flip ? [1 - b[2], b[1], 1 - b[0], b[3]] : b;
     const X0 = Math.floor(bx[0] * px), Y0 = Math.floor(bx[1] * px), X1 = Math.ceil(bx[2] * px), Y1 = Math.ceil(bx[3] * px);
     const cv = document.createElement('canvas'); cv.width = Math.max(1, X1 - X0); cv.height = Math.max(1, Y1 - Y0);
-    const c = cv.getContext('2d'); c.imageSmoothingQuality = 'high'; c.translate(-X0, -Y0); if (flip) { c.translate(px, 0); c.scale(-1, 1); } c.drawImage(im, 0, 0, px, px);
+    const c = cv.getContext('2d'); c.imageSmoothingQuality = 'high'; c.translate(-X0, -Y0); if (flip) { c.translate(px, 0); c.scale(-1, 1); }
+    if (skin && skinFilter) c.filter = skinFilter;
+    c.drawImage(im, 0, 0, px, px);
     m.set(key, f = { cv, x: X0 / k, y: Y0 / k, w: cv.width / k, h: cv.height / k });
   }
   return f;
@@ -445,9 +450,9 @@ function unit(ctx, b, u, p, k, now, quality, T) {
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
   const atk = u.atkT > 0 && !stunned ? unitAtkImage(b.id, u.type, grp) : null;
-  if (atk) put(ctx, fit(atk, size * 2, k, u.faceL), p.x - size, p.y + FEET + dy - size * 2);
-  else if (sc === 1) put(ctx, fit(im, size, k), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
-  else ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy), w, w);
+  if (atk) put(ctx, fit(atk, size * 2, k, u.faceL, true), p.x - size, p.y + FEET + dy - size * 2);
+  else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, true), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
+  else { const f = fit(im, size, k, false, true); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다
   ctx.globalAlpha = 1;
   if (T.tuft && grp === 0) ctx.drawImage(spriteBox('ft:' + T.tuft + T.pad[4], k, FT_BOX, c => {      // 발 앞 풀·눈·모래 (받침대가 없는 병 계급만)
     c.lineCap = 'round';

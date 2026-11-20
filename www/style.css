@@ -226,3 +226,13 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .card.xpc { margin-top: 1rem; } .card.xpc small { color: var(--mute); font-weight: 800; font-size: 1.15rem; } .xps { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
 .xps span { padding: 0.3rem 0.8rem; border-radius: 0.9rem; background: var(--sand); font-size: 1.15rem; font-weight: 700; } .xps b { color: #1f9d3a; } .xps em { font-style: normal; margin-left: 0.3rem; color: #c2410c; font-weight: 900; }
 .nb { color: #c2410c; } .list .ic { font-size: 1.5rem; vertical-align: -0.25rem; margin-right: 0.2rem; }
+/* ── 행동력 · 상점 · 스킨 · 시험 광고 ── */
+img.u { filter: var(--skin, none); }
+.res { flex-wrap: wrap; gap: 0.5rem; } .res .pill { flex: 1; justify-content: center; min-width: 0; padding-left: 0.6rem; padding-right: 0.8rem; } .res .pill small { font-size: 1rem; color: var(--mute); margin-left: 0.3rem; font-variant-numeric: tabular-nums; } .res .pill.en .ic { color: var(--orange); }
+.wide.adx { background: #fff3c9; } .wide.adx b { color: #b96a00; margin-left: 0.3rem; }
+.list.odds { background: var(--paper); border: 0.2rem solid var(--ink); border-radius: 1.2rem; padding: 0.8rem 1.1rem; margin-top: 0.4rem; } .list.odds p { margin: 0.25rem 0; font-size: 1.15rem; }
+.skins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; } .skin { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; padding: 0.7rem 0.4rem; background: var(--paper); border: 0.2rem solid var(--ink); border-radius: 1.3rem; min-width: 0; }
+.skin.on { background: #fff3c9; box-shadow: 0 0.3rem 0 var(--orange); border-color: var(--orange); } .skin img { width: 6.4rem; height: 6.4rem; object-fit: contain; } .skin b { font-size: 1.2rem; font-weight: 900; } .skin .btn { height: 3.4rem; font-size: 1.2rem; padding: 0 0.8rem; width: 100%; }
+#fakead { position: fixed; inset: 0; z-index: 99; background: rgba(10,10,14,.94); display: flex; align-items: center; justify-content: center; color: #fff; text-align: center; }
+#fakead > div { display: grid; gap: 1.4rem; padding: 2rem; } #fakead small { font-size: 1.2rem; color: #ffd45e; } #fakead b { font-size: 3.4rem; font-weight: 900; } #fakead p { margin: 0; font-size: 1.5rem; }
+#fakead button { height: 5rem; padding: 0 2rem; border-radius: 1.5rem; border: 0.2rem solid #fff; background: transparent; color: #fff; font-size: 1.4rem; font-weight: 800; } #fakead button.ok { background: var(--green); color: #12300f; border-color: var(--ink); }

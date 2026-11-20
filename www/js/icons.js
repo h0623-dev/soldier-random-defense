@@ -18,6 +18,7 @@ export const ICON = {
   bolt: '<svg viewBox="0 0 24 24"><path d="M13 2L4 14h6l-1 8 9-12h-6z" fill="currentColor"/></svg>',
   ring: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.3" stroke-dasharray="4 3"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>',
   ticket: '<svg viewBox="0 0 24 24"><path d="M3 7h18v3.5a1.5 1.5 0 000 3V17H3v-3.5a1.5 1.5 0 000-3z" fill="#ffb86b" stroke="#7a3d00" stroke-width="2" stroke-linejoin="round"/><path d="M14.5 7.5v9" stroke="#7a3d00" stroke-width="1.8" stroke-dasharray="2 2"/></svg>',
+  gem: '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z" fill="#7fe0ff" stroke="#14506b" stroke-width="2" stroke-linejoin="round"/><path d="M2 9h20M9 3l-2 6 5 12 5-12-2-6" fill="none" stroke="#14506b" stroke-width="1.4" stroke-linejoin="round"/></svg>',
   star: '<svg viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.5 5.7 21l1.5-7L2 9.3l7-.8z" fill="currentColor"/></svg>',
   medal: '<svg viewBox="0 0 24 24"><path d="M8 2l4 7 4-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="12" cy="15" r="6" fill="currentColor"/></svg>',
   sound: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',

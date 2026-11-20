@@ -306,6 +306,10 @@ export function hireDepot(g) {
   if (g.over || g.depot >= CFG.depotMax || g.gold < cost) return false;
   g.gold -= cost; g.depot++; return true;
 }
+// 지원 요청(보상형 광고): 판마다 한 번, 지금 단계 수입의 세 단계분을 받는다 (보스 러시는 판 군자금의 30%)
+export const adSupportGold = g => { const w = waveOf(g, Math.max(1, g.wave));
+  return Math.round(g.mode === 'rush' ? rushStipend(Math.min(AREAS.length, Math.max(1, g.wave))) * 0.3 : 3 * (CFG.waveBonus + w.count * w.bounty)); };
+export function adSupport(g) { if (g.over || g.adGold) return 0; const v = adSupportGold(g); g.adGold = 1; g.gold += v; return v; }
 export const eliteState = g => (g.mode === 'rush' ? 'off' : g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');      // 보스 러시에는 특수 임무가 없다
 export function callElite(g) {
   if (g.over || eliteState(g) !== 'ready') return false;

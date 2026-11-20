@@ -35,7 +35,8 @@ const DEV = [
     const flags = [m.offscreen && '화면밖', m.hscroll && '가로스크롤', m.cardCut && '카드잘림', slot < 40 && '칸<40px', btnH < 44 && '버튼<44px', m.font < 11.5 && '글자<11.5', errs.length && '오류'].filter(Boolean);
     if (flags.length) bad++;
     console.log(`${name.padEnd(20)} ${w}x${h} 전장 ${m.field[2]}x${m.field[3]} (${cover}%) 칸 ${slot}px 버튼높이 ${btnH} 글자 ${m.font} 정보창 ${m.info[2]}x${m.info[3]} ${flags.join(',') || 'OK'}`);
-    await p.screenshot({ path: `${out}/${tag}${w}x${h}.png` }); await p.close();
+    if (out) await p.screenshot({ path: `${out}/${tag}${w}x${h}.png` });      // 저장할 폴더를 주지 않으면 검사만 한다
+    await p.close();
   }
   console.log('문제 기기 수:', bad); await b.close();
 })();

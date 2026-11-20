@@ -3,6 +3,7 @@
 import { BRANCHES, COMMENDS, CM_NEED } from './data.js';
 import { TYPE_KEYS, DIFFS, MODES, masteryInfo, reached } from './core.js';
 
+export const ENERGY = { max: 10, regenMs: 3600e3 };
 export const META_DEFAULT = () => ({
   medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, bestE: {}, bestR: {}, diff: 0, mode: 'normal', found: {}, foundM: {}, mute: false,
   xp: {},                                   // 병과 숙련도 경험치 { 군별: { 병과 키: 값 } }
@@ -11,16 +12,91 @@ export const META_DEFAULT = () => ({
   att: { last: '', n: 0 },                  // 출석: 마지막으로 받은 날 · 받은 횟수
   daily: { date: '', prog: {}, got: {} },   // 일일 임무: 날짜 · 진행 · 받은 보상
   runs: 0,
+  energy: { n: ENERGY.max, t: 0 },          // 행동력: 남은 수 · 충전을 세기 시작한 시각(ms)
+  gems: 0,                                  // 보석(유료 재화)
+  ad: { date: '', n: {} },                  // 보상형 광고: 날짜 · 자리별로 오늘 본 횟수
+  skins: { own: {}, on: 'base' },           // 스킨: 가진 것 · 쓰는 것
+  pulls: 0,                                 // 고급 보급 상자를 연 횟수
+  uid: '', name: '',                        // 랭킹·협동에 쓰는 기기 식별값과 별명 (처음 쓸 때 만든다)
 });
 // 저장된 값에 기본값을 채워 넣는다 (예전 버전의 저장에는 없는 칸이 있다)
 export function fillMeta(saved) {
   const d = META_DEFAULT(), m = { ...d, ...(saved || {}) };
-  for (const k of ['best', 'bestD', 'bestE', 'bestR', 'found', 'foundM', 'xp', 'cmN', 'cm', 'att', 'daily']) if (!m[k] || typeof m[k] !== 'object') m[k] = d[k];
-  m.att = { ...d.att, ...m.att }; m.daily = { ...d.daily, ...m.daily };
+  for (const k of ['best', 'bestD', 'bestE', 'bestR', 'found', 'foundM', 'xp', 'cmN', 'cm', 'att', 'daily', 'energy', 'ad', 'skins']) if (!m[k] || typeof m[k] !== 'object') m[k] = d[k];
+  m.att = { ...d.att, ...m.att }; m.daily = { ...d.daily, ...m.daily }; m.energy = { ...d.energy, ...m.energy }; m.ad = { ...d.ad, ...m.ad }; m.skins = { ...d.skins, ...m.skins };
+  if (!SKINS.some(x => x.id === m.skins.on)) m.skins.on = 'base';
   if (!MODES.some(x => x.id === m.mode)) m.mode = 'normal';
   syncCm(m); return m;
 }
 const rint = (rand, n) => Math.floor(rand() * n);
+
+// ── 행동력 ──────────────────────────────────────────────
+// 한 판을 시작할 때 1 든다(이어하기는 들지 않는다). 최대 10, 1시간에 1씩 찬다. 광고·보석으로 받은 것은 최대를 넘겨 쌓인다. 시각은 기기 시계(ms)
+export function energyNow(meta, now) {
+  const e = meta.energy;
+  if (e.n >= ENERGY.max || !(e.t > 0) || now < e.t) { e.t = now; return e.n; }      // 가득 찼거나, 시계가 뒤로 갔으면 지금부터 다시 센다
+  const add = Math.floor((now - e.t) / ENERGY.regenMs);
+  if (add > 0) { e.n = Math.min(ENERGY.max, e.n + add); e.t = e.n >= ENERGY.max ? now : e.t + add * ENERGY.regenMs; }
+  return e.n;
+}
+export const energyWait = (meta, now) => (energyNow(meta, now) >= ENERGY.max ? 0 : ENERGY.regenMs - (now - meta.energy.t));      // 다음 1이 찰 때까지 남은 ms
+export function spendEnergy(meta, now) { if (energyNow(meta, now) < 1) return false; if (meta.energy.n >= ENERGY.max) meta.energy.t = now; meta.energy.n--; return true; }
+export function addEnergy(meta, n, now) { energyNow(meta, now); meta.energy.n += n; }
+
+// ── 보상형 광고 ─────────────────────────────────────────
+// 광고를 끝까지 보면 재화를 준다. 자리마다 하루 횟수 제한이 있다(limit 0 = 제한 없음, 그 자리의 조건으로 막는다)
+export const AD_PLACES = {
+  gem: { limit: 5, reward: { g: 10 }, text: '보석 10개' },
+  energy: { limit: 5, reward: { e: 1 }, text: '행동력 1' },
+  ticket: { limit: 3, reward: { t: 1 }, text: '뽑기 티켓 1장' },
+  double: { limit: 0, text: '이번 판 훈장 2배' },      // 결과 화면, 판마다 한 번
+  gold: { limit: 0, text: '군자금 지원' },             // 전투 중 보급창, 판마다 한 번
+};
+function adDay(meta, date) { if (meta.ad.date !== date) meta.ad = { date, n: {} }; return meta.ad; }
+export const adLeft = (meta, date, place) => { const p = AD_PLACES[place]; return p.limit ? Math.max(0, p.limit - ((meta.ad.date === date && meta.ad.n[place]) || 0)) : Infinity; };
+// 광고를 다 본 뒤에 부른다: 횟수를 올리고 그 자리의 보상을 준다
+export function adReward(meta, date, place, now) {
+  if (adLeft(meta, date, place) < 1) return null;
+  const d = adDay(meta, date); d.n[place] = (d.n[place] || 0) + 1;
+  const r = AD_PLACES[place].reward || {}; give(meta, r, Math.random, now); return r;
+}
+
+// ── 보석 상점 · 고급 보급 상자(유료 뽑기) · 스킨 ───────────
+// 보석으로 사는 것. 보석 자체는 인앱 결제(monetize.js의 상품)와 광고로 얻는다
+export const GEM_SHOP = [
+  { id: 'energy5', cost: 30, reward: { e: 5 }, name: '행동력 5' },
+  { id: 'ticket5', cost: 50, reward: { t: 5 }, name: '뽑기 티켓 5장' },
+  { id: 'medal30', cost: 40, reward: { m: 30 }, name: '훈장 30개' },
+];
+export function buyGem(meta, id, now) { const it = GEM_SHOP.find(x => x.id === id); if (!it || meta.gems < it.cost) return null; meta.gems -= it.cost; give(meta, it.reward, Math.random, now); return it; }
+// 고급 보급 상자: 확률은 고정이고 화면에 그대로 적는다(확률형 아이템 표시). 표창은 18종이 같은 확률, 스킨은 아직 없는 것 가운데 하나
+export const PULL = { cost: 30, cost10: 270, skin: 0.04, dupMedals: 5, dupGems: 100 };
+export const pullOdds = () => [{ name: '부대 표창 1장 (18종, 종류마다 같은 확률)', p: 1 - PULL.skin, each: (1 - PULL.skin) / COMMENDS.length }, { name: '스킨 1종 (아직 없는 것 가운데 하나)', p: PULL.skin }];
+function pullOne(meta, rand) {
+  meta.pulls++;
+  if (rand() < PULL.skin) { const left = SKINS.filter(s => s.id !== 'base' && !meta.skins.own[s.id]);
+    if (!left.length) { meta.gems += PULL.dupGems; return { kind: 'gems', n: PULL.dupGems, text: `스킨을 모두 가지고 있어 보석 ${PULL.dupGems}개` }; }
+    const s = left[rint(rand, left.length)]; meta.skins.own[s.id] = 1; return { kind: 'skin', skin: s, text: `스킨 — ${s.name}` }; }
+  const c = COMMENDS[rint(rand, COMMENDS.length)];
+  if ((meta.cmN[c.id] || 0) >= CM_NEED.at(-1)) { meta.medals += PULL.dupMedals; return { kind: 'medals', n: PULL.dupMedals, text: `${c.name}(최고 단계) → 훈장 ${PULL.dupMedals}개` }; }
+  grantCm(meta, c.id); return { kind: 'cm', cm: c, text: `${c.name} ${cmLevel(meta.cmN[c.id])}단계 (${meta.cmN[c.id]}장)` };
+}
+export function pull(meta, n, rand) {
+  const cost = n >= 10 ? PULL.cost10 : PULL.cost * n; if (meta.gems < cost) return null;
+  meta.gems -= cost; return Array.from({ length: n }, () => pullOne(meta, rand));
+}
+// 스킨: 내 유닛의 겉모습. 지금은 그림을 새로 그린 것이 아니라 기존 그림에 색을 입히는 '도색'이다(filter = 캔버스·CSS 필터)
+export const SKINS = [
+  { id: 'base', name: '기본 군복', cost: 0, filter: '' },
+  { id: 'desert', name: '사막 도색', cost: 300, filter: 'sepia(0.6) saturate(1.35) brightness(1.04)' },
+  { id: 'snow', name: '설상 도색', cost: 300, filter: 'saturate(0.3) brightness(1.22) contrast(0.96)' },
+  { id: 'night', name: '야간 도색', cost: 300, filter: 'saturate(0.55) brightness(0.78) contrast(1.12)' },
+  { id: 'gold', name: '황금 도색', cost: 600, filter: 'sepia(1) saturate(2.4) brightness(1.06)' },
+];
+export const skinOwned = (meta, id) => id === 'base' || !!meta.skins.own[id];
+export const skinOf = meta => SKINS.find(s => s.id === meta.skins.on) || SKINS[0];
+export function buySkin(meta, id) { const s = SKINS.find(x => x.id === id); if (!s || skinOwned(meta, id) || meta.gems < s.cost) return false; meta.gems -= s.cost; meta.skins.own[id] = 1; return true; }
+export function useSkin(meta, id) { if (!skinOwned(meta, id)) return false; meta.skins.on = id; return true; }
 
 // ── 기록 · 모드 열림 ─────────────────────────────────────
 // 모드·난이도별 최고 기록이 담긴 칸. 기본 작전은 난이도별(best, bestD[난이도]), 무한 작전·보스 러시는 모드별
@@ -62,8 +138,8 @@ export function buyCmBox(meta, rand) { if (meta.medals < CM_BOX) return null; me
 export const ATTEND = [{ m: 3 }, { t: 1 }, { m: 4 }, { t: 1 }, { m: 5 }, { t: 2 }, { c: 1 }];
 export const canAttend = (meta, date) => meta.att.last !== date;
 export const attendDay = meta => meta.att.n % ATTEND.length;      // 다음에 받을 보상이 몇 번째 칸인지 (0~6)
-export function give(meta, r, rand) {      // 보상 지급. 돌려주는 값: 받은 표창 목록
-  meta.medals += r.m || 0; meta.tickets += r.t || 0;
+export function give(meta, r, rand, now = Date.now()) {      // 보상 지급(m 훈장 · t 티켓 · c 표창 · g 보석 · e 행동력). 돌려주는 값: 받은 표창 목록
+  meta.medals += r.m || 0; meta.tickets += r.t || 0; meta.gems += r.g || 0; if (r.e) addEnergy(meta, r.e, now);
   const got = []; for (let i = 0; i < (r.c || 0); i++) got.push(randomCm(meta, rand)); return got;
 }
 export function attend(meta, date, rand) {
@@ -71,7 +147,7 @@ export function attend(meta, date, rand) {
   const r = ATTEND[attendDay(meta)]; meta.att.last = date; meta.att.n++;
   return { reward: r, cms: give(meta, r, rand) };
 }
-export const rewardText = r => [r.m && `훈장 ${r.m}개`, r.t && `뽑기 티켓 ${r.t}장`, r.c && `부대 표창 ${r.c}장`, r.x && `숙련 경험치 ${r.x}`].filter(Boolean).join(' · ');
+export const rewardText = r => [r.m && `훈장 ${r.m}개`, r.t && `뽑기 티켓 ${r.t}장`, r.c && `부대 표창 ${r.c}장`, r.x && `숙련 경험치 ${r.x}`, r.g && `보석 ${r.g}개`, r.e && `행동력 ${r.e}`].filter(Boolean).join(' · ');
 
 // ── 일일 임무 ───────────────────────────────────────────
 // 날마다 3개. 날짜로 정해지므로 같은 날에는 누구에게나 같은 임무가 나온다. 진행은 판이 끝날 때 더한다(max: 한 판 최고값, 아니면 합계)
