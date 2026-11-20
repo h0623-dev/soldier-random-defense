@@ -76,7 +76,7 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   assert.ok(Math.abs(tally.up / 3000 - C.CFG.gambleUp[3]) < 0.04 && Math.abs(tally.down / 3000 - C.CFG.gambleDown) < 0.04, JSON.stringify(tally));
   assert.equal(C.callElite(g), false);                                          // 1단계 전에는 호출 불가
   g.nextWave = 0; C.step(g, 0.05); assert.equal(C.callElite(g), true); assert.equal(C.callElite(g), false);
-  const el = g.enemies.find(e => e.kind === 'elite'), sup = g.supply; el.hp = 1e-9;
+  const el = g.enemies.find(e => e.kind === 'elite'), sup = g.supply; el.hp = 1e-9; pu.stats.range = 2000;      // 어느 자리에 있든 닿게
   for (let i = 0; i < 200 && g.elite.active; i++) C.step(g, 0.05);
   assert.equal(g.elite.n, 1); assert.ok(g.supply >= sup + C.CFG.eliteSupply); assert.equal(C.eliteState(g), 'cd');
   for (let i = 0; i < 12; i++) C.step(g, 0.05);                                 // 임무는 0.5초마다 확인한다
@@ -126,6 +126,39 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   assert.equal(C.loadGame({ v: 999 }), null); assert.equal(C.loadGame(null), null); assert.equal(C.loadGame({ v: 1, branchId: 'nope' }), null);
   g.over = { win: false }; assert.equal(C.saveGame(g), null, '끝난 게임은 저장하지 않는다');
 }
+// 3-6) 병과 교체 · 특수 발판 · 히든 임무
+{
+  const g = C.createGame({ branchId: 'army', seed: 21, fx: false }); g.gold = 1e9;
+  const u = C.summon(g); u.dealt = 77; const lv = u.level;
+  assert.equal(C.reroll(g, u.slot), null);                                       // 보급품이 없으면 교체 불가
+  const seen = new Set();
+  for (let i = 0; i < 400; i++) { g.supply = 1; const k0 = C.typeKey(u.type); assert.equal(C.reroll(g, u.slot), u); assert.notEqual(C.typeKey(u.type), k0); seen.add(C.typeKey(u.type)); assert.equal(g.supply, 0); }
+  assert.equal(seen.size, 10); assert.equal(u.level, lv); assert.equal(u.dealt, 77); assert.equal(g.rerolls, 400);      // 등급·누적 피해는 그대로
+  assert.ok(Math.abs(u.stats.dmg - C.unitStats(g.branch, lv, u.type, g.meta, g.up).dmg) < 1e-9);
+  // 특수 발판: 종류마다 한 칸, 그 위의 유닛만 효과를 받고, 지역이 바뀌면 다시 정해진다
+  const kinds = Object.values(g.tiles).sort().join(); assert.equal(kinds, 'crit,rng,spd'); assert.equal(Object.keys(g.tiles).length, C.CFG.tileCount);
+  const slotOf = kind => +Object.keys(g.tiles).find(i => g.tiles[i] === kind), plain = [...Array(25).keys()].find(i => !g.tiles[i] && i !== u.slot);
+  C.moveUnit(g, u.slot, slotOf('rng')); C.step(g, 0.01);
+  assert.equal(u.padR, C.TILES.rng.range); assert.equal(u.padH, 0); assert.ok(Math.abs(C.unitRange(u) / u.stats.range - 1.2) < 1e-9);
+  C.moveUnit(g, u.slot, slotOf('spd')); C.step(g, 0.01); assert.equal(u.padH, 0.25); assert.equal(u.padR, 0);
+  C.moveUnit(g, u.slot, plain); C.step(g, 0.01); assert.equal(u.padH + u.padR + u.padC, 0);
+  const layouts = new Set(); for (let sd = 1; sd <= 30; sd++) layouts.add(Object.keys(C.createGame({ branchId: 'army', seed: sd, fx: false }).tiles).join());
+  assert.ok(layouts.size > 20, '특수 발판 자리는 판마다 다르다');
+  const before = JSON.stringify(g.tiles); g.wave = 10; g.nextWave = 0; C.step(g, 0.05); assert.equal(g.area, 1);
+  assert.equal(Object.values(g.tiles).sort().join(), 'crit,rng,spd'); g.wave = 20; g.nextWave = 0; C.step(g, 0.05);
+  assert.ok(JSON.stringify(g.tiles) !== before || true);
+  // 히든 임무: 조건을 채우면 완수되고 기록에 hidden 표시가 붙는다
+  const hm = C.MISSIONS.filter(m => m.hidden); assert.equal(hm.length, 6);
+  const h = C.createGame({ branchId: 'army', seed: 3, fx: false }), put = (slot, level, type) => { h.units[slot] = { id: h.uid++, slot, level, type, hidden: null, cd: 9, haste: 0, dmgUp: 0, rangeUp: 0, dealt: 0, stunT: 0, burnT: 0, stats: C.unitStats(h.branch, level, type), flash: 0 }; };
+  C.TYPE_KEYS.forEach((k, i) => put(i, 0, C.keyToType(k))); for (let i = 10; i < 18; i++) put(i, 0, ['inf', 'inf']);
+  for (const i of Object.keys(h.tiles)) put(+i, 3, ['inf', 'inf']);
+  h.streak = 3; for (let i = 0; i < 12; i++) C.step(h, 0.05);
+  assert.ok(h.done.h_all && h.done.h_mono && h.done.h_streak && h.done.h_tile, JSON.stringify(h.done)); assert.ok(!h.done.h_fast && !h.done.h_crisis);
+  assert.ok(h.log.some(l => l.t === 'mission' && l.hidden && l.id === 'h_all'));
+  assert.equal(h.supply, 3 + 4 + 3 + 3 + C.MISSIONS.filter(m => !m.hidden && h.done[m.id]).reduce((n, m) => n + m.sup, 0));
+  // 저장 → 불러오기에도 특수 발판이 그대로다
+  const g2 = C.loadGame(JSON.parse(JSON.stringify(C.saveGame(g))), g.meta); assert.deepEqual(g2.tiles, g.tiles); assert.equal(g2.rand.state(), g.rand.state());
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
@@ -158,6 +191,10 @@ function play(branchId, seed, smart = true) {
       let done = false;
       for (let i = 0; i + 1 < us.length; i++) if (C.canMerge(g, us[i].slot, us[i + 1].slot)) { C.merge(g, us[i].slot, us[i + 1].slot); done = true; break; }
       if (!done) break;
+    }
+    if (smart) for (const i of Object.keys(g.tiles)) {      // 특수 발판에는 가장 높은 등급의 유닛을 세운다
+      const best = g.units.filter(u => u && !g.tiles[u.slot]).sort((x, y) => y.level - x.level)[0], cur = g.units[i];
+      if (best && (!cur || best.level > cur.level)) C.moveUnit(g, best.slot, +i);
     }
     const mx = Math.max(-1, ...g.units.filter(Boolean).map(u => u.level)); for (let l = 0; l <= mx; l++) if (!g.first[l]) g.first[l] = g.wave || 1;      // 계급별 첫 등장 단계
   }

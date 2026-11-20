@@ -1,6 +1,6 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
-import { FIELD, CELL, CFG, AREAS, rankGroup, canMerge, sameType, rankName, rankInsig } from './core.js';
+import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig } from './core.js';
 import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
@@ -198,6 +198,8 @@ export function draw(ctx, g, ui, quality = 2) {
   const b = g.branch, k = ctx.getTransform().a, now = performance.now() / 1000, SLOTS = g.map.slots;
   ctx.drawImage(background(k, g.area, g.map), 0, 0, FIELD.w, FIELD.h);
   const sel = ui.sel != null ? g.units[ui.sel] : null;
+  // 특수 발판: 종류 색으로 빛나는 테두리와 왼쪽 위 표식 (유닛이 올라가도 보이게 모서리에 둔다)
+  for (const i in g.tiles) tile(ctx, SLOTS[i], g.tiles[i], k, now, quality);
   // 발판 강조: 조합할 수 있는 칸(노랑), 선택한 칸(흰색)
   SLOTS.forEach((s, i) => {
     const x = s.x - CELL.w / 2 + 4, y = s.y - CELL.h / 2 - 4, mergeable = sel && i !== ui.sel && canMerge(g, ui.sel, i);
@@ -211,7 +213,7 @@ export function draw(ctx, g, ui, quality = 2) {
   if (sel) {
     const p = SLOTS[sel.slot];
     ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(p.x, p.y, sel.stats.range * (1 + sel.rangeUp), 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, unitRange(sel), 0, 7); ctx.fill(); ctx.stroke();
     if (sel.hidden || sel.stats.haste > 0) { ctx.strokeStyle = sel.hidden ? '#ffd45e' : CLASS_INFO.med.color; ctx.setLineDash([6, 6]);
       ctx.beginPath(); ctx.arc(p.x, p.y, CFG.auraRadius, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   }
@@ -251,6 +253,25 @@ export function draw(ctx, g, ui, quality = 2) {
     ctx.fillStyle = '#ff8478'; ctx.font = '800 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(`보스 제한 ${Math.ceil(g.bossTimer)}초`, FIELD.w / 2, FIELD.h - 19);
   }
+}
+
+// 특수 발판 한 칸. 바닥의 빛(숨쉬듯 밝아졌다 어두워짐)은 매번 그리고, 테두리와 표식은 한 번 그려 둔 조각을 찍는다
+const TILE_BOX = [-52, -60, 52, 46];
+function tile(ctx, s, kind, k, now, quality) {
+  const t = TILES[kind]; if (!t || !s) return;
+  const a = quality > 0 ? 0.2 + 0.1 * Math.sin(now * 2.4 + s.x) : 0.24;
+  ctx.globalAlpha = a; ctx.fillStyle = t.color; rr(ctx, s.x - 45, s.y - 53, 90, 90, 13); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.drawImage(spriteBox('tile:' + kind, k, TILE_BOX, c => {
+    c.strokeStyle = 'rgba(74,47,27,.75)'; c.lineWidth = 6; rr(c, -45, -53, 90, 90, 13); c.stroke();
+    c.strokeStyle = t.color; c.lineWidth = 3.4; c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.4; c.setLineDash([5, 6]); rr(c, -40, -48, 80, 80, 10); c.stroke(); c.setLineDash([]);
+    // 표식: 둥근 딱지 안에 종류 그림 (속사 = 겹화살, 고지 = 과녁, 급소 = 별)
+    c.translate(-33, -41); c.fillStyle = t.color; c.strokeStyle = '#4a2f1b'; c.lineWidth = 2.2; c.beginPath(); c.arc(0, 0, 11, 0, 7); c.fill(); c.stroke();
+    c.strokeStyle = c.fillStyle = '#4a2f1b'; c.lineWidth = 2.4; c.lineCap = 'round'; c.lineJoin = 'round';
+    if (kind === 'spd') { for (const dx of [-4.5, 1.5]) { c.beginPath(); c.moveTo(dx - 1.5, -5); c.lineTo(dx + 3.5, 0); c.lineTo(dx - 1.5, 5); c.stroke(); } }
+    else if (kind === 'rng') { c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 5.5, 0, 7); c.stroke(); c.beginPath(); c.arc(0, 0, 1.8, 0, 7); c.fill(); c.beginPath(); c.moveTo(0, -8.5); c.lineTo(0, -5.5); c.moveTo(0, 8.5); c.lineTo(0, 5.5); c.moveTo(-8.5, 0); c.lineTo(-5.5, 0); c.moveTo(8.5, 0); c.lineTo(5.5, 0); c.stroke(); }
+    else { c.beginPath(); for (let j = 0; j < 10; j++) { const q = -Math.PI / 2 + j * Math.PI / 5, r = j % 2 ? 3.2 : 7.5; c[j ? 'lineTo' : 'moveTo'](Math.cos(q) * r, Math.sin(q) * r); } c.closePath(); c.fill(); }
+  }), s.x + TILE_BOX[0], s.y + TILE_BOX[1], TILE_BOX[2] - TILE_BOX[0], TILE_BOX[3] - TILE_BOX[1]);
 }
 
 function enemy(ctx, e, k, quality) {

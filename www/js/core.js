@@ -70,10 +70,19 @@ export const CFG = {
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
   upBase: 50, upGrowth: 1.35, upStep: 0.08,
   // 보급품(두 번째 재화): 보스·특수 임무·임무 완수로 얻고 선택 소집·진급 심사에 쓴다
-  bossSupply: 3, pickSupply: 2, gambleSupply: 1, gambleUp: [0.55, 0.45, 0.35, 0.22, 0.12], gambleDown: 0.15,      // 진급 심사 성공률은 지금 계급이 높을수록 낮다. 대장(전설)부터는 심사를 받을 수 없다 — 원수는 조합으로만
+  bossSupply: 3, pickSupply: 2, gambleSupply: 1, rerollSupply: 1, gambleUp: [0.55, 0.45, 0.35, 0.22, 0.12], gambleDown: 0.15,      // 진급 심사 성공률은 지금 계급이 높을수록 낮다. 대장(전설)부터는 심사를 받을 수 없다 — 원수는 조합으로만
   // 특수 임무(정예 표적): 직접 불러내는 추가 보스. 제한 시간 안에 잡으면 군자금·보급품
   eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
+  tileCount: 3,         // 지역마다 특수 발판 칸 수 (종류마다 한 칸씩)
 };
+
+// 특수 발판: 지역(맵)에 들어설 때마다 발판 25칸 가운데 3칸이 무작위로 특수 발판이 된다. 그 위에 선 유닛만 효과를 받는다
+export const TILES = {
+  spd: { name: '속사 발판', short: '속사', text: '공격 속도 +25%', color: '#6fe0ff', haste: 0.25 },
+  rng: { name: '고지 발판', short: '고지', text: '사거리 +20%', color: '#b8f27a', range: 0.2 },
+  crit: { name: '급소 발판', short: '급소', text: '치명타 확률 +15%', color: '#ff8f7a', crit: 0.15 },
+};
+export const CRIT_MUL = 2.5;
 
 // 난이도: 적 체력과 훈장 보상이 달라진다. need = 바로 아래 난이도에서 이 단계까지 가면 열린다
 // (7계급 경제에서는 화력과 적 체력이 거의 나란히 자라서 배수가 조금만 커도 훨씬 일찍 막힌다. 봇 기준 어려움은 70단계 안팎, 지옥은 50단계 안팎)
@@ -139,13 +148,24 @@ export function waveInfo(wave) {
 // ── 게임 상태 ────────────────────────────────────────────
 export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, diff = 0 }) {
   const branch = branchById(branchId);
-  return {
+  const g = {
     branch, meta, rand: rng(seed), fx, diff, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: CFG.prepTime,
     gold: CFG.startGold + 40 * (meta.gold || 0), camp: 0, units: Array(SLOT_COUNT).fill(null), area: 0, map: MAPS[0],
     supply: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
+    tiles: {}, rerolls: 0, streak: 0, fastBoss: 0, crisis: 0,      // 특수 발판 {칸 번호: 종류} · 히든 임무용 기록
   };
+  rollTiles(g); return g;
 }
+// 특수 발판을 새로 정한다 (게임을 시작할 때와 다음 지역으로 넘어갈 때)
+function rollTiles(g) {
+  const free = Array.from({ length: SLOT_COUNT }, (_, i) => i); g.tiles = {};
+  for (const kind of Object.keys(TILES).slice(0, CFG.tileCount)) g.tiles[free.splice(Math.floor(g.rand() * free.length), 1)[0]] = kind;
+  g.auraDirty = true;
+}
+export const tileAt = (g, slot) => TILES[g.tiles[slot]] || null;
+// 유닛의 실제 사거리 (히든 계급 지원 · 고지 발판 포함)
+export const unitRange = u => u.stats.range * (1 + u.rangeUp + (u.padR || 0));
 
 // 빈 발판 가운데 무작위 한 곳 (없으면 -1)
 function randomEmptySlot(g) {
@@ -164,7 +184,7 @@ export function summon(g) {
   return placeUnit(g, slot, level, [c, c]);
 }
 function placeUnit(g, slot, level, type, hidden = null) {
-  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0, dealt: 0,
+  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0, dealt: 0,
     stats: unitStats(g.branch, level, type, g.meta, g.up), flash: 0.5 };
   if (hidden) { g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
   g.units[slot] = u; g.auraDirty = true; return u;
@@ -206,8 +226,21 @@ export function gamble(g, a) {
   if (!canGamble(g, a)) return null;
   const u = g.units[a], r = g.rand(); g.supply -= CFG.gambleSupply;
   const res = r < gambleChance(u) ? 'up' : r < 1 - CFG.gambleDown || u.level === 0 ? 'same' : 'down';
-  if (res !== 'same') placeUnit(g, a, u.level + (res === 'up' ? 1 : -1), u.type);
+  g.streak = res === 'up' ? g.streak + 1 : 0;      // 연속 통과 횟수 (히든 임무)
+  if (res !== 'same') placeUnit(g, a, u.level + (res === 'up' ? 1 : -1), u.type).dealt = u.dealt;
   return res;
+}
+// 병과 교체: 보급품을 써서 고른 유닛의 병과를 다시 뽑는다. 등급·누적 피해는 그대로이고, 지금 병과는 다시 나오지 않는다(나머지 9종 가운데 무작위)
+export function canReroll(g, a) {
+  const u = g.units[a];
+  return !!(u && !g.over && g.supply >= CFG.rerollSupply);
+}
+export function reroll(g, a) {
+  if (!canReroll(g, a)) return null;
+  const u = g.units[a], ks = TYPE_KEYS.filter(k => k !== typeKey(u.type));
+  g.supply -= CFG.rerollSupply; g.rerolls++;
+  u.type = keyToType(ks[Math.floor(g.rand() * ks.length)]); u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up);
+  u.flash = 0.5; g.auraDirty = true; return u;
 }
 export const eliteState = g => (g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');
 export function callElite(g) {
@@ -235,7 +268,16 @@ export const MISSIONS = [
   { id: 'hid', sup: 2, text: () => '히든 계급 획득', ok: g => g.hiddenGot > 0, only: g => g.branch.hidden.length > 0 },
   { id: 'w30', sup: 2, text: () => '30단계 도달', ok: g => g.wave >= 30 },
   { id: 'w60', sup: 3, text: () => '60단계 도달', ok: g => g.wave >= 60 },
+  // 히든 임무: 달성하기 전에는 조건이 보이지 않는다 (한 번 달성하면 다음 판부터는 조건이 보인다 — 화면 쪽에서 기억)
+  { id: 'h_mono', hidden: true, sup: 3, text: () => '같은 병과 유닛 8명을 동시에 보유', ok: g => Math.max(0, ...Object.values(typeCounts(g))) >= 8 },
+  { id: 'h_all', hidden: true, sup: 4, text: () => '10개 병과를 모두 동시에 보유', ok: g => Object.keys(typeCounts(g)).length >= TYPE_KEYS.length },
+  { id: 'h_streak', hidden: true, sup: 3, text: () => '진급 심사 3회 연속 통과', ok: g => g.streak >= 3 },
+  { id: 'h_fast', hidden: true, sup: 3, text: () => `보스를 등장 ${FAST_BOSS}초 안에 격파`, ok: g => g.fastBoss > 0 },
+  { id: 'h_crisis', hidden: true, sup: 3, text: () => `적이 ${CRISIS_AT}명 넘게 몰린 뒤 5명 이하로 줄이기`, ok: g => g.crisis > 0 && g.enemies.length <= 5 },
+  { id: 'h_tile', hidden: true, sup: 3, text: () => `특수 발판 ${CFG.tileCount}칸 모두에 ${GRADES[3].name} 등급 이상 배치`, ok: g => Object.keys(g.tiles).every(i => g.units[i] && g.units[i].level >= 3) },
 ];
+const FAST_BOSS = 12, CRISIS_AT = 40;
+function typeCounts(g) { const n = {}; for (const u of g.units) if (u) { const k = typeKey(u.type); n[k] = (n[k] || 0) + 1; } return n; }
 export const missionList = g => MISSIONS.filter(m => !m.only || m.only(g));
 
 export function upgradeCamp(g) {
@@ -285,7 +327,7 @@ function startWave(g) {
   const area = areaOfWave(g.wave);
   if (area !== g.area) { const old = g.map; g.area = area; g.map = MAPS[area];
     for (const e of g.enemies) e.s = (e.s % old.len) / old.len * g.map.len;
-    g.auraDirty = true; g.log.push({ t: 'area', area }); }
+    rollTiles(g); g.log.push({ t: 'area', area }); }
   g.spawn = { ...w, hp: w.hp * g.hpMul, left: w.count, cd: 0 }; g.nextWave = CFG.waveGap;
   if (w.kind === 'boss') g.bossTimer = CFG.bossTime;
   g.gold += CFG.waveBonus; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
@@ -302,7 +344,7 @@ function hit(g, e, dmg) {
   e.hp -= full;
   if (e.hp <= 0 && !e.dead) {
     e.dead = true; g.kills++;
-    if (e.kind === 'boss') g.supply += CFG.bossSupply;
+    if (e.kind === 'boss') { g.supply += CFG.bossSupply; if (g.bossTimer >= CFG.bossTime - FAST_BOSS) g.fastBoss++; }
     if (e.kind === 'elite') { g.supply += CFG.eliteSupply; g.elite.n++; g.elite.active = false; g.elite.cd = CFG.eliteCd; g.log.push({ t: 'eliteKill' }); }
     if (g.fx) { g.effects.push({ puff: true, x: e.x, y: e.y, r: e.kind === 'boss' ? 60 : 18, t: 0.3 }); if (e.kind === 'boss') g.sfx.push('bossdie'); }
     g.gold += e.bounty * (g.branch.trait.key === 'slow' ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0));
@@ -355,7 +397,8 @@ export function step(g, dt) {
   // 임무 확인 (0.5초마다)
   if ((g.missionT -= dt) <= 0) {
     g.missionT = 0.5;
-    for (const m of missionList(g)) if (!g.done[m.id] && m.ok(g)) { g.done[m.id] = true; g.supply += m.sup; g.log.push({ t: 'mission', text: m.text(g), sup: m.sup }); }
+    for (const m of missionList(g)) if (!g.done[m.id] && m.ok(g)) { g.done[m.id] = true; g.supply += m.sup; g.log.push({ t: 'mission', id: m.id, text: m.text(g), sup: m.sup, hidden: !!m.hidden }); }
+    if (g.enemies.length > CRISIS_AT) g.crisis = 1;
   }
   // 의무 계열 · 히든 계급 오라 (같은 종류는 겹치지 않고 가장 큰 값만 적용)
   if (g.auraDirty) {
@@ -369,6 +412,7 @@ export function step(g, dt) {
         u.haste = Math.max(u.haste, m.stats.haste);
         if (h) { u.dmgUp = Math.max(u.dmgUp, h.aura.dmg || 0); u.rangeUp = Math.max(u.rangeUp, h.aura.range || 0); }
       }
+      const t = tileAt(g, u.slot); u.padH = (t && t.haste) || 0; u.padR = (t && t.range) || 0; u.padC = (t && t.crit) || 0;      // 특수 발판
     }
     g.auraDirty = false;
   }
@@ -385,14 +429,14 @@ export function step(g, dt) {
     if (!u) continue;
     u.flash -= dt; u.fireT -= dt; u.atkT -= dt; u.stunT -= dt; u.burnT -= dt;
     if (u.stunT > 0) continue;                                  // 기절: 공격하지 못한다
-    u.cd -= dt * (1 + u.haste) * (u.burnT > 0 ? 1 - u.burn : 1);   // 화염: 공격 속도 감소
+    u.cd -= dt * (1 + u.haste + u.padH) * (u.burnT > 0 ? 1 - u.burn : 1);   // 화염: 공격 속도 감소
     if (u.cd > 0) continue;
-    const p = g.map.slots[u.slot], st = u.stats, r2 = (st.range * (1 + u.rangeUp)) ** 2;
+    const p = g.map.slots[u.slot], st = u.stats, r2 = unitRange(u) ** 2;
     let target = null;
     for (const e of g.enemies) if (!e.dead && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2) { target = e; break; }
     if (!target) { u.cd = 0.05; continue; }
     u.cd = st.cd;
-    const crit = st.crit && g.rand() < st.crit, dmg = st.dmg * (1 + u.dmgUp) * (crit ? 2.5 : 1);
+    const cp = st.crit + u.padC, crit = cp > 0 && g.rand() < cp, dmg = st.dmg * (1 + u.dmgUp) * (crit ? CRIT_MUL : 1);
     const victims = st.splash > 0
       ? g.enemies.filter(e => !e.dead && (e.x - target.x) ** 2 + (e.y - target.y) ** 2 <= st.splash * st.splash)
       : [target];
@@ -430,6 +474,7 @@ export function loadGame(o, meta = {}) {
   try {
     if (!o || o.v !== SAVE_V || o.over || !branchById(o.branchId)) return null;
     const g = createGame({ branchId: o.branchId, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0 });
+    g.rand = rng(o.seed);      // createGame이 특수 발판을 정하느라 난수를 썼으므로 저장한 상태로 되돌린다
     for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff') g[k] = o[k];
     if (!Array.isArray(g.units) || g.units.length !== SLOT_COUNT || !MAPS[g.area] || !(g.wave >= 0)) return null;
     g.map = MAPS[g.area]; g.hpMul = DIFFS[g.diff].hp;

@@ -22,8 +22,8 @@ let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 1, pa
 const view = initLayout(() => { infoKey = ''; });
 
 function loadMeta() {
-  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, diff: 0, found: {}, mute: false, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
-  catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, diff: 0, found: {} }; }
+  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, diff: 0, found: {}, foundM: {}, mute: false, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
+  catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, diff: 0, found: {}, foundM: {} }; }
 }
 // 난이도별 최고 기록: 보통은 meta.best, 그 위는 meta.bestD[난이도]. 위 난이도는 바로 아래 난이도에서 need 단계까지 가면 열린다
 const bestOf = d => (d === 0 ? meta.best : (meta.bestD[C.DIFFS[d].id] || (meta.bestD[C.DIFFS[d].id] = {})));
@@ -123,7 +123,9 @@ const ACT = {
       <p><b>주둔지</b> — 전장 아래의 건물을 눌러 명령합니다. 왼쪽부터 <b>훈련소</b>(천막) · <b>병과 강화</b>(병기창) · <b>신병 소집</b>(연병장) · <b>선택 소집</b>(보급창) · <b>특수 임무</b>(통신탑). 쓸 수 없는 건물은 흐리게 보이고, 특수 임무를 부를 수 있으면 통신탑이 빛납니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 등급이 올라갑니다(최고 영웅). 그 위 등급은 조합으로만 올립니다.</p>
       <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
-      <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기)과 <b>진급 심사</b>(유닛 선택 후 도전: 등급이 낮을수록 잘 붙고, 15%는 강등. 전설 등급부터는 받을 수 없음)에 씁니다.</p>
+      <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기), <b>진급 심사</b>(유닛 선택 후 도전: 등급이 낮을수록 잘 붙고, 15%는 강등. 전설 등급부터는 받을 수 없음), <b>병과 교체</b>(유닛 선택 후: 등급은 그대로 두고 병과만 다시 뽑기)에 씁니다.</p>
+      <p><b>특수 발판</b> — 지역마다 발판 ${C.CFG.tileCount}칸이 빛납니다. ${Object.values(C.TILES).map(t => `<b style="color:${t.color};-webkit-text-stroke:.03em #4a2f1b">${t.name}</b>(${t.text})`).join(' · ')}. 그 위에 선 유닛만 효과를 받으니 가장 강한 유닛을 올려 두세요. 다음 지역으로 넘어가면 자리가 바뀝니다.</p>
+      <p><b>히든 임무</b> — 임무 창 아래쪽에 조건이 가려진 임무가 있습니다. 이것저것 시도하다 보면 달성되고, 한 번 달성한 임무는 다음 판부터 조건이 보입니다.</p>
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
@@ -153,9 +155,14 @@ const ACT = {
   },
   upc(c) { if (C.upgradeClass(g, c)) Sound.play('camp'); else Sound.play('deny'); ACT.upg(); },
   missions() {
-    const ms = C.missionList(g);
+    const all = C.missionList(g), ms = all.filter(m => !m.hidden), hs = all.filter(m => m.hidden);
+    const row = m => `<div class="msn${g.done[m.id] ? ' done' : ''}"><i class="ck">${g.done[m.id] ? '✓' : ''}</i><span>${m.text(g)}</span><div class="pill sup">${ic('box')}<b>+${m.sup}</b></div></div>`;
+    // 히든 임무: 달성한 적이 없으면 조건을 가린다. 한 번이라도 달성했으면 다음 판부터는 조건이 보인다
+    const hrow = m => (g.done[m.id] || meta.foundM[m.id] ? row(m).replace('class="msn', 'class="msn hm') : `<div class="msn hm lock"><i class="ck">?</i><span>??? — 아직 밝혀지지 않은 임무</span><div class="pill sup">${ic('box')}<b>+?</b></div></div>`);
     show(`${sheetHead('임무', `조건을 채우면 자동으로 완수되고 보급품을 받습니다 · ${ms.filter(m => g.done[m.id]).length}/${ms.length}`)}
-      ${[...ms].sort((a, c) => !!g.done[a.id] - !!g.done[c.id]).map(m => `<div class="msn${g.done[m.id] ? ' done' : ''}"><i class="ck">${g.done[m.id] ? '✓' : ''}</i><span>${m.text(g)}</span><div class="pill sup">${ic('box')}<b>+${m.sup}</b></div></div>`).join('')}
+      ${[...ms].sort((a, c) => !!g.done[a.id] - !!g.done[c.id]).map(row).join('')}
+      <h3 class="hmh">히든 임무 <small>${hs.filter(m => g.done[m.id]).length}/${hs.length} · 조건이 숨겨져 있고 보상이 큽니다</small></h3>
+      ${hs.map(hrow).join('')}
       <div class="list"><p>보스 격파 <b>+${C.CFG.bossSupply}</b> · 특수 임무 성공 <b>+${C.CFG.eliteSupply}</b> (횟수 제한 없음)</p></div>
       <div class="sfoot"><div class="pill sup">${ic('box')}<b>${g.supply}</b></div><button class="btn primary" data-act="resume">전장으로</button></div>`, true);
   },
@@ -235,7 +242,9 @@ canvas.addEventListener('pointerdown', e => {
   const r = canvas.getBoundingClientRect(), x = (e.clientX - r.left) * C.FIELD.w / r.width, y = (e.clientY - r.top) * C.FIELD.h / r.height;
   const i = g.map.slots.findIndex(s => Math.abs(s.x - x) <= C.CELL.w / 2 && Math.abs(s.y - y) <= C.CELL.h / 2);
   if (i < 0) { ui.sel = ui.target = null; return; }
-  if (ui.sel == null || !g.units[ui.sel]) { ui.sel = g.units[i] ? i : null; ui.target = null; return; }
+  if (ui.sel == null || !g.units[ui.sel]) { ui.sel = g.units[i] ? i : null; ui.target = null;
+    const t = !g.units[i] && C.tileAt(g, i); if (t) toast(`${t.name} — 이 위의 유닛은 ${t.text}`, 2200);      // 빈 특수 발판을 누르면 효과를 알려 준다
+    return; }
   if (i === ui.sel) { ui.sel = ui.target = null; return; }
   if (!g.units[i]) { C.moveUnit(g, ui.sel, i); ui.sel = ui.target = null; return; }      // 빈 칸으로 옮기면 선택도 풀린다 (한 번 이동하면 이동 끝)
   if (C.canMerge(g, ui.sel, i)) { ui.target = i; return; }
@@ -254,6 +263,8 @@ $('info').addEventListener('click', e => {
     if (r === 'up') { toast(`진급 심사 통과! ${C.unitName(g.branch, g.units[ui.sel])}`); Sound.play('merge'); }
     else if (r === 'down') { toast(`심사 탈락 — ${C.unitName(g.branch, g.units[ui.sel])}(으)로 강등`); Sound.play('deny'); }
     else if (r === 'same') { toast('심사 보류 — 변화 없음'); Sound.play('sell'); } }
+  if (a === 'reroll') { const u = C.reroll(g, ui.sel); infoKey = '';
+    if (u) { toast(`병과 교체 → ${C.unitName(g.branch, u)}`); Sound.play('summon'); } else { toast('보급품이 부족합니다'); Sound.play('deny'); } }
   if (a === 'sell') { const v = C.sell(g, ui.sel); ui.sel = ui.target = null; toast(`전역 처리 +${fmt(v)}`); Sound.play('sell'); }
 });
 $('b-summon').onclick = () => { if (!g) return; const u = C.summon(g);
@@ -273,7 +284,7 @@ window.addEventListener('pagehide', () => { if (g && !g.over) saveRun(); });
 // ── 표시 갱신 ───────────────────────────────────────────
 // 능력치를 작은 칩으로. prev가 있으면 공격력이 얼마나 오르는지 함께 보여준다
 function statChips(st, prev, unit) {
-  const xs = [`${ic('sword')}공격 <b>${fmt(st.dmg)}</b>${prev && st.dmg > prev.dmg ? `<em>▲${fmt(st.dmg - prev.dmg)}</em>` : ''}`, `${ic('bolt')}초당 <b>${(1 / st.cd).toFixed(1)}회</b>`, `${ic('ring')}사거리 <b>${Math.round(st.range)}</b>`];
+  const xs = [`${ic('sword')}공격 <b>${fmt(st.dmg)}</b>${prev && st.dmg > prev.dmg ? `<em>▲${fmt(st.dmg - prev.dmg)}</em>` : ''}`, `${ic('bolt')}초당 <b>${(1 / st.cd).toFixed(1)}회</b>`, `${ic('ring')}사거리 <b>${Math.round(unit ? C.unitRange(unit) : st.range)}</b>`];
   if (st.splash) xs.push(`광역 <b>${Math.round(st.splash)}</b>`); if (st.slow) xs.push(`둔화 <b>${Math.round(st.slow * 100)}%</b>`);
   if (st.vuln) xs.push(`취약 <b>+${Math.round(st.vuln * 100)}%</b>`); if (st.haste) xs.push(`주변 공속 <b>+${Math.round(st.haste * 100)}%</b>`);
   if (st.crit) xs.push(`치명 <b>${Math.round(st.crit * 100)}%</b>`);
@@ -282,7 +293,7 @@ function statChips(st, prev, unit) {
 }
 function renderInfo() {
   const b = g.branch, A = ui.sel != null ? g.units[ui.sel] : null, B = ui.target != null ? g.units[ui.target] : null;
-  const key = [A && A.id, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join('')].join('|');
+  const key = [A && A.id + A.type.join('') + A.slot, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join('')].join('|');
   if (key === infoKey) {      // 카드는 그대로 두고 누적 피해 숫자만 바꾼다 (카드를 통째로 다시 만들면 누르던 버튼이 사라진다)
     if (A && !B) { const d = $('u-dealt'), v = fmt(A.dealt); if (d && d.textContent !== v) d.textContent = v; }
     return;
@@ -300,14 +311,16 @@ function renderInfo() {
       ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${A.hidden || B.hidden ? '<p class="note">⚠ 히든 계급의 능력은 조합하면 사라집니다</p>' : ''}
       <div class="acts"><button class="btn" data-do="cancel">취소</button><button class="btn primary" data-do="merge">조합하기</button></div></div>`;
   } else if (A) {
-    const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean);
+    const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean), tile = C.tileAt(g, A.slot);
     el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitSrc(b, A.type, C.rankGroup(b, A))}" alt="">
       <div><h3><i class="gdot" style="background:${GRADES[A.level].color}"></i>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? '<span class="tag hid">히든</span>' : ''}</h3>
         <small><b style="color:${GRADES[A.level].color}">${GRADES[A.level].name}</b> · ${C.unitWeapon(b, A)}</small></div></div>
       ${statChips(A.stats, null, A)}
       ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${up.length ? `<p class="note star">히든 계급 지원: ${up.join(' · ')}</p>` : ''}
+      ${tile ? `<p class="note tile"><i style="background:${tile.color}"></i><b>${tile.name}</b> 위에 있습니다 — ${tile.text}</p>` : ''}
       <p class="note">${A.level < C.maxLevel(b) ? '색칠된 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 그 자리로 이동(이동하면 선택이 풀립니다)' : '최고 계급입니다'}</p>
-      <div class="acts"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>진급 심사 ${Math.round(C.gambleChance(A) * 100)}% ${ic('box')}${C.CFG.gambleSupply}</button>
+      <div class="acts three"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>심사 ${Math.round(C.gambleChance(A) * 100)}% ${ic('box')}${C.CFG.gambleSupply}</button>
+        <button class="btn blue" data-do="reroll" ${C.canReroll(g, ui.sel) ? '' : 'disabled'}>병과 교체 ${ic('box')}${C.CFG.rerollSupply}</button>
         <button class="btn red" data-do="sell">전역 ${ic('coin')}+${fmt(C.unitValue(b, A.level) * C.CFG.sellRate)}</button></div></div>`;
   } else el.innerHTML = '';      // 고른 유닛이 없으면 카드를 치우고 주둔지를 보여 준다
 }
@@ -345,7 +358,7 @@ function renderHud() {
   const es = C.eliteState(g), el = g.enemies.find(e => e.kind === 'elite');
   put('c-elite', es === 'ready' ? '출동 가능' : es === 'active' ? `진행 ${Math.ceil(el ? el.life : 0)}초` : es === 'cd' ? `대기 ${Math.ceil(g.elite.cd)}초` : '1단계부터');
   putOff('b-elite', es !== 'ready'); putCls('b-elite', 'hot', es === 'ready');
-  const ms = C.missionList(g); put('c-mission', `${ms.filter(m => g.done[m.id]).length}/${ms.length}`);
+  const ms = C.missionList(g).filter(m => !m.hidden); put('c-mission', `${ms.filter(m => g.done[m.id]).length}/${ms.length}`);
 }
 function frame(now) {
   requestAnimationFrame(frame);
@@ -369,7 +382,8 @@ function frame(now) {
     if (l.t === 'wave') { saveRun(); Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); if (l.wave % 10 === 0) toast(`보스 출현 — ${C.AREAS[g.area].boss.text}`, 3200); }
     else if (l.t === 'area') { ui.trans = { t: 2.6, total: 2.6, area: l.area }; hold = 1.3; ui.sel = ui.target = null; infoKey = '';
       for (const u of g.units) if (u) u.flash = 0.9; Sound.play('hidden'); }
-    else if (l.t === 'mission') { toast(`임무 완수: ${l.text} · 보급품 +${l.sup}`); Sound.play('camp'); }
+    else if (l.t === 'mission') { if (l.hidden) { meta.foundM[l.id] = 1; saveMeta(); toast(`★ 히든 임무 달성: ${l.text} · 보급품 +${l.sup}`, 3200); Sound.play('hidden'); }
+      else { toast(`임무 완수: ${l.text} · 보급품 +${l.sup}`); Sound.play('camp'); } }
     else if (l.t === 'eliteKill') { toast(`특수 임무 성공! 보급품 +${C.CFG.eliteSupply}`); Sound.play('merge'); }
     else if (l.t === 'eliteFail') { toast('특수 임무 실패 — 표적이 빠져나갔습니다'); Sound.play('deny'); } }
   if (ui.sel != null && !g.units[ui.sel]) ui.sel = ui.target = null;
