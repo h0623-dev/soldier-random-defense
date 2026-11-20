@@ -17,23 +17,24 @@ const DEV = [
   for (const [name, w, h] of DEV) {
     const p = await b.newPage({ viewport: { width: w, height: h } });
     const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => m.type() === 'error' && !/favicon/.test(m.text()) && errs.push(m.text()));
-    await p.goto('http://localhost:8080/'); await p.click('text=출격'); await p.click('text=육군');
+    await p.goto('http://localhost:8080/'); await p.click('text=출격'); await p.click('.bcard:has-text("육군")');
     await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C; g.gold = 5000; for (let i = 0; i < 9; i++) C.summon(g); });
     const fb = await p.locator('#field').boundingBox();
+    const btnH = Math.round((await p.locator('#b-summon').boundingBox()).height);      // 유닛을 고르면 하단 버튼이 카드로 바뀌므로 먼저 잰다
     // 소집 자리는 무작위이므로 실제 유닛이 선 발판을 눌러 선택한다
     const sp = await p.evaluate(() => { const g = window.__srd.game, u = g.units.find(Boolean), s = g.map.slots[u.slot]; return { x: s.x / window.__srd.C.FIELD.w, y: s.y / window.__srd.C.FIELD.h }; });
     await p.mouse.click(fb.x + fb.width * sp.x, fb.y + fb.height * sp.y); await p.waitForTimeout(250);
     const m = await p.evaluate(() => { const r = id => { const e = document.getElementById(id).getBoundingClientRect(); return [e.left, e.top, e.width, e.height].map(Math.round); };
-      const btn = document.getElementById('b-summon').getBoundingClientRect(), info = document.getElementById('info');
+      const info = document.getElementById('info'), card = info.firstElementChild.getBoundingClientRect();
       const fs = parseFloat(getComputedStyle(info).fontSize);
-      return { field: r('field'), info: r('info'), actions: r('actions'), hud: r('hud'), btnH: Math.round(btn.height), font: +fs.toFixed(1),
-        infoOverflow: info.scrollHeight > info.clientHeight + 1, hscroll: document.documentElement.scrollWidth > innerWidth,
-        offscreen: ['hud', 'field', 'info', 'actions'].some(id => { const e = document.getElementById(id).getBoundingClientRect(); return e.bottom > innerHeight + 1 || e.right > innerWidth + 1 || e.top < -1 || e.left < -1; }) }; });
+      return { field: r('field'), info: r('info'), actions: r('actions'), hud: r('hud'), font: +fs.toFixed(1), cardCut: card.bottom > innerHeight + 1 || card.top < r('hud')[3] - 1,
+        infoOverflow: false, hscroll: document.documentElement.scrollWidth > innerWidth,
+        offscreen: ['hud', 'field', 'info'].some(id => { const e = document.getElementById(id).getBoundingClientRect(); return e.bottom > innerHeight + 1 || e.right > innerWidth + 1 || e.top < -1 || e.left < -1; }) }; });
     const cover = Math.round(100 * m.field[2] * m.field[3] / (w * h));
     const slot = Math.round(m.field[2] * 100 / 720);
-    const flags = [m.offscreen && '화면밖', m.hscroll && '가로스크롤', m.infoOverflow && '정보창넘침', slot < 40 && '칸<40px', m.btnH < 44 && '버튼<44px', m.font < 11.5 && '글자<11.5', errs.length && '오류'].filter(Boolean);
+    const flags = [m.offscreen && '화면밖', m.hscroll && '가로스크롤', m.cardCut && '카드잘림', slot < 40 && '칸<40px', btnH < 44 && '버튼<44px', m.font < 11.5 && '글자<11.5', errs.length && '오류'].filter(Boolean);
     if (flags.length) bad++;
-    console.log(`${name.padEnd(20)} ${w}x${h} 전장 ${m.field[2]}x${m.field[3]} (${cover}%) 칸 ${slot}px 버튼높이 ${m.btnH} 글자 ${m.font} 정보창 ${m.info[2]}x${m.info[3]} ${flags.join(',') || 'OK'}`);
+    console.log(`${name.padEnd(20)} ${w}x${h} 전장 ${m.field[2]}x${m.field[3]} (${cover}%) 칸 ${slot}px 버튼높이 ${btnH} 글자 ${m.font} 정보창 ${m.info[2]}x${m.info[3]} ${flags.join(',') || 'OK'}`);
     await p.screenshot({ path: `${out}/${tag}${w}x${h}.png` }); await p.close();
   }
   console.log('문제 기기 수:', bad); await b.close();

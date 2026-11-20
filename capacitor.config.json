@@ -2,5 +2,7 @@
   "appId": "com.steey.soldierdefense",
   "appName": "군인 랜덤 디펜스",
   "webDir": "www",
-  "android": { "backgroundColor": "#1b2118" }
+  "android": {
+    "backgroundColor": "#2b2118"
+  }
 }

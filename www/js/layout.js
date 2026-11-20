@@ -4,9 +4,9 @@ import { FIELD } from './core.js';
 
 const BASE_W = 390;            // 설계 기준 폭 (배율 1)
 const BASE_H = 640;            // 세로 배치에서 배율 1로 다 들어가는 최소 높이
-const UI_EST = 18;             // 상단바 + 하단 버튼 두 줄의 대략적인 높이 (rem) — 배치 방식을 고를 때만 쓴다
-const INFO_MIN = 15;           // 정보창 최소 높이 (rem)
-const SIDE_MIN = 30;           // 가로 배치의 오른쪽 패널 최소 폭 (rem)
+const UI_EST = 24;             // 상단바 + 하단 버튼 두 줄의 대략적인 높이 (rem) — 배치 방식을 고를 때만 쓴다
+const INFO_MIN = 9.5;           // 정보창 최소 높이 (rem)
+const SIDE_MIN = 34;           // 가로 배치의 오른쪽 패널 최소 폭 (rem)
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 export const view = { scale: 1, land: false, w: 0, h: 0, fieldW: 0, fieldH: 0, dpr: 1, quality: 2 };
@@ -18,6 +18,7 @@ export function initLayout(onChange) {
   const hud = document.getElementById('hud'), actions = document.getElementById('actions');
   const root = document.documentElement;
   function apply() {
+    const picked = app.classList.contains('sel'); app.classList.remove('sel');   // 하단 버튼이 보이는 상태로 잰다
     const cs = getComputedStyle(app);
     const W = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const H = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
@@ -31,7 +32,7 @@ export function initLayout(onChange) {
     const land = W > H * 1.15 || estL > estP * 1.12;
     const s = land ? sL : sP;
     // 세로가 짧은 화면(구형 16:9 휴대폰)은 정보창을 줄여 전장을 키운다
-    const short = !land && H / (10 * s) < 76, infoMin = short ? 12 : INFO_MIN;
+    const short = !land && H / (10 * s) < 76, infoMin = short ? 5.6 : INFO_MIN;
     app.classList.toggle('short', short);
     root.style.fontSize = 10 * s + 'px'; root.style.setProperty('--vy', '0rem');
     app.classList.toggle('land', land);
@@ -47,6 +48,7 @@ export function initLayout(onChange) {
       fw = fit(); fh = Math.floor(fw * ratio);
     }
     canvas.style.width = fw + 'px'; canvas.style.height = fh + 'px';
+    if (picked) app.classList.add('sel');
     Object.assign(view, { scale: s, land, w: W, h: H, fieldW: fw, fieldH: fh });
     resizeCanvas(); if (onChange) onChange(view);
   }
