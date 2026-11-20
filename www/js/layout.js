@@ -4,8 +4,9 @@ import { FIELD } from './core.js';
 
 const BASE_W = 390;            // 설계 기준 폭 (배율 1)
 const BASE_H = 640;            // 세로 배치에서 배율 1로 다 들어가는 최소 높이
-const UI_EST = 24;             // 상단바 + 하단 버튼 두 줄의 대략적인 높이 (rem) — 배치 방식을 고를 때만 쓴다
-const INFO_MIN = 9.5;           // 정보창 최소 높이 (rem)
+const HUD_EST = 5;             // 한 줄 상단바의 대략적인 높이 (rem) — 배치 방식을 고를 때만 쓴다
+const CAMP_MIN = 16.5;         // 주둔지(전장 아래 건물 줄)에 남겨 둘 최소 높이 (rem). 세로가 짧은 화면은 CAMP_SHORT
+const CAMP_SHORT = 13.2;
 const SIDE_MIN = 34;           // 가로 배치의 오른쪽 패널 최소 폭 (rem)
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -15,10 +16,9 @@ const DPR_CAP = [1, 1.5, 2.5];
 
 export function initLayout(onChange) {
   const app = document.getElementById('app'), canvas = document.getElementById('field');
-  const hud = document.getElementById('hud'), actions = document.getElementById('actions');
+  const hud = document.getElementById('hud');
   const root = document.documentElement;
   function apply() {
-    const picked = app.classList.contains('sel'); app.classList.remove('sel');   // 하단 버튼이 보이는 상태로 잰다
     const cs = getComputedStyle(app);
     const W = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const H = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
@@ -28,27 +28,22 @@ export function initLayout(onChange) {
     // 하한: 작은 화면에서도 글자가 11px 아래로 내려가지 않게. 상한: 태블릿에서 글자·버튼만 커지지 않고 전장이 커지게.
     const sP = clamp(Math.min(W / BASE_W, H / BASE_H), 0.88, 1.6), sL = clamp(Math.min(H / 520, W / 800), 0.85, 1.8);
     // 세로 배치와 가로 배치 중 전장이 더 크게 나오는 쪽을 고른다 (정사각형에 가까운 폴더블 펼친 화면은 가로 배치가 유리)
-    const estP = Math.min(W, (H - (UI_EST + INFO_MIN) * 10 * sP) / ratio), estL = Math.min(H / ratio, W - SIDE_MIN * 10 * sL);
+    const estP = Math.min(W, (H - (HUD_EST + CAMP_MIN) * 10 * sP) / ratio), estL = Math.min(H / ratio, W - SIDE_MIN * 10 * sL);
     const land = W > H * 1.15 || estL > estP * 1.12;
     const s = land ? sL : sP;
-    // 세로가 짧은 화면(구형 16:9 휴대폰)은 정보창을 줄여 전장을 키운다
-    const short = !land && H / (10 * s) < 76, infoMin = short ? 5.6 : INFO_MIN;
+    // 세로가 짧은 화면(구형 16:9 휴대폰)은 주둔지를 낮춰 전장을 키운다
+    const short = !land && H / (10 * s) < 76, campMin = short ? CAMP_SHORT : CAMP_MIN;
     app.classList.toggle('short', short);
     root.style.fontSize = 10 * s + 'px'; root.style.setProperty('--vy', '0rem');
     app.classList.toggle('land', land);
     const rem = 10 * s;
-    const fit = () => Math.max(120, Math.floor(land ? Math.min(H / ratio, W - SIDE_MIN * rem)
-      : Math.min(W, (H - hud.offsetHeight - actions.offsetHeight - infoMin * rem) / ratio)));
-    let fw = fit(), fh = Math.floor(fw * ratio);
-    if (!land) {
-      // 세로로 긴 화면: 남는 높이의 일부를 버튼·상단바 높이로 돌려 누르기 쉽게 한다.
-      // 버튼이 커지면 남는 높이가 줄어드므로 전장 크기를 한 번 더 계산한다.
-      const spare = (H - hud.offsetHeight - actions.offsetHeight - fh) / rem - 22;
-      root.style.setProperty('--vy', clamp(spare * 0.1, 0, 0.9).toFixed(2) + 'rem');
-      fw = fit(); fh = Math.floor(fw * ratio);
-    }
+    // 전장: 세로 배치는 폭에 맞추되 상단바와 주둔지 몫을 뺀 높이를 넘지 않게, 가로 배치는 높이에 맞춘다. 주둔지는 남는 높이를 모두 쓴다
+    const fw = Math.max(120, Math.floor(land ? Math.min(H / ratio, W - SIDE_MIN * rem) : Math.min(W, (H - hud.offsetHeight - campMin * rem) / ratio))), fh = Math.floor(fw * ratio);
+    // 건물 크기: 주둔지에 남는 높이와 폭에 맞춘다 (세로로 긴 화면에서는 건물이 커지고, 짧은 화면에서는 작아진다)
+    const campH = land ? H - hud.offsetHeight : H - hud.offsetHeight - fh, campW = land ? W - fw : W;
+    app.classList.toggle('tall', !land && campH / rem > 25.5);      // 주둔지가 넉넉하면 보스 안내를 함께 보여 준다
+    root.style.setProperty('--bs', clamp(Math.min((campH / rem - 8.2) / 8.4, campW / rem / 38), 0.72, 1.6).toFixed(2));
     canvas.style.width = fw + 'px'; canvas.style.height = fh + 'px';
-    if (picked) app.classList.add('sel');
     Object.assign(view, { scale: s, land, w: W, h: H, fieldW: fw, fieldH: fh });
     resizeCanvas(); if (onChange) onChange(view);
   }

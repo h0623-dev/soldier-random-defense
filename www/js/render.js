@@ -54,6 +54,9 @@ const DECOR = {
     c.beginPath(); c.moveTo(x - 10 * z, y - 8 * z); c.lineTo(x + 10 * z, y + 9 * z); c.moveTo(x + 10 * z, y - 8 * z); c.lineTo(x - 10 * z, y + 9 * z); c.stroke(); },
 };
 
+// 지역의 땅·발판 색 (주둔지를 전장과 같은 색으로 칠하는 데 쓴다)
+export const areaColors = area => { const T = THEMES[AREAS[area].theme]; return { ground: T.ground, pad: T.pad }; };
+
 // 종이 결 무늬 (한 번만 만든다): 밝은 점과 갈색 점이 드문드문 섞인 작은 타일
 let grainCv = null;
 function grain() {

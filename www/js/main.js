@@ -1,7 +1,7 @@
 // 화면 · 입력 · 저장 연결
 import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, GROUP_OF_LEVEL } from './data.js';
 import * as C from './core.js';
-import { draw } from './render.js';
+import { draw, areaColors } from './render.js';
 import { insigUrl, hasArt, unitArtName, loadBranchArt } from './sprites.js';
 import { Monetize } from './monetize.js';
 import { initLayout } from './layout.js';
@@ -120,6 +120,7 @@ const ACT = {
     show(`<h2>게임 방법</h2><div class="list">
       <p><b>1. 신병 소집</b> — 군자금으로 무작위 병과의 유닛을 뽑습니다. 빈 발판 가운데 무작위 자리에 배치됩니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
+      <p><b>주둔지</b> — 전장 아래의 건물을 눌러 명령합니다. 왼쪽부터 <b>훈련소</b>(천막) · <b>병과 강화</b>(병기창) · <b>신병 소집</b>(연병장) · <b>선택 소집</b>(보급창) · <b>특수 임무</b>(통신탑). 쓸 수 없는 건물은 흐리게 보이고, 특수 임무를 부를 수 있으면 통신탑이 빛납니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 등급이 올라갑니다(최고 영웅). 그 위 등급은 조합으로만 올립니다.</p>
       <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
       <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기)과 <b>진급 심사</b>(유닛 선택 후 도전: 등급이 낮을수록 잘 붙고, 15%는 강등. 전설 등급부터는 받을 수 없음)에 씁니다.</p>
@@ -161,7 +162,7 @@ const ACT = {
   menu() {
     show(`${sheetHead('일시정지', `${g.branch.name} · ${g.wave}단계 · ${C.AREAS[g.area].name}`)}
       <button class="wide" data-act="resume">${ic('play')}계속하기</button>
-      <button class="wide sec" data-act="codex">${ic('book')}조합 도감</button><button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
+      <button class="wide sec" data-act="missions">${ic('list')}임무</button><button class="wide sec" data-act="codex">${ic('book')}조합 도감</button><button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
       <button class="wide sec" data-act="mute" data-arg="menu">${ic('sound')}소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
       <button class="wide sec" data-act="leave">${ic('exit')}저장하고 나가기</button>
       <button class="wide sec danger" data-act="giveup">포기하고 결과 보기</button>`, true); paused = true; saveRun();
@@ -260,7 +261,6 @@ $('b-summon').onclick = () => { if (!g) return; const u = C.summon(g);
   else if (u.hidden) { toast(`히든 계급! ${C.unitName(g.branch, u)} 소집`); found(u); Sound.play('hidden'); }
   else { if (u.level > g.camp) toast(`행운! ${C.unitName(g.branch, u)} 소집`); Sound.play('summon'); } };
 $('b-camp').onclick = () => { if (g && C.upgradeCamp(g)) { toast(`훈련소 Lv${g.camp + 1} — ${GRADES[g.camp].name} 등급(${g.branch.grades[g.camp][0][0]}~)부터 소집`); Sound.play('camp'); } };
-$('b-codex').onclick = () => g && ACT.codex();
 $('b-pick').onclick = () => g && ACT.pick();
 $('b-up').onclick = () => g && ACT.upg();
 $('b-mission').onclick = () => g && ACT.missions();
@@ -309,12 +309,7 @@ function renderInfo() {
       <p class="note">${A.level < C.maxLevel(b) ? '노란 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 이동 · 바깥을 누르면 선택 해제' : '최고 계급입니다'}</p>
       <div class="acts"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>진급 심사 ${Math.round(C.gambleChance(A) * 100)}% ${ic('box')}${C.CFG.gambleSupply}</button>
         <button class="btn red" data-do="sell">전역 ${ic('coin')}+${fmt(C.unitValue(b, A.level) * C.CFG.sellRate)}</button></div></div>`;
-  } else {
-    const a = C.AREAS[g.area], nw = g.wave < C.CFG.maxWave ? C.waveInfo(g.wave + 1) : null;
-    el.innerHTML = `<div class="card idle"><b>${b.name}</b><small>${b.trait.text.split(' (')[0]}</small>
-      <p>${nw ? `다음 <b>${g.wave + 1}단계</b> ${nw.name} ${nw.count}기` : '마지막 단계입니다'} · <b>${(g.area + 1) * 10}단계 보스</b> ${a.boss.name}</p>
-      <p>${a.boss.text}</p></div>`;
-  }
+  } else el.innerHTML = '';      // 고른 유닛이 없으면 카드를 치우고 주둔지를 보여 준다
 }
 // 상단바·하단 버튼 글자는 매 프레임 다시 계산하지만, 값이 바뀐 것만 화면에 쓴다 (같은 값을 다시 쓰면 그때마다 화면 배치를 새로 계산한다)
 const hudEl = {}, hudVal = {};
@@ -325,17 +320,25 @@ const putOff = (id, off) => { const k = id + ':d'; if (hudVal[k] !== off) { hudV
 const putCls = (id, cls, on) => { const k = id + ':' + cls; if (hudVal[k] !== on) { hudVal[k] = on; hud(id).classList.toggle(cls, on); } };
 function renderHud() {
   const b = g.branch, lim = C.CFG.enemyLimit;
-  put('h-area', `작전 지역 ${g.area + 1} · ${C.AREAS[g.area].name}`);
+  put('h-area', C.AREAS[g.area].name);
   put('h-wave', g.wave);
   put('h-next', g.wave >= C.CFG.maxWave ? '최종' : Math.ceil(g.nextWave) + '초');
   putW('h-nextbar', g.wave >= C.CFG.maxWave ? 100 : Math.max(0, Math.min(100, 100 - g.nextWave / C.CFG.waveGap * 100)));
-  put('h-enemy', `적 ${g.enemies.length} / ${lim}`);
+  put('h-enemy', `적 ${g.enemies.length}/${lim}`);
   putW('h-enemybar', Math.min(100, g.enemies.length / lim * 100));
   putCls('g-enemy', 'warn', g.enemies.length > lim * 0.7);
   put('h-gold', fmt(g.gold)); put('h-sup', g.supply);
   const sc = C.summonCost(b, g.camp), cc = C.campCost(b, g.camp), maxed = g.camp >= C.maxCamp(b);
-  put('c-summon', `${GRADES[g.camp].name}~ · ${fmt(sc)}`); putOff('b-summon', g.gold < sc);
+  put('c-summon', `${GRADES[g.camp].name}~ · ${fmt(sc)}`); putOff('b-summon', g.gold < sc || !g.units.includes(null));
   put('t-camp', `훈련소 Lv${g.camp + 1}`); put('c-camp', maxed ? '최대' : fmt(cc));
+  // 주둔지 위 한 줄 안내: 다음 단계와 이 지역 보스
+  const nw = g.wave < C.CFG.maxWave ? C.waveInfo(g.wave + 1) : null, ar = C.AREAS[g.area];
+  put('t-info', nw ? `다음 ${g.wave + 1}단계 ${nw.name} ${nw.count}기 · ${(g.area + 1) * 10}단계 보스 ${ar.boss.name}` : '마지막 단계입니다');
+  // 주둔지 땅과 건물 판은 지금 지역의 전장과 같은 색
+  if (hudVal.area !== g.area) { hudVal.area = g.area; const col = areaColors(g.area), st = $('app').style; st.setProperty('--g1', col.ground[0]); st.setProperty('--g2', col.ground[1]); st.setProperty('--p1', col.pad[0]); st.setProperty('--p3', col.pad[3]);
+    // 이 지역 보스 안내 (세로로 긴 화면에서만 보인다)
+    const n = g.area + 1, f = hasArt('enemy_boss' + n) ? 'enemy_boss' + n : 'enemy_boss'; $('brief-img').src = `img/${f}.webp`;
+    $('brief-w').textContent = `${n * 10}단계 보스 · ${ar.name}`; $('brief-t').textContent = ar.boss.name; $('brief-s').textContent = ar.boss.text; }
   putOff('b-camp', maxed || g.gold < cc);
   put('c-pick', `보급 ${C.CFG.pickSupply}`); putOff('b-pick', g.supply < C.CFG.pickSupply || g.gold < sc || !g.units.includes(null));
   put('c-up', `합계 Lv${CLASS_IDS.reduce((n, c) => n + g.up[c], 0)}`);
