@@ -431,7 +431,7 @@ const ACT = {
       <span class="spic"><img src="img/shop/${pic}.webp" alt="" onerror="this.remove()">${ic(icon)}</span>${sub ? `<small>${sub}</small>` : ''}${btn}</div>`;
     const sec = t => `<h3 class="shead"><span>${t}</span></h3>`;
     const AD_PIC = { gem: ['gem1', 'gem'], energy: ['bolt1', 'bolt'], ticket: ['ticket1', 'ticket'] }, GEM_PIC = { gems_100: 'gem1', gems_550: 'gem2', gems_1200: 'gem3' }, BUY_PIC = { energy5: ['bolt5', 'bolt'], ticket5: ['ticket5', 'ticket'], medal30: ['medal', 'medal'] };
-    tabPage('shop', 'shop', `<p class="note cmmsg">${typeof msg === 'string' && msg ? msg : '광고를 보거나 보석으로 재화를 얻습니다'}</p>
+    tabPage('shop', 'shop', `<div class="sban"><img src="img/shop/mascot.webp" alt="" onerror="this.remove()"><p class="note cmmsg">${typeof msg === 'string' && msg ? msg : '어서 오세요! 광고를 보거나 보석으로 재화를 얻습니다'}</p></div>
       ${sec(`무료 보상${Ads.testing ? ' (시험 광고)' : ''}`)}
       <div class="sgrid">${['gem', 'energy', 'ticket'].map(k => { const p = M.AD_PLACES[k], left = M.adLeft(meta, day, k);
         return card(p.text, AD_PIC[k][0], AD_PIC[k][1], `<button class="sbtn ad" data-act="ad" data-arg="${k}" ${left ? '' : 'disabled'}>${ic('play')}광고</button>`, '', `오늘 ${left}/${p.limit}`); }).join('')}</div>

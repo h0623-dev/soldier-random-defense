@@ -357,5 +357,7 @@ img.u { filter: var(--skin, none); }
 .sbtn .ic { font-size: 1.8rem; } .sbtn.ad { background: var(--yellow); color: var(--ink); } .sbtn.gem { background: #7fd0ff; color: var(--ink); } .sbtn:disabled { background: var(--soft); color: var(--mute); box-shadow: none; }
 .stag { position: absolute; top: -1rem; right: -0.4rem; z-index: 2; padding: 0.15rem 0.7rem; border-radius: 0.7rem; background: var(--red); color: #fff; font-style: normal; font-size: 1.1rem; font-weight: 900; border: 0.2rem solid var(--ink); transform: rotate(4deg); }
 .tbody .list.odds { margin-top: 1.4rem; }
+.sban { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; } .sban img { width: 7rem; height: 7rem; object-fit: contain; flex: none; }
+.sban .note.cmmsg { flex: 1; margin: 0; padding: 0.8rem 1rem; text-align: left; background: var(--paper); border: var(--ln); border-radius: 1.4rem 1.4rem 1.4rem 0.3rem; color: var(--ink); min-height: 0; }
 @media (max-width: 380px) { .sc > b { font-size: 1.25rem; } .spic { height: 7.4rem; } .sbtn { font-size: 1.3rem; height: 3.7rem; } }
 
