@@ -34,8 +34,8 @@ const fmt = n => { n = Math.floor(n); if (n < 1e4) return String(n);
 let toastT;
 function toast(msg, ms = 1400) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
 // 겹쳐 뜨는 화면. sheet=true면 아래에서 올라오는 시트로 뜨고 게임은 멈추지 않는다(전장이 계속 보인다)
-function show(html, sheet = false) {
-  overlay.innerHTML = `<div class="panel">${sheet ? '<div class="grab"></div>' : ''}${html}</div>`;
+function show(html, sheet = false, cls = '') {
+  overlay.innerHTML = `<div class="panel ${cls}">${sheet ? '<div class="grab"></div>' : ''}${html}</div>`;
   overlay.classList.add('on'); overlay.classList.toggle('sheet', sheet); overlay.scrollTop = 0; if (!sheet) paused = true;
 }
 const sheetHead = (title, sub) => `<div class="sh"><div><b>${title}</b><small>${sub}</small></div><button class="hbtn" data-act="resume" aria-label="닫기">${ic('x')}</button></div>`;
@@ -46,15 +46,18 @@ overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'
 
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {
-  title() {
-    show(`<div class="hero"><img src="img/units/navy_inf.webp" alt=""><img src="img/units/army_inf.webp" alt=""><img src="img/units/air_inf-art.webp" alt=""></div>
-      <h1>군인 랜덤 디펜스</h1><p class="sub">계급을 올리고 병과를 조합해 100단계를 방어하라</p>
-      <button class="wide" data-act="branches">${ic('play')}출격</button>
-      <button class="wide sec" data-act="upgrades">${ic('medal')}영구 강화 · 훈장 ${meta.medals}개</button>
-      <button class="wide sec" data-act="shop">${ic('shop')}보급 상점</button>
-      <button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
-      <button class="wide sec" data-act="mute" data-arg="title">${ic('sound')}소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
-      <p class="sub" style="margin-top:22px">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · ${buildLabel(buildInfo.live || buildInfo.bundled)}` : ''}</p>`);
+  title() {      // 처음 화면: 일러스트(img/title.webp) 위에 제목, 아래에 메뉴
+    show(`<div class="tart"><div class="tlogo"><h1>군인 랜덤 디펜스</h1><p>계급을 올리고 병과를 조합해 100단계를 방어하라</p></div></div>
+      <div class="tmenu">
+        <button class="wide" data-act="branches">${ic('play')}출격</button>
+        <div class="tgrid">
+          <button class="wide sec" data-act="upgrades">${ic('medal')}영구 강화 · ${meta.medals}</button>
+          <button class="wide sec" data-act="shop">${ic('shop')}보급 상점</button>
+          <button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
+          <button class="wide sec" data-act="mute" data-arg="title">${ic('sound')}소리 ${meta.mute ? '꺼짐' : '켜짐'}</button>
+        </div>
+        <p class="sub ver">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · ${buildLabel(buildInfo.live || buildInfo.bundled)}` : ''}</p>
+      </div>`, false, 'title');
   },
   branches() {
     show(`<h2>군별 선택</h2><div class="cards">${BRANCHES.map(b => `
@@ -317,6 +320,12 @@ document.addEventListener('pointerdown', () => Sound.unlock(), { passive: true }
 window.__srd = { get game() { return g; }, C, view };   // 자동 검사용
 fillIcons(); ACT.title(); requestAnimationFrame(frame);
 try { localStorage.setItem('srd_boot_ok', localStorage.getItem('srd_live_build') || ''); } catch { /* 저장 불가 환경 */ }
+// 로딩 화면(index.html의 #boot): 일러스트를 다 읽으면(늦어도 3초) 걷는다. 너무 짧게 번쩍이지 않게 최소 0.7초는 보여 준다
+const boot = $('boot');
+function bootOff() { if (!boot || boot.classList.contains('off')) return; boot.classList.add('off'); setTimeout(() => { boot.hidden = true; }, 400); }
+function bootOn(msg) { if (!boot) return; $('boot-msg').textContent = msg; boot.hidden = false; boot.classList.remove('off'); }
+{ const im = new Image(), done = () => setTimeout(bootOff, Math.max(0, 700 - performance.now()));
+  im.onload = im.onerror = done; im.src = 'img/title.webp'; setTimeout(bootOff, 3000); }
 // 자동 업데이트: 새 버전을 다 받으면, 아직 게임을 시작하지 않았을 때는 바로 다시 열고 아니면 다음 실행부터 적용한다
-checkUpdate(() => { if (!g) location.reload(); else toast('새 버전을 받았습니다 — 다음 실행부터 적용됩니다'); })
+checkUpdate(() => { if (!g) { bootOn('새 버전 적용 중…'); location.reload(); } else toast('새 버전을 받았습니다 — 다음 실행부터 적용됩니다'); })
   .then(() => { if (!g && overlay.classList.contains('on') && overlay.querySelector('h1')) ACT.title(); });

@@ -98,7 +98,31 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .wide { display: flex; align-items: center; justify-content: center; gap: 0.6rem; width: 100%; height: 5rem; margin-top: 1.1rem; border-radius: 1.5rem; font-weight: 900; font-size: 1.7rem;
   background: var(--green); color: #12300f; border: var(--ln); box-shadow: var(--sh); }
 .wide.sec { background: var(--paper); color: var(--ink); font-weight: 800; font-size: 1.5rem; height: 4.6rem; } .wide .ic { font-size: 2rem; }
-.hero { display: flex; justify-content: center; align-items: flex-end; gap: 0.2rem; margin: 1.6rem 0 0.4rem; } .hero img { width: 8.4rem; height: 8.4rem; object-fit: contain; } .hero img:nth-child(2) { width: 11rem; height: 11rem; }
+.hero { display: flex; justify-content: center; align-items: flex-end; gap: 0.2rem; margin: 1.6rem 0 0.4rem; } .hero img { width: 11rem; height: 11rem; object-fit: contain; }
+/* 처음 화면 · 로딩 화면: 일러스트(세로 2:3)를 폭에 맞춰 아래로 붙인다. 화면이 짧으면 위쪽 하늘이 잘리고, 길면 하늘색이 이어진다 */
+.panel.title, .bootin { padding: 0; display: flex; flex-direction: column; background: #55b9fd; }
+.tart { flex: 1 1 auto; min-height: 20rem; background: url(img/title.webp) center bottom / 100% auto no-repeat; padding: calc(2.6rem + env(safe-area-inset-top)) 1rem 0; }
+.tlogo { text-align: center; } .tlogo h1 { margin: 0; font-size: 4.4rem; font-weight: 900; letter-spacing: -1px; line-height: 1.1; color: #fff; -webkit-text-stroke: 0.9rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.5rem 0 var(--ink); }
+.tlogo p { display: inline-block; margin: 1.2rem 0 0; padding: 0.5rem 1.2rem; border-radius: 2rem; background: var(--ink); color: var(--yellow); font-size: 1.25rem; font-weight: 800; }
+.tmenu { flex: none; position: relative; margin-top: -2.4rem; background: var(--cream); border-top: 0.3rem solid var(--ink); border-radius: 2.4rem 2.4rem 0 0;
+  padding: 0.6rem calc(1.4rem + env(safe-area-inset-right)) calc(1.2rem + env(safe-area-inset-bottom)) calc(1.4rem + env(safe-area-inset-left)); }
+.tmenu .wide { height: 5.6rem; font-size: 2rem; } .tmenu .tgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; } .tmenu .wide.sec { height: 5rem; font-size: 1.35rem; }
+.panel .sub.ver { margin: 1.2rem 0 0; font-size: 1.1rem; }
+#boot { position: fixed; inset: 0; z-index: 20; background: var(--ink); transition: opacity .35s; } #boot.off { opacity: 0; pointer-events: none; } #boot[hidden] { display: none; }
+.bootin { max-width: 52rem; height: 100%; margin: 0 auto; background: #55b9fd url(img/title.webp) center bottom / 100% auto no-repeat; justify-content: space-between; align-items: center;
+  padding: calc(2.6rem + env(safe-area-inset-top)) 1rem calc(3rem + env(safe-area-inset-bottom)); }
+.bload { width: 70%; max-width: 30rem; text-align: center; } .bload small { display: block; margin-top: 0.8rem; font-weight: 800; font-size: 1.3rem; color: #fff; -webkit-text-stroke: 0.5rem var(--ink); paint-order: stroke fill; }
+.bload .bar { display: block; height: 1.6rem; border-radius: 1rem; border: var(--ln); background: var(--paper); overflow: hidden; }
+.bload .bar u { display: block; width: 40%; height: 100%; border-radius: 1rem; background: var(--green); animation: bootbar 1.1s ease-in-out infinite alternate; }
+@keyframes bootbar { from { transform: translateX(-20%); } to { transform: translateX(170%); } }
+#overlay:has(.panel.title) { background: var(--ink); }      /* 폭이 넓은 화면에서는 양옆을 어둡게 비운다 */
+/* 가로 화면: 일러스트는 왼쪽에 꽉 채우고 메뉴는 오른쪽. 로딩 화면은 가운데 기둥 모양 그대로 둔다 */
+@media (orientation: landscape) {
+  .panel.title { max-width: none; flex-direction: row; height: 100%; }
+  .tart { min-height: 0; background-size: cover; background-position: center 70%; padding-top: calc(1.6rem + env(safe-area-inset-top)); }
+  .tmenu { width: 38rem; margin: 0; border-top: 0; border-left: 0.3rem solid var(--ink); border-radius: 0; display: flex; flex-direction: column; justify-content: center; overflow: auto; }
+}
+@media (orientation: landscape) and (max-height: 560px) { .tlogo h1 { font-size: 3.4rem; } }
 .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
 .bcard { padding: 1.2rem 1rem; text-align: left; color: #fff; border: var(--ln); border-radius: 1.6rem; box-shadow: var(--sh); display: flex; gap: 0.8rem; align-items: center; min-width: 0; }
 .bcard img { width: 6rem; height: 6rem; object-fit: contain; flex: none; } .bcard > span { min-width: 0; }
