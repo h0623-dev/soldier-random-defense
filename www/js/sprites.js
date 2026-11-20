@@ -116,39 +116,61 @@ export function drawSoldier(c, branchId, type, tier) {
 export const unitImage = (branchId, type, grp) => unitArt(branchId, type, grp);
 export function drawSoldierFallback(c, o) { c.save(); c.translate(0, 4); c.scale(1.25, 1.25); drawSoldier(c, o.branchId, o.type, o.tier); c.restore(); }
 
-const INSIG_COL = { bar: GOLD, chev: GOLD, dia: '#eef3f7', flower: '#eef3f7', star: GOLD };
-function insigShape(c, shape, x, y) {
-  c.fillStyle = c.strokeStyle = INSIG_COL[shape];
-  if (shape === 'bar') { c.fillRect(x - 1.6, y - 4.5, 3.2, 9); }
-  else if (shape === 'chev') { c.lineWidth = 2.2; c.lineJoin = 'miter'; c.beginPath(); c.moveTo(x - 3.6, y + 2.6); c.lineTo(x, y - 2.8); c.lineTo(x + 3.6, y + 2.6); c.stroke(); }
-  else if (shape === 'dia') { c.beginPath(); c.moveTo(x, y - 4.8); c.lineTo(x + 3.6, y); c.lineTo(x, y + 4.8); c.lineTo(x - 3.6, y); c.closePath(); c.fill(); }
-  else if (shape === 'flower') { for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; c.beginPath(); c.arc(x + Math.cos(a) * 2.6, y + Math.sin(a) * 2.6, 2.1, 0, 7); c.fill(); }
-    c.fillStyle = '#c9a23a'; c.beginPath(); c.arc(x, y, 1.4, 0, 7); c.fill(); }
-  else star(c, x, y, 4.8);
+// ── 계급장: 실제 계급장의 생김새를 단순하게 옮긴 표시 ──
+//  bar 병: 가로 막대를 위아래로 쌓는다(이등병 1 ~ 병장 4) · chev 부사관: 아래로 뾰족한 V자를 쌓는다(하사 1 ~ 상사 3) · chevstar 원사: V자 3 + 별
+//  dia 위관: 다이아몬드를 옆으로(소위 1 ~ 대위 3) · gdia 준위: 금색 다이아몬드 · flower 영관: 무궁화(소령 1 ~ 대령 3) · star 장성: 별(준장 1 ~ 대장 4, 원수 5)
+//  bud 경찰 순경~경사: 무궁화 봉오리 · tflower 경찰 경무관 이상: 큰 무궁화 · none 훈련병: 계급장 없음
+const INSIG_COL = { bar: GOLD, chev: GOLD, chevstar: GOLD, dia: '#eef3f7', gdia: GOLD, flower: '#eef3f7', star: GOLD, bud: '#eef3f7', tflower: GOLD };
+const SIDE_STEP = { dia: 8.4, gdia: 8.4, flower: 8.8, star: 8.6, bud: 6.6, tflower: 10.6 };
+// 계급장 내용의 [폭, 높이]
+function insigSize([shape, n]) {
+  if (shape === 'none' || !n) return [0, 0];
+  if (shape === 'bar') return [9, n * 1.9 + (n - 1) * 1.2];
+  if (shape === 'chev') return [9.4, 4.6 + (n - 1) * 3.3];
+  if (shape === 'chevstar') return [9.4 + 8.4, 4.6 + (n - 1) * 3.3];
+  return [(n - 1) * SIDE_STEP[shape] + (shape === 'tflower' ? 10 : shape === 'bud' ? 6 : 8), shape === 'tflower' ? 10.4 : 9.6];
 }
-// 도감 등 HTML 화면에서 쓸 계급장 그림 (data URL, 한 번 만들어 두고 다시 쓴다)
+function vee(c, cx, top) { c.beginPath(); c.moveTo(cx - 4, top); c.lineTo(cx, top + 3.8); c.lineTo(cx + 4, top); c.stroke(); }
+function flower(c, x, y, r, center) { for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; c.beginPath(); c.arc(x + Math.cos(a) * r * 1.24, y + Math.sin(a) * r * 1.24, r, 0, 7); c.fill(); }
+  c.fillStyle = center; c.beginPath(); c.arc(x, y, r * 0.68, 0, 7); c.fill(); }
+// (x, y)를 내용의 왼쪽 위로 하여 계급장을 그린다
+function drawInsig(c, insig, x, y) {
+  const [shape, n] = insig, [w, h] = insigSize(insig); c.fillStyle = c.strokeStyle = INSIG_COL[shape];
+  if (shape === 'bar') for (let i = 0; i < n; i++) rr(c, x, y + i * 3.1, 9, 1.9, 0.9), c.fill();
+  else if (shape === 'chev' || shape === 'chevstar') { c.lineWidth = 1.9; c.lineJoin = 'miter'; c.lineCap = 'round';
+    for (let i = 0; i < n; i++) vee(c, x + 4.7, y + 0.4 + i * 3.3);
+    if (shape === 'chevstar') star(c, x + 9.4 + 4.4, y + h / 2, 4.2); }
+  else for (let i = 0; i < n; i++) { const cx = x + (shape === 'tflower' ? 5 : shape === 'bud' ? 3 : 4) + i * SIDE_STEP[shape], cy = y + h / 2; c.fillStyle = INSIG_COL[shape];
+    if (shape === 'dia' || shape === 'gdia') { c.beginPath(); c.moveTo(cx, cy - 4.8); c.lineTo(cx + 3.6, cy); c.lineTo(cx, cy + 4.8); c.lineTo(cx - 3.6, cy); c.closePath(); c.fill(); }
+    else if (shape === 'flower') flower(c, cx, cy, 2.1, '#c9a23a');
+    else if (shape === 'tflower') { flower(c, cx, cy, 2.6, '#d0453a'); c.fillStyle = '#2f5fbf'; c.beginPath(); c.arc(cx, cy, 1.75, 0, Math.PI); c.fill(); }      // 가운데 태극(빨강·파랑)
+    else if (shape === 'bud') { c.beginPath(); c.ellipse(cx, cy - 0.6, 2.4, 3.9, 0, 0, 7); c.fill(); c.fillStyle = '#7fbf6a'; c.beginPath(); c.ellipse(cx, cy + 3.2, 2.6, 1.5, 0, 0, 7); c.fill(); }
+    else star(c, cx, cy, 4.8); }
+}
+// 계급장 알약(바탕 포함)의 [폭, 높이]. 계급장이 없으면 [0, 0]
+const badgeSize = insig => { const [w, h] = insigSize(insig); return w ? [w + 7.5, Math.max(15, h + 5.4)] : [0, 0]; };
+// 도감 등 HTML 화면에서 쓸 계급장 그림 (data URL, 한 번 만들어 두고 다시 쓴다). 계급장이 없는 계급(훈련병)은 투명한 점 하나
 const insigUrls = {};
 export function insigUrl(insig) {
   const key = insig.join('');
   if (!insigUrls[key]) {
-    const [shape, n] = insig, step = shape === 'bar' ? 5.2 : 8.6, w = (n - 1) * step + 13, k = 4;
-    const cv = document.createElement('canvas'); cv.width = Math.ceil(w * k); cv.height = 15 * k;
+    const [w, h] = badgeSize(insig), k = 4, [cw, ch] = insigSize(insig);
+    const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.ceil(w * k)); cv.height = Math.max(1, Math.ceil((h || 15) * k));
     const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0);
-    c.fillStyle = 'rgba(12,16,10,.92)'; rr(c, 0, 0, w, 15, 7.5); c.fill();
-    for (let i = 0; i < n; i++) insigShape(c, shape, 6.5 + i * step, 7.5);
+    if (w) { c.fillStyle = 'rgba(62,40,22,.92)'; rr(c, 0, 0, w, h, 7.5); c.fill(); drawInsig(c, insig, (w - cw) / 2, (h - ch) / 2); }
     insigUrls[key] = cv.toDataURL();
   }
   return insigUrls[key];
 }
+
 // part: 'badge'면 계급장만, 'label'이면 이름표만, 없으면 둘 다 그린다
 export function drawTag(c, o, part) {
   const { type, tier, rank, hidden, insig } = o, pure = type[0] === type[1];
   c.textAlign = 'center'; c.textBaseline = 'middle';
   // 계급장 (머리 오른쪽 위): 계급마다 모양·개수가 달라 같은 계급을 찾기 쉽다
   if (insig && part !== 'label') {
-    const [shape, n] = insig, step = shape === 'bar' ? 5.2 : 8.6, w = (n - 1) * step + 13;
-    c.fillStyle = 'rgba(62,40,22,.86)'; rr(c, 48 - w, -52, w, 15, 7.5); c.fill();
-    for (let i = 0; i < n; i++) insigShape(c, shape, 48 - w + 6.5 + i * step, -44.5);
+    const [w, h] = badgeSize(insig), [cw, ch] = insigSize(insig);
+    if (w) { c.fillStyle = 'rgba(62,40,22,.86)'; rr(c, 48 - w, -53, w, h, 7.5); c.fill(); drawInsig(c, insig, 48 - w + (w - cw) / 2, -53 + (h - ch) / 2); }
   }
   // 이름표 (발 아래, 제 칸 안쪽): 병과 글자 + 계급 이름. 글자 길이에 맞춰 폭이 정해진다
   if (part === 'badge') return;

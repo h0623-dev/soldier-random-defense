@@ -1,6 +1,6 @@
 // 규칙 검사 + 자동 플레이 봇으로 난이도 확인:  node tests/sim.mjs
 import assert from 'node:assert';
-import { BRANCHES, CLASS_IDS, GRADES } from '../www/js/data.js';
+import { BRANCHES, CLASS_IDS, GRADES, rankOf } from '../www/js/data.js';
 import * as C from '../www/js/core.js';
 
 // 1) 조합 규칙
@@ -20,7 +20,21 @@ for (const b of BRANCHES) for (const key of keys) {
 // 3) 계급은 모든 군별이 7단계이고 최종 계급 전투력이 같다. 한 계급 오르면 전투력이 CFG.growth배
 const top = b => C.unitStats({ ...b, trait: { key: '' } }, b.ranks.length - 1, ['inf', 'inf']).dmg;
 assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]));
-for (const b of BRANCHES) { assert.equal(b.ranks.length, 7, b.name); assert.equal(b.insig.length, 7); assert.equal(GRADES.length, 7); }
+for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equal(b.ranks.length, 7); assert.equal(GRADES.length, 7); }
+// 3-0) 같은 등급 안에서 병과에 따라 계급 이름이 달라진다 (표시만 다르고 능력은 같다). 순수 병과는 아래 계급, 혼성 병과는 위 계급
+{
+  const army = BRANCHES[0], nm = (lv, type) => C.rankName(army, { level: lv, type, hidden: null });
+  assert.equal(nm(0, ['inf', 'inf']), '훈련병'); assert.equal(nm(1, ['med', 'med']), '이등병'); assert.equal(nm(1, ['art', 'art']), '일병'); assert.equal(nm(1, ['inf', 'art']), '병장');
+  assert.equal(nm(2, ['inf', 'inf']), '하사'); assert.equal(nm(2, ['med', 'sig']), '중사'); assert.equal(nm(2, ['art', 'sig']), '상사'); assert.equal(nm(6, ['sig', 'sig']), '원수');
+  assert.deepEqual(new Set(keys.map(k => rankOf(army, 5, k)[0])), new Set(['준장', '소장', '중장', '대장']));      // 전설 등급의 네 이름이 모두 쓰인다
+  assert.deepEqual(C.rankInsig(army, { level: 2, type: ['art', 'sig'], hidden: null }), ['chev', 3]);              // 상사 = V자 3
+  const police = BRANCHES.find(b => b.id === 'police'), marine = BRANCHES.find(b => b.id === 'marine');
+  assert.equal(C.rankName(police, { level: 1, type: ['inf', 'art'], hidden: null }), '수경'); assert.equal(C.rankName(police, { level: 6, type: ['inf', 'inf'], hidden: null }), '치안총감');
+  assert.equal(C.rankName(marine, { level: 0, type: ['inf', 'inf'], hidden: null }), '훈병');
+  for (const b of BRANCHES) for (let lv = 0; lv < 7; lv++) for (const k of keys) assert.ok(rankOf(b, lv, k)[0], `${b.name} ${lv} ${k}`);
+  assert.equal(C.unitStats(army, 2, ['inf', 'inf']).dmg, C.unitStats(army, 2, ['inf', 'inf']).dmg);
+  assert.equal(C.rankGroup(army, { level: 3, type: ['inf', 'inf'], hidden: 'wonsa' }), 1); assert.equal(C.rankGroup(army, { level: 5, type: ['inf', 'inf'], hidden: null }), 4);
+}
 { const b = { ...BRANCHES[0], trait: { key: '' } }; assert.ok(Math.abs(C.unitStats(b, 4, ['inf', 'inf']).dmg / C.unitStats(b, 3, ['inf', 'inf']).dmg - C.CFG.growth) < 1e-9); }
 // 3-1) 히든 계급: 원사 = 상사+상사 4병과 히든 조합, 준위 = 소집 뽑기
 {
@@ -150,7 +164,7 @@ for (const b of BRANCHES) {
   const lazy = play(b.id, 1, false), med = xs => [...xs].sort((x, y) => x - y)[Math.floor(xs.length / 2)];
   console.log(b.name.padEnd(4), '봇:', rs.map(g => `${g.wave}${g.over?.win ? '승' : '패'}`).join(' '),
     '| 소집·조합만:', `${lazy.wave}${lazy.over?.win ? '승' : '패'}`,
-    '| 계급 첫 등장(중앙)', b.ranks.slice(2).map((r, i) => `${r} ${med(rs.map(g => g.first[i + 2] || 999))}`).join(' · '),
-    '| 끝 ' + b.ranks.at(-1), med(rs.map(g => g.units.filter(u => u && u.level === 6).length)) + '명',
+    '| 등급 첫 등장(중앙)', GRADES.slice(2).map((gr, i) => `${gr.name} ${med(rs.map(g => g.first[i + 2] || 999))}`).join(' · '),
+    '| 끝 초월', med(rs.map(g => g.units.filter(u => u && u.level === 6).length)) + '명',
     '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'));
 }

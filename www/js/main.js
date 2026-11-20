@@ -1,5 +1,5 @@
 // 화면 · 입력 · 저장 연결
-import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES } from './data.js';
+import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, GROUP_OF_LEVEL } from './data.js';
 import * as C from './core.js';
 import { draw } from './render.js';
 import { insigUrl, hasArt, unitArtName, loadBranchArt } from './sprites.js';
@@ -119,10 +119,10 @@ const ACT = {
   help() {
     show(`<h2>게임 방법</h2><div class="list">
       <p><b>1. 신병 소집</b> — 군자금으로 무작위 병과의 유닛을 뽑습니다. 빈 발판 가운데 무작위 자리에 배치됩니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
-      <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 계급</b>의 다른 유닛을 누르면 한 계급 위 유닛으로 진급합니다. 두 병과에 따라 결과 병과가 달라집니다.</p>
-      <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 계급이 올라갑니다(최고 대위급). 그 위 계급은 조합으로만 올립니다.</p>
+      <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계이고, 두 병과에 따라 결과 병과가 달라집니다.</p>
+      <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 등급이 올라갑니다(최고 영웅). 그 위 등급은 조합으로만 올립니다.</p>
       <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
-      <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기)과 <b>진급 심사</b>(유닛 선택 후 도전: 계급이 낮을수록 잘 붙고, 15%는 강등. 대장부터는 받을 수 없음)에 씁니다.</p>
+      <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기)과 <b>진급 심사</b>(유닛 선택 후 도전: 등급이 낮을수록 잘 붙고, 15%는 강등. 전설 등급부터는 받을 수 없음)에 씁니다.</p>
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
@@ -185,14 +185,15 @@ const ACT = {
       <p>혼성 병과끼리도 계속 조합됩니다. 재료 두 유닛의 병과 4칸을 세어 <b>3칸 이상이면 그 병과</b>, 아니면 <b>가장 많은 두 병과의 혼성</b>이 됩니다. 동률이면 먼저 고른 유닛의 병과가 우선합니다.</p></div>
       <h2>병과 · 병기</h2>
       ${Object.entries(b.types).map(([k, [n, w]]) => `<div class="wcard">${uimg(k)}<div><b>${n}</b> ${chips(k)}
-        <p><em>${b.ranks[0]}~</em> ${w[0]}</p><p><em>${b.ranks[b.tiers[0]]}~</em> ${w[1]}</p><p><em>${b.ranks[b.tiers[1]]}~</em> ${w[2]}</p></div></div>`).join('')}
-      <h2>계급 7단계</h2>
-      <p class="sub" style="text-align:left;margin:0 0 .8rem">같은 계급 둘을 조합하면 한 계급 오릅니다. 계급마다 색이 정해져 있어 이름표 테두리와 받침대 색으로 같은 계급을 찾을 수 있습니다.</p>
-      <div class="ranks">${b.ranks.map((r, i) => `<div class="rk" style="border-color:${GRADES[i].color};box-shadow:inset 0 -0.5rem 0 ${GRADES[i].color}"><img src="${insigUrl(b.insig[i])}" alt=""><b>${r}</b><small>${GRADES[i].name}</small></div>`).join('')}</div>
-      <h3>계급이 오르면 모습이 달라집니다</h3>
-      <div class="cx5">${[0, 1, 2, 3, 4].map(t => { const i = b.insig.findIndex(x => C.RANK_GROUP[x[0]] === t); return i < 0 ? '' : `<div class="ucard"><img class="ui" src="${unitSrc(b, ['inf', 'inf'], t)}" alt=""><b>${b.ranks[i]}~</b></div>`; }).join('')}</div>
+        <p><em>${GRADES[0].name}~</em> ${w[0]}</p><p><em>${GRADES[b.tiers[0]].name}~</em> ${w[1]}</p><p><em>${GRADES[b.tiers[1]].name}~</em> ${w[2]}</p></div></div>`).join('')}
+      <h2>등급과 계급</h2>
+      <p class="sub" style="text-align:left;margin:0 0 .8rem">같은 <b>등급(색)</b> 둘을 조합하면 한 등급 오릅니다. 한 등급 안의 계급 이름은 병과에 따라 달라질 뿐 능력은 같습니다 — 순수 병과는 아래 계급, 혼성 병과는 위 계급 이름을 씁니다.</p>
+      <div class="grades">${b.grades.map((list, i) => `<div class="gr" style="border-color:${GRADES[i].color}"><b class="gn" style="background:${GRADES[i].color}">${GRADES[i].name}</b>
+        <div>${list.map(([name, ins]) => `<span>${ins[1] ? `<img src="${insigUrl(ins)}" alt="">` : ''}${name}</span>`).join('')}</div></div>`).join('')}</div>
+      <h3>등급이 오르면 모습이 달라집니다</h3>
+      <div class="cx5">${[0, 2, 3, 4, 5].map(lv => `<div class="ucard" style="border-color:${GRADES[lv].color}"><img class="ui" src="${unitSrc(b, ['inf', 'inf'], GROUP_OF_LEVEL[lv])}" alt=""><b>${GRADES[lv].name}~</b></div>`).join('')}</div>
       ${b.hidden.length ? `<h2>히든 계급</h2>${b.hidden.map(h => meta.found[h.id]
-        ? `<div class="wcard hid"><div class="hbadge"><img src="${insigUrl(h.insig)}" alt=""><b>${h.name}</b></div><div><b>${h.name}</b> <small>${b.ranks[h.level]}급</small><p>${h.text}</p><p><em>얻는 법</em> ${h.how}</p></div></div>`
+        ? `<div class="wcard hid"><div class="hbadge"><img src="${insigUrl(h.insig)}" alt=""><b>${h.name}</b></div><div><b>${h.name}</b> <small>${GRADES[h.level].name} 등급</small><p>${h.text}</p><p><em>얻는 법</em> ${h.how}</p></div></div>`
         : `<div class="wcard hid"><div class="hbadge"><b>?</b></div><div><b>???</b><p>아직 발견하지 못했습니다</p><p><em>단서</em> ${h.recipe ? '어떤 조합에서 나타납니다' : '신병 소집에서 드물게 나타납니다'}</p></div></div>`).join('')}
         <div class="list"><p>히든 계급을 조합 재료로 쓰면 일반 계급으로 진급하고 능력은 사라집니다.</p></div>` : ''}
       <h2>작전 지역 · 보스</h2>
@@ -256,7 +257,7 @@ $('b-summon').onclick = () => { if (!g) return; const u = C.summon(g);
   if (!u) { toast(g.units.includes(null) ? '군자금이 부족합니다' : '배치할 칸이 없습니다 — 조합하세요'); Sound.play('deny'); }
   else if (u.hidden) { toast(`히든 계급! ${C.unitName(g.branch, u)} 소집`); found(u); Sound.play('hidden'); }
   else { if (u.level > g.camp) toast(`행운! ${C.unitName(g.branch, u)} 소집`); Sound.play('summon'); } };
-$('b-camp').onclick = () => { if (g && C.upgradeCamp(g)) { toast(`훈련소 Lv${g.camp + 1} — ${g.branch.ranks[g.camp]}부터 소집`); Sound.play('camp'); } };
+$('b-camp').onclick = () => { if (g && C.upgradeCamp(g)) { toast(`훈련소 Lv${g.camp + 1} — ${GRADES[g.camp].name} 등급(${g.branch.grades[g.camp][0][0]}~)부터 소집`); Sound.play('camp'); } };
 $('b-codex').onclick = () => g && ACT.codex();
 $('b-pick').onclick = () => g && ACT.pick();
 $('b-up').onclick = () => g && ACT.upg();
@@ -298,7 +299,7 @@ function renderInfo() {
     const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean);
     el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitSrc(b, A.type, C.rankGroup(b, A))}" alt="">
       <div><h3><i class="gdot" style="background:${GRADES[A.level].color}"></i>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? '<span class="tag hid">히든</span>' : ''}</h3>
-        <small>${h ? `${b.ranks[A.level]}급 · ` : ''}${C.unitWeapon(b, A)}</small></div></div>
+        <small><b style="color:${GRADES[A.level].color}">${GRADES[A.level].name}</b> · ${C.unitWeapon(b, A)}</small></div></div>
       ${statChips(A.stats, null, A)}
       ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${up.length ? `<p class="note star">히든 계급 지원: ${up.join(' · ')}</p>` : ''}
       <p class="note">${A.level < C.maxLevel(b) ? '노란 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 이동 · 바깥을 누르면 선택 해제' : '최고 계급입니다'}</p>
@@ -329,7 +330,7 @@ function renderHud() {
   putCls('g-enemy', 'warn', g.enemies.length > lim * 0.7);
   put('h-gold', fmt(g.gold)); put('h-sup', g.supply);
   const sc = C.summonCost(b, g.camp), cc = C.campCost(b, g.camp), maxed = g.camp >= C.maxCamp(b);
-  put('c-summon', `${b.ranks[g.camp]}~ · ${fmt(sc)}`); putOff('b-summon', g.gold < sc);
+  put('c-summon', `${GRADES[g.camp].name}~ · ${fmt(sc)}`); putOff('b-summon', g.gold < sc);
   put('t-camp', `훈련소 Lv${g.camp + 1}`); put('c-camp', maxed ? '최대' : fmt(cc));
   putOff('b-camp', maxed || g.gold < cc);
   put('c-pick', `보급 ${C.CFG.pickSupply}`); putOff('b-pick', g.supply < C.CFG.pickSupply || g.gold < sc || !g.units.includes(null));

@@ -10,31 +10,57 @@ export const CLASS_INFO = {
   sig: { short: '통', color: '#4aa3e8', role: '적 둔화 · 받는 피해 증가' },
 };
 
-// 계급 7단계 (2026-11-20 사용자 결정: 18단계는 끝까지 조합하기가 너무 길어서, 다른 게임의 "일반~초월" 7등급에 맞춰 줄였다).
-// 병 · 부사관 · 위관 · 영관 · 장성 묶음에서 가장 익숙한 계급을 하나씩 뽑았다. 화면에서는 등급 이름 없이 색으로만 구분하고, 등급 이름은 도감에만 적는다.
-const MIL_RANKS = ['이등병', '병장', '상사', '대위', '대령', '대장', '원수'];
-const POLICE_RANKS = ['이경', '수경', '경사', '경감', '총경', '치안정감', '치안총감'];
-// 등급: 계급 인덱스와 1:1. color는 이름표 테두리·받침대·도감에 쓴다
+// 등급 7단계 (2026-11-20 사용자 결정). 조합·전투력은 등급(레벨)으로 정해지고, 화면에서는 색으로 구분한다.
+// 한 등급 안에는 계급 이름이 여러 개 있고, 유닛의 병과에 따라 그중 하나가 표시된다(표시만 다르고 능력은 같다).
 export const GRADES = [
-  { name: '일반', color: '#aeb4bb' }, { name: '고급', color: '#5fd35a' }, { name: '희귀', color: '#4aa3e8' }, { name: '영웅', color: '#b15bf0' },
+  { name: '노말', color: '#aeb4bb' }, { name: '매직', color: '#5fd35a' }, { name: '레어', color: '#4aa3e8' }, { name: '영웅', color: '#b15bf0' },
   { name: '유니크', color: '#ff8a3c' }, { name: '전설', color: '#ffcf3f' }, { name: '초월', color: '#ff5a4a' },
 ];
-
-// 계급장: 계급마다 [모양, 개수]. 모양 — bar 병(막대) / chev 부사관(갈매기) / dia 위관(다이아) / flower 영관(꽃) / star 장성(별)
-// 실제 계급장을 그대로 그린 것이 아니라 단계가 한눈에 보이도록 단순화한 표시다. 모양은 캐릭터 그림의 계급대(기본 · 부사관 · 위관 · 영관 · 장성)도 정한다.
-const MIL_INSIG = [['bar', 1], ['bar', 4], ['chev', 3], ['dia', 3], ['flower', 3], ['star', 4], ['star', 5]];
-const POLICE_INSIG = [['bar', 1], ['bar', 4], ['chev', 4], ['dia', 2], ['flower', 4], ['star', 3], ['star', 4]];
+// 등급별 계급: [이름, 계급장 [모양, 개수]]. 앞쪽이 아래 계급.
+// 계급장 모양 — none 없음 / bar 병(가로 막대) / chev 부사관(아래로 겹친 V자) / dia 위관(다이아몬드) / flower 영관(무궁화) / star 장성(별)
+//             / bud 경찰 순경~경사(무궁화 봉오리) / tflower 경찰 경무관 이상(큰 무궁화)
+const R = (name, shape, n) => [name, [shape, n]];
+// 국군(육군·해군·해병대·공군)은 군인사법으로 계급 이름이 같다. 해병대만 훈련병을 '훈병'이라 부르는 관례를 따랐다.
+const MIL_GRADES = [
+  [R('훈련병', 'none', 0)],
+  [R('이등병', 'bar', 1), R('일병', 'bar', 2), R('상병', 'bar', 3), R('병장', 'bar', 4)],
+  [R('하사', 'chev', 1), R('중사', 'chev', 2), R('상사', 'chev', 3)],
+  [R('소위', 'dia', 1), R('중위', 'dia', 2), R('대위', 'dia', 3)],
+  [R('소령', 'flower', 1), R('중령', 'flower', 2), R('대령', 'flower', 3)],
+  [R('준장', 'star', 1), R('소장', 'star', 2), R('중장', 'star', 3), R('대장', 'star', 4)],
+  [R('원수', 'star', 5)],
+];
+const MARINE_GRADES = [[R('훈병', 'none', 0)], ...MIL_GRADES.slice(1)];
+// 의무경찰 4계급 + 경찰공무원 계급. 경찰은 총경 위가 4계급뿐이라 유니크·전설 등급은 이름이 둘씩이다.
+const POLICE_GRADES = [
+  [R('교육생', 'none', 0)],
+  [R('이경', 'bar', 1), R('일경', 'bar', 2), R('상경', 'bar', 3), R('수경', 'bar', 4)],
+  [R('순경', 'bud', 2), R('경장', 'bud', 3), R('경사', 'bud', 4)],
+  [R('경위', 'flower', 1), R('경감', 'flower', 2), R('경정', 'flower', 3)],
+  [R('총경', 'flower', 4), R('경무관', 'tflower', 1)],
+  [R('치안감', 'tflower', 2), R('치안정감', 'tflower', 3)],
+  [R('치안총감', 'tflower', 4)],
+];
+// 한 등급 안에서 어느 계급 이름을 쓸지: 순수 병과는 아래 계급, 혼성 병과는 위 계급. 이 순서에서의 위치를 그 등급의 이름 수에 맞춰 나눈다
+const TYPE_ORDER = ['med', 'sig', 'inf', 'art', 'med+sig', 'inf+med', 'inf+sig', 'art+med', 'art+sig', 'inf+art'];
+// 등급(level)과 병과 키('inf', 'inf+art' …)로 [이름, 계급장]을 찾는다
+export function rankOf(branch, level, typeKey) {
+  const list = branch.grades[Math.max(0, Math.min(level, branch.grades.length - 1))], p = Math.max(0, TYPE_ORDER.indexOf(typeKey));
+  return list[Math.floor(p * list.length / TYPE_ORDER.length)];
+}
+// 등급마다 캐릭터 그림이 바뀌는 계급대: 0 기본(노말·매직) · 1 부사관(레어) · 2 위관(영웅) · 3 영관(유니크) · 4 장성(전설·초월)
+export const GROUP_OF_LEVEL = [0, 0, 1, 2, 3, 4, 4];
 
 // 히든 계급: 정규 조합으로는 나오지 않고 히든 조합(recipe) 또는 소집 뽑기 확률(draw)로만 얻는다.
-//  level  : 조합할 때 취급되는 계급 인덱스(3 = 대위급). 조합하면 일반 계급으로 진급하며 능력은 사라진다.
-//  recipe : 'allDiff' = 한 계급 아래(상사) 두 유닛의 병과 4칸이 모두 다를 때
+//  level  : 조합할 때 취급되는 등급(3 = 영웅). 조합하면 일반 계급으로 진급하며 능력은 사라진다.  grp: 캐릭터 그림 계급대
+//  recipe : 'allDiff' = 한 등급 아래(레어) 두 유닛의 병과 4칸이 모두 다를 때
 //  draw   : 훈련소 기본 계급이 drawCamp[0]~[1] 범위일 때 신병 소집 1회당 등장 확률
 //  aura   : 주변 아군에게 주는 효과 (dmg = 공격력, range = 사거리)
 const MIL_HIDDEN = [
-  { id: 'wonsa', name: '원사', level: 3, insig: ['chev', 4], recipe: 'allDiff', aura: { dmg: 0.2 }, text: '주변 아군 공격력 +20%',
-    how: '히든 조합 — 상사 + 상사, 두 유닛의 병과 4칸이 모두 다를 때 (보·포·의·통)' },
-  { id: 'junwi', name: '준위', level: 3, insig: ['dia', 1], draw: 0.03, drawCamp: [2, 3], aura: { range: 0.15 }, text: '주변 아군 사거리 +15%',
-    how: '뽑기 — 훈련소 기본 계급이 상사~대위일 때 신병 소집 3% 확률' },
+  { id: 'wonsa', name: '원사', level: 3, grp: 1, insig: ['chevstar', 3], recipe: 'allDiff', aura: { dmg: 0.2 }, text: '주변 아군 공격력 +20%',
+    how: '히든 조합 — 레어 등급(하사·중사·상사) 둘, 두 유닛의 병과 4칸이 모두 다를 때 (보·포·의·통)' },
+  { id: 'junwi', name: '준위', level: 3, grp: 2, insig: ['gdia', 1], draw: 0.03, drawCamp: [2, 3], aura: { range: 0.15 }, text: '주변 아군 사거리 +15%',
+    how: '뽑기 — 훈련소 기본 등급이 레어~영웅일 때 신병 소집 3% 확률' },
 ];
 
 // 병기 3단계가 바뀌는 계급 인덱스: [위관/간부 시작, 장성/지휘부 시작]
@@ -45,7 +71,7 @@ const POLICE_TIERS = [3, 5];
 // 값: [병과 이름, [병·부사관 병기, 장교 병기, 장성 병기]]
 export const BRANCHES = [
   {
-    id: 'army', name: '육군', color: '#4b6b3a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
+    id: 'army', name: '육군', color: '#4b6b3a', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'artDmg', text: '포병 계열 공격력 +15%' },
     types: {
       'inf': ['보병', ['K2 소총', 'K808 차륜형장갑차', 'K2 흑표 전차']],
@@ -61,7 +87,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'navy', name: '해군', color: '#2f5d8a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
+    id: 'navy', name: '해군', color: '#2f5d8a', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'range', text: '모든 유닛 사거리 +10%' },
     types: {
       'inf': ['갑판병', ['K2 소총 함상경계', '참수리 고속정', '윤영하급 유도탄고속함']],
@@ -77,7 +103,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'marine', name: '해병대', color: '#b23a3a', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
+    id: 'marine', name: '해병대', color: '#b23a3a', grades: MARINE_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'infSpeed', text: '보병 계열 공격속도 +15%' },
     types: {
       'inf': ['상륙보병', ['K2 소총', 'KAAV 상륙돌격장갑차', '마린온 상륙기동헬기']],
@@ -93,7 +119,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'sf', name: '특공대', color: '#3b3b46', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
+    id: 'sf', name: '특공대', color: '#3b3b46', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'crit', text: '15% 확률로 2.5배 치명타' },
     types: {
       'inf': ['화기', ['K1A 기관단총', 'K7 소음기관단총', 'K13 특수작전 기관단총']],
@@ -109,7 +135,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'air', name: '공군', color: '#3f7fb5', ranks: MIL_RANKS, tiers: MIL_TIERS, hidden: MIL_HIDDEN, insig: MIL_INSIG,
+    id: 'air', name: '공군', color: '#3f7fb5', grades: MIL_GRADES, tiers: MIL_TIERS, hidden: MIL_HIDDEN,
     trait: { key: 'splash', text: '광역 범위 +30% · 광역 피해 +10%' },
     types: {
       'inf': ['군사경찰', ['K2 소총', '기지방호 장갑차', '기지방어 체계']],
@@ -125,7 +151,7 @@ export const BRANCHES = [
     },
   },
   {
-    id: 'police', name: '의경', color: '#27408b', ranks: POLICE_RANKS, tiers: POLICE_TIERS, hidden: [], insig: POLICE_INSIG,
+    id: 'police', name: '의경', color: '#27408b', grades: POLICE_GRADES, tiers: POLICE_TIERS, hidden: [],
     trait: { key: 'slow', text: '둔화 효과 +30% · 처치 보상 +10% · 공격력 -15%' },
     types: {
       'inf': ['방범순찰', ['경찰봉', '테이저건', '순찰차']],
@@ -141,5 +167,8 @@ export const BRANCHES = [
     },
   },
 ];
+
+// ranks: 등급마다 대표 계급(그 등급에서 가장 높은 이름) — '훈련병 → 원수'처럼 한 줄로 보여 줄 때 쓴다
+for (const b of BRANCHES) b.ranks = b.grades.map(g => g.at(-1)[0]);
 
 export const branchById = id => BRANCHES.find(b => b.id === id);

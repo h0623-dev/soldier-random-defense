@@ -1,5 +1,5 @@
 // 군인 랜덤 디펜스 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
-import { CLASS_IDS, branchById } from './data.js';
+import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL } from './data.js';
 
 // ── 전장 ─────────────────────────────────────────────────
 // 가로 7칸 × 세로 9칸(칸 100×100)의 세로로 긴 전장. 적은 발판 덩어리 사이로 꺾이며 도는 닫힌 길을 계속 돈다.
@@ -111,8 +111,8 @@ export function combineTypes(t1, t2) {
 
 // ── 수치 ─────────────────────────────────────────────────
 const expo = (branch, level) => level;       // 계급 한 단계 = 전투력 CFG.growth배. (18계급 시절에는 계급 수가 달라도 최종 전투력이 같게 늘려 썼다)
-export const maxLevel = branch => branch.ranks.length - 1;
-export const maxCamp = branch => branch.ranks.length - 4;      // 훈련소 최고 단계의 기본 소집 계급 = 대위급. 그 위 3계급(대령·대장·원수)은 조합으로만 올린다
+export const maxLevel = branch => branch.grades.length - 1;
+export const maxCamp = branch => branch.grades.length - 4;     // 훈련소 최고 단계의 기본 소집 등급 = 영웅. 그 위 3등급(유니크·전설·초월)은 조합으로만 올린다
 export const summonCost = (branch, camp) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, camp));
 export const campCost = (branch, camp) => Math.round(CFG.campBase * CFG.campGrowth ** expo(branch, camp));
 export const unitValue = (branch, level) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, level));
@@ -233,9 +233,9 @@ export const MISSIONS = [
   { id: 'four', sup: 1, text: () => '기본 병과 4종을 모두 배치', ok: g => CLASS_IDS.every(c => g.units.some(u => u && u.type[0] === c && u.type[1] === c)) },
   { id: 'mix3', sup: 2, text: () => '혼성 병과 3종을 동시에 보유', ok: g => new Set(g.units.filter(u => u && u.type[0] !== u.type[1]).map(u => typeKey(u.type))).size >= 3 },
   { id: 'full', sup: 1, text: () => '배치 칸 25칸을 모두 채우기', ok: g => !g.units.includes(null) },
-  { id: 'lv5', sup: 1, text: g => `${g.branch.ranks[4]} 이상 3명 보유`, ok: g => lvCount(g, 4) >= 3 },
-  { id: 'officer', sup: 2, text: g => `${g.branch.ranks[g.branch.tiers[0]]} 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[0]) >= 1 },
-  { id: 'general', sup: 3, text: g => `${g.branch.ranks[g.branch.tiers[1]]} 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[1]) >= 1 },
+  { id: 'lv5', sup: 1, text: () => `${GRADES[4].name} 등급 이상 3명 보유`, ok: g => lvCount(g, 4) >= 3 },
+  { id: 'officer', sup: 2, text: g => `${GRADES[g.branch.tiers[0]].name} 등급 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[0]) >= 1 },
+  { id: 'general', sup: 3, text: g => `${GRADES[g.branch.tiers[1]].name} 등급 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[1]) >= 1 },
   { id: 'up5', sup: 1, text: () => '병과 강화 합계 5단계', ok: g => CLASS_IDS.reduce((s, c) => s + g.up[c], 0) >= 5 },
   { id: 'el1', sup: 1, text: () => '특수 임무 1회 완수', ok: g => g.elite.n >= 1 },
   { id: 'el5', sup: 2, text: () => '특수 임무 5회 완수', ok: g => g.elite.n >= 5 },
@@ -275,11 +275,11 @@ export function sell(g, a) {
   const v = Math.floor(unitValue(g.branch, u.level) * CFG.sellRate);
   g.units[a] = null; g.gold += v; g.auraDirty = true; return v;
 }
-export const rankInsig = (branch, u) => (hiddenDef(branch, u.hidden) || {}).insig || branch.insig[u.level];
+// 계급 이름·계급장은 등급과 병과로 정해진다(같은 등급이라도 병과에 따라 이름이 다르다). 히든 계급은 제 이름과 계급장을 쓴다
+export const rankInsig = (branch, u) => (hiddenDef(branch, u.hidden) || {}).insig || rankOf(branch, u.level, typeKey(u.type))[1];
 // 계급대: 계급장 모양으로 나눈 5단계 (0 병 · 1 부사관 · 2 위관 · 3 영관 · 4 장성). 겉모습과 그림이 이 단계에 따라 달라진다
-export const RANK_GROUP = { bar: 0, chev: 1, dia: 2, flower: 3, star: 4 };
-export const rankGroup = (branch, u) => RANK_GROUP[rankInsig(branch, u)[0]] || 0;
-export const rankName = (branch, u) => (hiddenDef(branch, u.hidden) || {}).name || branch.ranks[u.level];
+export const rankGroup = (branch, u) => { const h = hiddenDef(branch, u.hidden); return h && h.grp != null ? h.grp : GROUP_OF_LEVEL[Math.min(u.level, GROUP_OF_LEVEL.length - 1)]; };
+export const rankName = (branch, u) => (hiddenDef(branch, u.hidden) || {}).name || rankOf(branch, u.level, typeKey(u.type))[0];
 export const unitName = (branch, u) => `${rankName(branch, u)} ${branch.types[typeKey(u.type)][0]}`;
 export const unitWeapon = (branch, u) =>
   branch.types[typeKey(u.type)][1][u.level >= branch.tiers[1] ? 2 : u.level >= branch.tiers[0] ? 1 : 0];

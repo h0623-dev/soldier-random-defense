@@ -1,6 +1,6 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
-import { FIELD, CELL, CFG, AREAS, RANK_GROUP, canMerge, rankName, rankInsig } from './core.js';
+import { FIELD, CELL, CFG, AREAS, rankGroup, canMerge, rankName, rankInsig } from './core.js';
 import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
@@ -8,7 +8,7 @@ const DEPTH = 18;                                      // 발판 블록 옆면 �
 const FEET = 20, CHAR = 72;                            // 발판 중심에서 캐릭터 발까지, 캐릭터 그림 크기. 유닛이 제 칸 안에 들어가 칸 한가운데에 서도록 잡은 값이다
 // 계급대(계급장 모양으로 구분): 병 · 부사관 · 위관 · 영관 · 장성. 계급대가 오를수록 몸집과 장식이 달라진다
 const RANK_SIZE = [0.9, 0.94, 0.99, 1.04, 1.1, 1.16, 1.22];      // 계급(7단계)이 오를수록 조금씩 커진다
-const FT_BOX = [-22, -6, 22, 9], UB_BOX = [-40, -16, 40, 24], BADGE_BOX = [-2, -54, 50, -35], LABEL_BOX = [-50, 24, 50, 44];      // 미리 그려 두는 조각들의 범위 (유닛 기준 좌표)
+const FT_BOX = [-22, -6, 22, 9], UB_BOX = [-40, -16, 40, 24], BADGE_BOX = [8, -55, 50, -33], LABEL_BOX = [-50, 24, 50, 44];      // 미리 그려 두는 조각들의 범위 (유닛 기준 좌표)
 // 받침대는 계급(등급) 색: 이등병은 없고, 병장부터 초록 · 파랑 · 보라 · 주황 · 금 · 빨강 원판 위에 선다 (같은 계급을 색으로 찾게)
 const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
 const rnd = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // 장식 배치용 고정 난수
@@ -351,7 +351,7 @@ function unit(ctx, b, u, p, k, now, quality, T) {
   if (u.hidden) { ctx.fillStyle = `rgba(255,212,94,${0.3 + 0.12 * Math.sin(now * 3 + u.id)})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 42, 19, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]); }
   // 계급대별 모습: 병 → 부사관 → 위관 → 영관 → 장성으로 갈수록 몸집이 커지고 받침대·깃발·망토·후광이 붙는다
-  const grp = RANK_GROUP[o.insig[0]] || 0, size = CHAR * RANK_SIZE[lv], top = p.y + FEET - size;      // grp: 그림·장식이 바뀌는 계급대(병·부사관·위관·영관·장성), lv: 계급
+  const grp = rankGroup(b, u), size = CHAR * RANK_SIZE[lv], top = p.y + FEET - size;      // grp: 그림·장식이 바뀌는 계급대(병·부사관·위관·영관·장성), lv: 계급
   if (grp === 4 && quality > 0) {      // 장성: 뒤에서 천천히 도는 금빛 햇살
     ctx.save(); ctx.translate(p.x, p.y - 8); ctx.rotate(now * 0.5 + u.id); ctx.fillStyle = 'rgba(255,214,94,.3)';
     for (let i = 0; i < 8; i++) { ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-9, -62); ctx.lineTo(9, -62); ctx.closePath(); ctx.fill(); }
