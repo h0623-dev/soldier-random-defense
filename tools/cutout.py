@@ -6,8 +6,19 @@ from collections import deque
 import numpy as np
 from PIL import Image, ImageFilter
 
+def finish(out, alpha, size):
+    box = alpha.point(lambda v: 255 if v > 24 else 0).getbbox()
+    out = out.crop(box); side = max(out.size); pad = int(side * 0.04)
+    sq = Image.new('RGBA', (side + pad * 2, side + pad * 2), (0, 0, 0, 0))
+    sq.paste(out, ((side - out.width) // 2 + pad, side - out.height + pad))    # 발을 바닥에 맞춤
+    return sq.resize((size, size), Image.LANCZOS)
+
 def cutout(path, size):
-    im = Image.open(path).convert('RGB'); a = np.asarray(im).astype(np.int16)
+    src = Image.open(path)
+    if src.mode == 'RGBA':                       # 이미 배경이 투명한 그림은 그대로 쓴다 (가장자리 대부분이 투명할 때)
+        al = np.asarray(src.getchannel('A')); edge = np.concatenate([al[0], al[-1], al[:, 0], al[:, -1]])
+        if (edge < 16).mean() > 0.9: return finish(src, src.getchannel('A'), size), float((al < 16).mean())
+    im = src.convert('RGB'); a = np.asarray(im).astype(np.int16)
     h, w, _ = a.shape
     mn, mx = a.min(2), a.max(2)
     bgish = (mn > 196) & (mx - mn < 26)          # 밝고 색이 거의 없는 픽셀
@@ -26,11 +37,7 @@ def cutout(path, size):
     alpha = Image.fromarray(np.where(seen, 0, 255).astype(np.uint8))
     alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))   # 흰 테두리 줄이기
     out = im.convert('RGBA'); out.putalpha(alpha)
-    box = alpha.point(lambda v: 255 if v > 24 else 0).getbbox()
-    out = out.crop(box); side = max(out.size); pad = int(side * 0.04)
-    sq = Image.new('RGBA', (side + pad * 2, side + pad * 2), (0, 0, 0, 0))
-    sq.paste(out, ((side - out.width) // 2 + pad, side - out.height + pad))    # 발을 바닥에 맞춤
-    return sq.resize((size, size), Image.LANCZOS), seen.mean()
+    return finish(out, alpha, size), seen.mean()
 
 if __name__ == '__main__':
     src, dst = sys.argv[1], sys.argv[2]; size = int(sys.argv[3]) if len(sys.argv) > 3 else 256

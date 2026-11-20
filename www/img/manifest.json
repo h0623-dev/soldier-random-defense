@@ -61,6 +61,16 @@
 "units/sf_sig",
 "enemy_armor",
 "enemy_boss",
+"enemy_boss10",
+"enemy_boss2",
+"enemy_boss3",
+"enemy_boss4",
+"enemy_boss5",
+"enemy_boss6",
+"enemy_boss7",
+"enemy_boss8",
+"enemy_boss9",
+"enemy_elite",
 "enemy_fast",
 "enemy_normal"
 ]

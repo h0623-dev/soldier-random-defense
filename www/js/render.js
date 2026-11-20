@@ -6,6 +6,10 @@ loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
 const FEET = 34, CHAR = 84;                            // 발판 중심에서 캐릭터 발까지, 캐릭터 그림 크기
+// 계급대(계급장 모양으로 구분): 병 · 부사관 · 위관 · 영관 · 장성. 계급대가 오를수록 몸집과 장식이 달라진다
+const RANK_GROUP = { bar: 0, chev: 1, dia: 2, flower: 3, star: 4 };
+const RANK_SIZE = [0.9, 0.97, 1.04, 1.11, 1.2];
+const PEDESTAL = [null, ['#c98a4b', '#7a4a22'], ['#dfe5ea', '#7f8a94'], ['#ffd45e', '#a8780f'], ['#ffe27a', '#b07c08']];
 const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
 const rnd = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // 장식 배치용 고정 난수
 
@@ -202,6 +206,19 @@ function unit(ctx, b, u, p, k, now, quality) {
   if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 50, 26, 0, 0, 7); ctx.fill(); }
   if (u.hidden) { ctx.fillStyle = `rgba(255,212,94,${0.3 + 0.12 * Math.sin(now * 3 + u.id)})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 42, 19, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]); }
+  // 계급대별 모습: 병 → 부사관 → 위관 → 영관 → 장성으로 갈수록 몸집이 커지고 받침대·깃발·망토·후광이 붙는다
+  const grp = RANK_GROUP[o.insig[0]] || 0, size = CHAR * RANK_SIZE[grp], top = p.y + FEET - size;
+  if (grp === 4 && quality > 0) {      // 장성: 뒤에서 천천히 도는 금빛 햇살
+    ctx.save(); ctx.translate(p.x, p.y - 8); ctx.rotate(now * 0.5 + u.id); ctx.fillStyle = 'rgba(255,214,94,.3)';
+    for (let i = 0; i < 8; i++) { ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-9, -62); ctx.lineTo(9, -62); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+  if (grp > 0) {                       // 받침대: 청동 → 은 → 금 (두께가 있는 원판)
+    const [topC, rimC] = PEDESTAL[grp], rx = 30 + grp * 2.5, ry = 12 + grp;
+    ctx.fillStyle = rimC; ctx.beginPath(); ctx.ellipse(p.x, fy + 6, rx, ry, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = topC; ctx.beginPath(); ctx.ellipse(p.x, fy + 1, rx, ry, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p.x, fy, rx - 3, ry - 2.5, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  }
   ctx.lineWidth = 4;
   ctx.strokeStyle = CLASS_INFO[u.type[0]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 31, 13, 0, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
   ctx.strokeStyle = CLASS_INFO[u.type[1]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 31, 13, 0, -Math.PI / 2, Math.PI / 2); ctx.stroke();
@@ -210,11 +227,29 @@ function unit(ctx, b, u, p, k, now, quality) {
   const fire = u.fireT > 0 ? Math.sin((1 - u.fireT / 0.16) * Math.PI) : 0;
   const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.2 : 0) - fire * 6, sc = 1 + fire * 0.07;
   const im = unitImage(b.id, u.type) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
-  const w = CHAR * sc;
+  const w = size * sc;
   const stunned = u.stunT > 0;
+  // 등 뒤 장식 (캐릭터보다 먼저 그려 뒤에 놓는다): 위관 깃발 하나, 영관 깃발 둘, 장성 망토와 후광
+  if (grp === 2 || grp === 3) for (const sd of grp === 3 ? [-1, 1] : [1]) {
+    const x0 = p.x + sd * size * 0.12, y0 = fy - 6, x1 = p.x + sd * size * 0.46, y1 = top + size * 0.1;
+    ctx.strokeStyle = '#3a2f20'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.fillStyle = grp === 3 ? b.color : '#f4f6f8'; ctx.strokeStyle = grp === 3 ? '#ffd45e' : '#1b1f17'; ctx.lineWidth = grp === 3 ? 2 : 1.5;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + sd * 20, y1 + 5); ctx.lineTo(x1 + sd * 17, y1 + 19); ctx.lineTo(x1 - sd * 3, y1 + 13); ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (grp === 3) { ctx.fillStyle = '#ffd45e'; ctx.beginPath(); ctx.arc(x1 + sd * 8, y1 + 10, 3, 0, 7); ctx.fill(); }
+  }
+  if (grp === 4) {
+    ctx.fillStyle = '#b3262e'; ctx.strokeStyle = '#1b1f17'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(p.x - size * 0.2, top + size * 0.5); ctx.lineTo(p.x + size * 0.2, top + size * 0.5); ctx.lineTo(p.x + size * 0.42, fy); ctx.quadraticCurveTo(p.x, fy + 7, p.x - size * 0.42, fy); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.x + size * 0.4, fy - 3); ctx.quadraticCurveTo(p.x, fy + 4, p.x - size * 0.4, fy - 3); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,214,94,.95)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, top + size * 0.3, size * 0.4, 0, 7); ctx.stroke();
+  }
   if (stunned) ctx.globalAlpha = 0.55;
   ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy), w, w);
   ctx.globalAlpha = 1;
+  if (grp === 4 && quality > 0) for (let i = 0; i < 3; i++) {      // 장성: 주변에서 반짝이는 빛
+    const ph = now * 2.4 + i * 2.1 + u.id, a = Math.max(0, Math.sin(ph)), sx = p.x + [-0.44, 0.46, 0.1][i] * size, sy = top + [0.3, 0.18, 0.02][i] * size, r = 3 + a * 5;
+    ctx.fillStyle = `rgba(255,248,200,${a})`; ctx.beginPath(); ctx.moveTo(sx, sy - r); ctx.quadraticCurveTo(sx, sy, sx + r, sy); ctx.quadraticCurveTo(sx, sy, sx, sy + r); ctx.quadraticCurveTo(sx, sy, sx - r, sy); ctx.quadraticCurveTo(sx, sy, sx, sy - r); ctx.fill();
+  }
   if (stunned) { ctx.fillStyle = '#ffd45e'; ctx.strokeStyle = '#3a2a08'; ctx.lineWidth = 1.2;     // 기절: 머리 위를 도는 별
     for (let i = 0; i < 3; i++) { const a = now * 5 + i * 2.1, sx = p.x + Math.cos(a) * 20, sy = p.y - 46 + Math.sin(a) * 6;
       ctx.beginPath(); for (let j = 0; j < 10; j++) { const q = -Math.PI / 2 + j * Math.PI / 5, rr2 = j % 2 ? 2.6 : 6; ctx[j ? 'lineTo' : 'moveTo'](sx + Math.cos(q) * rr2, sy + Math.sin(q) * rr2); }
