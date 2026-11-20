@@ -1,13 +1,14 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO } from './data.js';
 import { FIELD, CELL, CFG, AREAS, RANK_GROUP, canMerge, rankName, rankInsig } from './core.js';
-import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, enemyArt, loadArt } from './sprites.js';
+import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
 const FEET = 34, CHAR = 84;                            // 발판 중심에서 캐릭터 발까지, 캐릭터 그림 크기
 // 계급대(계급장 모양으로 구분): 병 · 부사관 · 위관 · 영관 · 장성. 계급대가 오를수록 몸집과 장식이 달라진다
 const RANK_SIZE = [0.9, 0.97, 1.04, 1.11, 1.2];
+const UB_BOX = [-44, -18, 44, 26], BADGE_BOX = [-2, -54, 50, -35], LABEL_BOX = [-50, 30, 50, 50];      // 미리 그려 두는 조각들의 범위 (유닛 기준 좌표)
 const PEDESTAL = [null, ['#c98a4b', '#7a4a22'], ['#dfe5ea', '#7f8a94'], ['#ffd45e', '#a8780f'], ['#ffe27a', '#b07c08']];
 const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
 const rnd = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };   // 장식 배치용 고정 난수
@@ -108,6 +109,36 @@ function background(k, area, map) {
   return bg;
 }
 
+// 그림을 화면에 찍힐 크기로 미리 줄여 둔다. 256~512px 원본을 매 프레임 줄여 그리는 것보다 같은 크기로 복사하는 쪽이 훨씬 싸다.
+// 그림에서 내용이 있는 부분만 잘라 담으므로(공격 그림은 대부분이 빈 자리다) 화면에 찍는 넓이도 줄어든다.
+// flip이면 좌우를 뒤집어 둔다(왼쪽으로 가는 적, 왼쪽을 보는 공격 자세). 돌려주는 값: { cv, x, y, w, h } — (x, y)는 그림 왼쪽 위에서의 위치
+const fitCache = new Map(), boxCache = new Map(); let fitCount = 0;
+function contentBox(im) {      // 내용이 있는 범위 (0~1). 48px로 줄여 한 번만 잰다
+  let b = boxCache.get(im); if (b) return b;
+  const N = 48, cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const c = cv.getContext('2d', { willReadFrequently: true }); c.drawImage(im, 0, 0, N, N);
+  let x0 = N, y0 = N, x1 = -1, y1 = -1;
+  try { const d = c.getImageData(0, 0, N, N).data;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (d[(y * N + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  } catch { x1 = -1; }
+  b = x1 < 0 ? [0, 0, 1, 1] : [Math.max(0, x0 - 1) / N, Math.max(0, y0 - 1) / N, Math.min(N, x1 + 2) / N, Math.min(N, y1 + 2) / N];
+  boxCache.set(im, b); return b;
+}
+function fit(im, w, k, flip = false) {
+  let m = fitCache.get(im); if (!m) fitCache.set(im, m = new Map());
+  const key = (flip ? -1 : 1) * Math.round(w * k); let f = m.get(key);
+  if (!f) {
+    if (++fitCount > 500) { fitCache.clear(); fitCount = 1; fitCache.set(im, m = new Map()); }      // 화면 크기·품질이 바뀌어 쌓인 것 정리
+    const px = Math.max(1, Math.round(w * k)), b = contentBox(im), bx = flip ? [1 - b[2], b[1], 1 - b[0], b[3]] : b;
+    const X0 = Math.floor(bx[0] * px), Y0 = Math.floor(bx[1] * px), X1 = Math.ceil(bx[2] * px), Y1 = Math.ceil(bx[3] * px);
+    const cv = document.createElement('canvas'); cv.width = Math.max(1, X1 - X0); cv.height = Math.max(1, Y1 - Y0);
+    const c = cv.getContext('2d'); c.imageSmoothingQuality = 'high'; c.translate(-X0, -Y0); if (flip) { c.translate(px, 0); c.scale(-1, 1); } c.drawImage(im, 0, 0, px, px);
+    m.set(key, f = { cv, x: X0 / k, y: Y0 / k, w: cv.width / k, h: cv.height / k });
+  }
+  return f;
+}
+const put = (ctx, f, x, y) => ctx.drawImage(f.cv, x + f.x, y + f.y, f.w, f.h);      // fit()으로 만든 그림을 (x, y)를 왼쪽 위로 하여 찍는다
+
 // 보스 그림: 지역 보스 전용 그림(enemy_boss2 …)이 있으면 쓰고, 없으면 기본 전차 그림의 색을 바꿔 쓴다
 const tintCache = {};
 function bossImage(n) {
@@ -179,17 +210,16 @@ function enemy(ctx, e, k, quality) {
   const r = ENEMY_R[e.kind], half = r + 8, left = e.left;
   const by = quality > 0 ? Math.sin(e.s * 0.22 + e.id) * (e.kind === 'boss' ? 1 : 1.8) : 0, fly = e.kind === 'fast' ? 9 : e.fly ? 16 : 0;
   // 바닥 그림자 · 상태 표시
-  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.85, r * 0.95, r * 0.36, 0, 0, 7); ctx.fill();
+  ctx.drawImage(sprite('esh:' + r, r, k, c => { c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(0, 0, r * 0.95, r * 0.36, 0, 0, 7); c.fill(); }), e.x - r, e.y + r * 0.85 - r, r * 2, r * 2);
   if (elite) { ctx.fillStyle = 'rgba(160,90,220,.4)'; ctx.strokeStyle = '#c99bff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.6, r + 9, (r + 9) * 0.5, 0, 0, 7); ctx.fill(); ctx.stroke(); }
   if (e.dashT > 0) { ctx.strokeStyle = '#7fe3ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
   else if (e.skill && e.skill.id === 'armor' && e.hp > e.maxHp * 0.5) { ctx.strokeStyle = '#cfd6dc'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
   if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.5)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 4, (r + 4) * 0.45, 0, 0, 7); ctx.fill(); }
   if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 5, (r + 5) * 0.45, 0, 0, 7); ctx.stroke(); }
   const im = (e.kind === 'boss' && bossImage(e.boss)) || (elite && enemyArt('elite')) || enemyArt(art) || sprite('e:' + art, half, k, ENEMY_DRAW[art]);
-  if (left) { ctx.save(); ctx.translate(e.x, e.y + by - fly); ctx.scale(-1, 1); ctx.drawImage(im, -half, -half, half * 2, half * 2); ctx.restore(); }
-  else ctx.drawImage(im, e.x - half, e.y - half + by - fly, half * 2, half * 2);
-  ctx.fillStyle = 'rgba(0,0,0,.7)'; rr(ctx, e.x - r - 1, e.y - half - 4 - fly, r * 2 + 2, 6, 3); ctx.fill();
-  ctx.fillStyle = '#7be36a'; rr(ctx, e.x - r, e.y - half - 3 - fly, r * 2 * Math.max(0, e.hp / e.maxHp), 4, 2); ctx.fill();
+  put(ctx, fit(im, half * 2, k, left), e.x - half, e.y - half + by - fly);
+  ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(e.x - r - 1, e.y - half - 4 - fly, r * 2 + 2, 6);
+  ctx.fillStyle = '#7be36a'; ctx.fillRect(e.x - r, e.y - half - 3 - fly, r * 2 * Math.max(0, e.hp / e.maxHp), 4);
   if (elite) { ctx.fillStyle = '#e9d6ff'; ctx.font = '800 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(Math.ceil(e.life) + '초', e.x, e.y - half - 14); }
 }
 
@@ -283,16 +313,19 @@ function unit(ctx, b, u, p, k, now, quality) {
     for (let i = 0; i < 8; i++) { ctx.rotate(Math.PI / 4); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-9, -62); ctx.lineTo(9, -62); ctx.closePath(); ctx.fill(); }
     ctx.restore();
   }
-  if (grp > 0) {                       // 받침대: 청동 → 은 → 금 (두께가 있는 원판)
-    const [topC, rimC] = PEDESTAL[grp], rx = 30 + grp * 2.5, ry = 12 + grp;
-    ctx.fillStyle = rimC; ctx.beginPath(); ctx.ellipse(p.x, fy + 6, rx, ry, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = topC; ctx.beginPath(); ctx.ellipse(p.x, fy + 1, rx, ry, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p.x, fy, rx - 3, ry - 2.5, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-  }
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = CLASS_INFO[u.type[0]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 31, 13, 0, Math.PI / 2, Math.PI * 1.5); ctx.stroke();
-  ctx.strokeStyle = CLASS_INFO[u.type[1]].color; ctx.beginPath(); ctx.ellipse(p.x, fy, 31, 13, 0, -Math.PI / 2, Math.PI / 2); ctx.stroke();
-  ctx.fillStyle = 'rgba(0,0,0,.34)'; ctx.beginPath(); ctx.ellipse(p.x, fy, 24, 9, 0, 0, 7); ctx.fill();
+  // 발밑(받침대: 청동 → 은 → 금, 병과 색 띠, 그림자)은 바뀌지 않으므로 한 번 그려 두고 복사한다
+  ctx.drawImage(spriteBox(['ub', u.type[0], u.type[1], grp].join(':'), k, UB_BOX, c => {
+    if (grp > 0) {
+      const [topC, rimC] = PEDESTAL[grp], rx = 30 + grp * 2.5, ry = 12 + grp;
+      c.fillStyle = rimC; c.beginPath(); c.ellipse(0, 6, rx, ry, 0, 0, 7); c.fill();
+      c.fillStyle = topC; c.beginPath(); c.ellipse(0, 1, rx, ry, 0, 0, 7); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(0, 0, rx - 3, ry - 2.5, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
+    }
+    c.lineWidth = 4;
+    c.strokeStyle = CLASS_INFO[u.type[0]].color; c.beginPath(); c.ellipse(0, 0, 31, 13, 0, Math.PI / 2, Math.PI * 1.5); c.stroke();
+    c.strokeStyle = CLASS_INFO[u.type[1]].color; c.beginPath(); c.ellipse(0, 0, 31, 13, 0, -Math.PI / 2, Math.PI / 2); c.stroke();
+    c.fillStyle = 'rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(0, 0, 24, 9, 0, 0, 7); c.fill();
+  }), p.x + UB_BOX[0], fy + UB_BOX[1], UB_BOX[2] - UB_BOX[0], UB_BOX[3] - UB_BOX[1]);
   // 캐릭터: 가만히 있을 때는 숨쉬듯 조금 움직이고, 사격할 때는 반동으로 튄다. 발을 기준으로 커졌다 작아진다
   const fire = u.fireT > 0 ? Math.sin((1 - u.fireT / 0.16) * Math.PI) : 0;
   const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.2 : 0) - fire * 6, sc = 1 + fire * 0.07;
@@ -317,7 +350,8 @@ function unit(ctx, b, u, p, k, now, quality) {
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
   const atk = u.atkT > 0 && !stunned ? unitAtkImage(b.id, u.type, grp) : null;
-  if (atk) { ctx.save(); ctx.translate(p.x, p.y + FEET + dy); if (u.faceL) ctx.scale(-1, 1); ctx.drawImage(atk, -w, -w * 2, w * 2, w * 2); ctx.restore(); }
+  if (atk) put(ctx, fit(atk, size * 2, k, u.faceL), p.x - size, p.y + FEET + dy - size * 2);
+  else if (sc === 1) put(ctx, fit(im, size, k), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
   else ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy), w, w);
   ctx.globalAlpha = 1;
   if (grp === 4 && quality > 0) for (let i = 0; i < 3; i++) {      // 장성: 주변에서 반짝이는 빛
@@ -331,5 +365,8 @@ function unit(ctx, b, u, p, k, now, quality) {
   else if (u.burnT > 0) { const fl = 1 + Math.sin(now * 14 + u.id) * 0.15;                          // 화염: 머리 위 불꽃
     ctx.fillStyle = '#ff7a2e'; ctx.beginPath(); ctx.moveTo(p.x, p.y - 62 * fl + 8); ctx.quadraticCurveTo(p.x + 11, p.y - 44, p.x, p.y - 38); ctx.quadraticCurveTo(p.x - 11, p.y - 44, p.x, p.y - 62 * fl + 8); ctx.fill();
     ctx.fillStyle = '#ffd45e'; ctx.beginPath(); ctx.arc(p.x, p.y - 42, 3.5, 0, 7); ctx.fill(); }
-  ctx.drawImage(sprite(['ut', tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':'), 62, k, c => drawTag(c, o)), p.x - 62, p.y - 62, 124, 124);
+  // 계급장(머리 오른쪽 위)과 이름표(발 아래)는 따로 작은 조각으로 찍는다
+  const tkey = [tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':');
+  ctx.drawImage(spriteBox('utb:' + tkey, k, BADGE_BOX, c => drawTag(c, o, 'badge')), p.x + BADGE_BOX[0], p.y + BADGE_BOX[1], BADGE_BOX[2] - BADGE_BOX[0], BADGE_BOX[3] - BADGE_BOX[1]);
+  ctx.drawImage(spriteBox('utl:' + tkey, k, LABEL_BOX, c => drawTag(c, o, 'label')), p.x + LABEL_BOX[0], p.y + LABEL_BOX[1], LABEL_BOX[2] - LABEL_BOX[0], LABEL_BOX[3] - LABEL_BOX[1]);
 }

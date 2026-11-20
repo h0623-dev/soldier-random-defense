@@ -265,26 +265,33 @@ function renderInfo() {
       <p>${a.boss.text}</p></div>`;
   }
 }
+// 상단바·하단 버튼 글자는 매 프레임 다시 계산하지만, 값이 바뀐 것만 화면에 쓴다 (같은 값을 다시 쓰면 그때마다 화면 배치를 새로 계산한다)
+const hudEl = {}, hudVal = {};
+const hud = id => hudEl[id] || (hudEl[id] = $(id));
+const put = (id, v) => { if (hudVal[id] !== v) { hudVal[id] = v; hud(id).textContent = v; } };
+const putW = (id, pct) => { const v = Math.round(pct) + '%', k = id + ':w'; if (hudVal[k] !== v) { hudVal[k] = v; hud(id).style.width = v; } };
+const putOff = (id, off) => { const k = id + ':d'; if (hudVal[k] !== off) { hudVal[k] = off; hud(id).disabled = off; } };
+const putCls = (id, cls, on) => { const k = id + ':' + cls; if (hudVal[k] !== on) { hudVal[k] = on; hud(id).classList.toggle(cls, on); } };
 function renderHud() {
   const b = g.branch, lim = C.CFG.enemyLimit;
-  $('h-area').textContent = `작전 지역 ${g.area + 1} · ${C.AREAS[g.area].name}`;
-  $('h-wave').textContent = g.wave;
-  $('h-next').textContent = g.wave >= C.CFG.maxWave ? '최종' : Math.ceil(g.nextWave) + '초';
-  $('h-nextbar').style.width = g.wave >= C.CFG.maxWave ? '100%' : `${Math.max(0, Math.min(100, 100 - g.nextWave / C.CFG.waveGap * 100))}%`;
-  $('h-enemy').textContent = `적 ${g.enemies.length} / ${lim}`;
-  $('h-enemybar').style.width = `${Math.min(100, g.enemies.length / lim * 100)}%`;
-  $('g-enemy').classList.toggle('warn', g.enemies.length > lim * 0.7);
-  $('h-gold').textContent = fmt(g.gold); $('h-sup').textContent = g.supply;
+  put('h-area', `작전 지역 ${g.area + 1} · ${C.AREAS[g.area].name}`);
+  put('h-wave', g.wave);
+  put('h-next', g.wave >= C.CFG.maxWave ? '최종' : Math.ceil(g.nextWave) + '초');
+  putW('h-nextbar', g.wave >= C.CFG.maxWave ? 100 : Math.max(0, Math.min(100, 100 - g.nextWave / C.CFG.waveGap * 100)));
+  put('h-enemy', `적 ${g.enemies.length} / ${lim}`);
+  putW('h-enemybar', Math.min(100, g.enemies.length / lim * 100));
+  putCls('g-enemy', 'warn', g.enemies.length > lim * 0.7);
+  put('h-gold', fmt(g.gold)); put('h-sup', g.supply);
   const sc = C.summonCost(b, g.camp), cc = C.campCost(b, g.camp), maxed = g.camp >= C.maxCamp(b);
-  $('c-summon').textContent = `${b.ranks[g.camp]}~ · ${fmt(sc)}`; $('b-summon').disabled = g.gold < sc;
-  $('t-camp').textContent = `훈련소 Lv${g.camp + 1}`; $('c-camp').textContent = maxed ? '최대' : fmt(cc);
-  $('b-camp').disabled = maxed || g.gold < cc;
-  $('c-pick').textContent = `보급 ${C.CFG.pickSupply}`; $('b-pick').disabled = g.supply < C.CFG.pickSupply || g.gold < sc || !g.units.includes(null);
-  $('c-up').textContent = `합계 Lv${CLASS_IDS.reduce((n, c) => n + g.up[c], 0)}`;
+  put('c-summon', `${b.ranks[g.camp]}~ · ${fmt(sc)}`); putOff('b-summon', g.gold < sc);
+  put('t-camp', `훈련소 Lv${g.camp + 1}`); put('c-camp', maxed ? '최대' : fmt(cc));
+  putOff('b-camp', maxed || g.gold < cc);
+  put('c-pick', `보급 ${C.CFG.pickSupply}`); putOff('b-pick', g.supply < C.CFG.pickSupply || g.gold < sc || !g.units.includes(null));
+  put('c-up', `합계 Lv${CLASS_IDS.reduce((n, c) => n + g.up[c], 0)}`);
   const es = C.eliteState(g), el = g.enemies.find(e => e.kind === 'elite');
-  $('c-elite').textContent = es === 'ready' ? '출동 가능' : es === 'active' ? `진행 ${Math.ceil(el ? el.life : 0)}초` : es === 'cd' ? `대기 ${Math.ceil(g.elite.cd)}초` : '1단계부터';
-  $('b-elite').disabled = es !== 'ready'; $('b-elite').classList.toggle('hot', es === 'ready');
-  const ms = C.missionList(g); $('c-mission').textContent = `${ms.filter(m => g.done[m.id]).length}/${ms.length}`;
+  put('c-elite', es === 'ready' ? '출동 가능' : es === 'active' ? `진행 ${Math.ceil(el ? el.life : 0)}초` : es === 'cd' ? `대기 ${Math.ceil(g.elite.cd)}초` : '1단계부터');
+  putOff('b-elite', es !== 'ready'); putCls('b-elite', 'hot', es === 'ready');
+  const ms = C.missionList(g); put('c-mission', `${ms.filter(m => g.done[m.id]).length}/${ms.length}`);
 }
 function frame(now) {
   requestAnimationFrame(frame);

@@ -140,16 +140,18 @@ export function insigUrl(insig) {
   }
   return insigUrls[key];
 }
-export function drawTag(c, o) {
+// part: 'badge'면 계급장만, 'label'이면 이름표만, 없으면 둘 다 그린다
+export function drawTag(c, o, part) {
   const { type, tier, rank, hidden, insig } = o, pure = type[0] === type[1];
   c.textAlign = 'center'; c.textBaseline = 'middle';
   // 계급장 (머리 오른쪽 위): 계급마다 모양·개수가 달라 같은 계급을 찾기 쉽다
-  if (insig) {
+  if (insig && part !== 'label') {
     const [shape, n] = insig, step = shape === 'bar' ? 5.2 : 8.6, w = (n - 1) * step + 13;
     c.fillStyle = 'rgba(12,16,10,.85)'; rr(c, 48 - w, -52, w, 15, 7.5); c.fill();
     for (let i = 0; i < n; i++) insigShape(c, shape, 48 - w + 6.5 + i * step, -44.5);
   }
   // 이름표 (발 아래): 병과 글자 + 계급 이름. 글자 길이에 맞춰 폭이 정해진다
+  if (part === 'badge') return;
   const cls = pure ? [type[0]] : type, cw = cls.length * 14.5, fs = rank.length > 3 ? 12 : 14;
   c.font = `800 ${fs}px sans-serif`;
   const tw = Math.ceil(c.measureText(rank).width), w = Math.min(96, cw + tw + 14), x0 = -w / 2;
@@ -246,6 +248,19 @@ export const hasArt = name => !!art[name];     // 그림 파일이 준비됐는�
 
 // ── 그림 캐시: 같은 그림은 한 번만 그려 두고 복사한다 ───────────
 const cache = new Map();
+// box = [x0, y0, x1, y1] (그리기 좌표): 그 범위만 담은 작은 그림을 만든다. 쓸 때는 drawImage(cv, x + x0, y + y0, x1 - x0, y1 - y0).
+// 정사각형 sprite()보다 빈 자리가 적어 화면에 찍는 넓이가 줄어든다.
+export function spriteBox(key, k, box, paint) {
+  const id = key + '@' + k.toFixed(2);
+  let cv = cache.get(id);
+  if (!cv) {
+    if (cache.size > 400) cache.clear();
+    cv = document.createElement('canvas'); cv.width = Math.ceil((box[2] - box[0]) * k); cv.height = Math.ceil((box[3] - box[1]) * k);
+    const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, -box[0] * k, -box[1] * k); paint(c);
+    cache.set(id, cv);
+  }
+  return cv;
+}
 export function sprite(key, half, k, paint) {
   const id = key + '@' + k.toFixed(2);
   let cv = cache.get(id);
