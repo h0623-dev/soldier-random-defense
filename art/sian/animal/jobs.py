@@ -1,4 +1,4 @@
-# 동물 유닛 시안(적용하지 않음): 육군 = 땅개(강아지), 의경 = 오소리. 군별 한 줄 세우기 1장 + 게임 화면에 얹어 볼 시트 4장
+# 동물 유닛 시안(적용하지 않음): 육군 = 땅개(강아지), 의경 = 참수리. 군별 한 줄 세우기 1장 + 게임 화면에 얹어 볼 시트 4장
 import json, os, sys
 sys.path.insert(0, '/home/user/soldier-random-defense/tools')
 import soft_jobs as S
@@ -10,7 +10,7 @@ HEAD = ("A game sprite sheet with exactly four separate chibi character illustra
         "All four figures are the same {who}, standing upright on two legs like a person, with the same cute face. It is clearly an animal (animal head, ears, muzzle, fur, tail), not a human. ")
 DOG = ('cute anthropomorphic puppy soldier: a fluffy tan-and-cream Korean Jindo-style puppy with pointy ears poking out through the helmet, a black button nose, a cream muzzle and a curled-up fluffy tail',
        S.BR['army'][1])
-BADGER = ('cute anthropomorphic badger police officer: a chubby little badger with gray fur, a white face with two bold black stripes running over the eyes to the small round ears, a black button nose and a short stubby tail',
+BADGER = ("cute anthropomorphic Steller's sea eagle police officer: a chubby little sea eagle chick with dark chocolate-brown feathers, a white forehead patch, white shoulder feathers, a short white tail, a very big bright orange-yellow hooked beak, yellow feet, and feathered wings used like arms and hands",
           S.BR['police'][1])
 def sheet(name, who, outfit, a, b):
     add(name, HEAD.format(who=who) + f"The character wears {outfit}. "
@@ -28,6 +28,6 @@ add('lineup.png', "A character lineup concept sheet with exactly six separate ch
     f"3) a small green crocodile with a toothy friendly grin and a thick tail, wearing {S.BR['marine'][1]}, holding a black rifle at rest. "
     f"4) a white tiger cub with black stripes and a long striped tail, wearing {S.BR['sf'][1]}, arms crossed with a confident look. "
     f"5) a young brown falcon with a cream chest, a small hooked yellow beak and folded wings, wearing {S.BR['air'][1]}, saluting with one wing. "
-    f"6) a chubby gray badger with a white face and two bold black stripes over the eyes, wearing {S.BR['police'][1]}, holding a short black police baton. "
+    f"6) a chubby Steller's sea eagle chick with dark chocolate-brown feathers, a white forehead patch, white shoulder feathers and a very big bright orange-yellow hooked beak, noticeably bigger-beaked and darker than the falcon, wearing {S.BR['police'][1]}, holding a short black police baton in one wing. "
     "Nothing overlapping, nothing touching the image edges. No insignia, no emblems, no flags, no letters, no numbers, original character design.", 1536, 1024)
 json.dump(jobs, open(os.path.dirname(os.path.abspath(__file__)) + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs))
