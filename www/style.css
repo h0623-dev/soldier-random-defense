@@ -261,3 +261,4 @@ img.u { filter: var(--skin, none); }
 #info.c2 .mix { justify-content: flex-start; gap: 0.5rem; } #info.c2 .pt { width: auto; flex: none; } #info.c2 .pt:not(.res) b { display: none; } #info.c2 .pt img.u { width: 3.6rem; height: 3.6rem; margin: 0; }
 #info.c2 .pt.res { display: flex; align-items: center; gap: 0.4rem; flex: 0 1 auto; min-width: 0; padding: 0.1rem 0.7rem 0.1rem 0.2rem; } #info.c2 .pt.res img.u { width: 4rem; height: 4rem; margin: 0; flex: none; } #info.c2 .pt.rnd .qm { height: 4rem; width: 3rem; font-size: 3rem; flex: none; }
 #info.c2 .mix .op { flex: none; }
+#b-coop[hidden] { display: none; }

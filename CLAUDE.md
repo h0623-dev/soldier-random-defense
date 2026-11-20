@@ -7,3 +7,4 @@
 - 게임 규칙은 `www/js/core.js`(화면과 분리), 계급·병과·병기 데이터는 `www/js/data.js`. 수치를 바꾸면 `npm test`로 봇 결과를 확인한다.
 - 앱 ID(`com.steey.soldierdefense`), 서명 키, 스토어 등록, 광고·결제 연동은 사용자 확인 없이 정하거나 바꾸지 않는다. 키·토큰을 채팅으로 요청하지 않는다.
 - 이 저장소는 Codex와 함께 쓴다. 공동 작업 규칙(가지 이름, 진행 중 표시, 기록, 서로의 작업을 갈아엎지 않기)은 `AGENTS.md`의 "두 도구가 함께 일하는 규칙"을 따른다. 이 파일을 고치면 `AGENTS.md`도 맞춘다.
+- 그림은 Claude가 Codex CLI를 불러 만든다(`tools/codex_art.py`, 사용법은 파일 머리말). 세션마다 `npm i -g @openai/codex` 뒤 `codex login --device-auth`로 사용자가 로그인해야 한다. 사용자의 ChatGPT 한도를 쓰므로 많이 만들 때는 먼저 알린다.

@@ -1,6 +1,6 @@
 # 군인 랜덤 디펜스 — 작업 안내 (Codex · 그 밖의 AI 도구용)
 
-이 저장소는 **Claude Code와 Codex가 함께** 작업한다. Claude Code는 `CLAUDE.md`를, Codex는 이 파일을 읽는다. 두 파일의 규칙은 같아야 한다 — 한쪽을 고치면 다른 쪽도 맞춘다.
+이 저장소는 **Claude Code와 Codex가 함께** 작업한다. 평소에는 Claude Code가 주 작업자이고, 그림 생성 같은 일은 Claude가 `codex exec`로 Codex를 불러 맡긴다(`tools/codex_art.py`). 그렇게 불린 경우에는 시킨 일(예: 그림 한 장을 만들어 저장)만 하고 저장소의 다른 파일은 건드리지 않는다. Claude Code는 `CLAUDE.md`를, Codex는 이 파일을 읽는다. 두 파일의 규칙은 같아야 한다 — 한쪽을 고치면 다른 쪽도 맞춘다.
 
 ## 먼저 읽을 것
 1. `docs/HANDOFF.md` — 지금 상태와 날짜별 작업 기록(맨 위가 최신). **작업을 시작하기 전에 맨 위 두세 항목을 읽는다.**
