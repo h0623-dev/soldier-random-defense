@@ -232,6 +232,8 @@ export function unitArtName(branchId, type, grp = 0) {
 // 지금 쓰이는 그림이 몇 번째 계급대용인지 (0이면 기본 그림)
 export const unitArtTier = (branchId, type, grp = 0) => { const m = /_t(\d)$/.exec(unitArtName(branchId, type, grp)); return m ? +m[1] : 0; };
 const unitArt = (branchId, type, grp = 0) => (fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp)] : null) || null;
+// 공격 자세 그림(<이름>_atk): 지금 쓰는 대기 그림과 짝이 맞는 것이 있을 때만
+export const unitAtkImage = (branchId, type, grp = 0) => (fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
 export const enemyArt = kind => art['enemy_' + kind] || null;
 export const hasArt = name => !!art[name];     // 그림 파일이 준비됐는지 (도감에서 <img> 주소를 고를 때 쓴다)
 

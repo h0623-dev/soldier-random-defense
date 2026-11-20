@@ -13,11 +13,11 @@ def finish(out, alpha, size):
     sq.paste(out, ((side - out.width) // 2 + pad, side - out.height + pad))    # 발을 바닥에 맞춤
     return sq.resize((size, size), Image.LANCZOS)
 
-def cutout(path, size):
-    src = Image.open(path)
+def matte(src):
+    """그림의 배경을 투명하게 만든 RGBA 그림과 배경 비율을 돌려준다 (자르거나 줄이지 않는다)."""
     if src.mode == 'RGBA':                       # 이미 배경이 투명한 그림은 그대로 쓴다 (가장자리 대부분이 투명할 때)
         al = np.asarray(src.getchannel('A')); edge = np.concatenate([al[0], al[-1], al[:, 0], al[:, -1]])
-        if (edge < 16).mean() > 0.9: return finish(src, src.getchannel('A'), size), float((al < 16).mean())
+        if (edge < 16).mean() > 0.9: return src, float((al < 16).mean())
     im = src.convert('RGB'); a = np.asarray(im).astype(np.int16)
     h, w, _ = a.shape
     mn, mx = a.min(2), a.max(2)
@@ -37,7 +37,11 @@ def cutout(path, size):
     alpha = Image.fromarray(np.where(seen, 0, 255).astype(np.uint8))
     alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.8))   # 흰 테두리 줄이기
     out = im.convert('RGBA'); out.putalpha(alpha)
-    return finish(out, alpha, size), seen.mean()
+    return out, float(seen.mean())
+
+def cutout(path, size):
+    out, bg = matte(Image.open(path))
+    return finish(out, out.getchannel('A'), size), bg
 
 if __name__ == '__main__':
     src, dst = sys.argv[1], sys.argv[2]; size = int(sys.argv[3]) if len(sys.argv) > 3 else 256

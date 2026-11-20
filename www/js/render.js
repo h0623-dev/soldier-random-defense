@@ -1,7 +1,7 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO } from './data.js';
 import { FIELD, CELL, CFG, AREAS, RANK_GROUP, canMerge, rankName, rankInsig } from './core.js';
-import { drawTag, drawSoldierFallback, unitImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, enemyArt, loadArt } from './sprites.js';
+import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
@@ -244,7 +244,10 @@ function unit(ctx, b, u, p, k, now, quality) {
     ctx.strokeStyle = 'rgba(255,214,94,.95)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, top + size * 0.3, size * 0.4, 0, 7); ctx.stroke();
   }
   if (stunned) ctx.globalAlpha = 0.55;
-  ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy), w, w);
+  // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
+  const atk = u.atkT > 0 && !stunned ? unitAtkImage(b.id, u.type, grp) : null;
+  if (atk) { ctx.save(); ctx.translate(p.x, p.y + FEET + dy); if (u.faceL) ctx.scale(-1, 1); ctx.drawImage(atk, -w, -w * 2, w * 2, w * 2); ctx.restore(); }
+  else ctx.drawImage(im, p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy), w, w);
   ctx.globalAlpha = 1;
   if (grp === 4 && quality > 0) for (let i = 0; i < 3; i++) {      // 장성: 주변에서 반짝이는 빛
     const ph = now * 2.4 + i * 2.1 + u.id, a = Math.max(0, Math.sin(ph)), sx = p.x + [-0.44, 0.46, 0.1][i] * size, sy = top + [0.3, 0.18, 0.02][i] * size, r = 3 + a * 5;

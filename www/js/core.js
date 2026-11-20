@@ -158,7 +158,7 @@ export function summon(g) {
   return placeUnit(g, slot, level, [c, c]);
 }
 function placeUnit(g, slot, level, type, hidden = null) {
-  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0, stunT: 0, burnT: 0, burn: 0,
+  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0,
     stats: unitStats(g.branch, level, type, g.meta, g.up), flash: 0.5 };
   if (hidden) { g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
   g.units[slot] = u; g.auraDirty = true; return u;
@@ -370,7 +370,7 @@ export function step(g, dt) {
   // 아군 공격
   for (const u of g.units) {
     if (!u) continue;
-    u.flash -= dt; u.fireT -= dt; u.stunT -= dt; u.burnT -= dt;
+    u.flash -= dt; u.fireT -= dt; u.atkT -= dt; u.stunT -= dt; u.burnT -= dt;
     if (u.stunT > 0) continue;                                  // 기절: 공격하지 못한다
     u.cd -= dt * (1 + u.haste) * (u.burnT > 0 ? 1 - u.burn : 1);   // 화염: 공격 속도 감소
     if (u.cd > 0) continue;
@@ -388,7 +388,8 @@ export function step(g, dt) {
       if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = 2; }
       hit(g, e, dmg);
     }
-    if (g.fx) { u.fireT = 0.16; if (g.sfx.length < 8) g.sfx.push(u.type[0]);
+    if (g.fx) { u.fireT = 0.16; u.atkT = 0.3; u.faceL = target.x < p.x;      // atkT 동안 공격 자세 그림을 보여 준다 (faceL: 표적이 왼쪽)
+      if (g.sfx.length < 8) g.sfx.push(u.type[0]);
       g.effects.push({ x1: p.x, y1: p.y, x2: target.x, y2: target.y, r: st.splash, t: 0.18, crit, c: u.type[0] }); }
   }
   if (g.enemies.some(e => e.dead)) g.enemies = g.enemies.filter(e => !e.dead);
