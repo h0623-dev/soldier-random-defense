@@ -536,3 +536,9 @@ APK를 다시 설치하지 않아도 게임 내용(화면·규칙·그림·소�
 - **동기화**(`main.js`): 방장이 0.05초 걸음을 세며 `tk`(지금 걸음)와 `cmd`(이 걸음에 이 명령)를 보낸다. 손님은 방장이 알려 준 걸음까지만 나아가며 같은 걸음에 같은 명령을 실행한다. 손님의 조작은 `req`로 방장에게 보내고 `cmd`로 돌아온 것을 실행한다. 40걸음마다 `sum`(`duoHash`)을 견주고, 다르면 `need` → `snap`으로 방장의 상태를 통째로 받는다.
 - 서버는 글을 넘기기만 한다(`server/`). 글 크기 제한은 20만 자(상태 통째가 수만 자).
 
+## 용사 · 건물 · 스킨 그림 (2026-11-20, Codex로 생성)
+- **용사**: `units/hero_<id>`(보통) · `units/hero_<id>aw`(각성), 각각 `_atk`(공격). 그림을 고르는 순서는 용사 그림 → 내 스킨 그림 → 군별·계급대 그림 → 코드 그림(`render.js` `unit`, `main.js` `unitPic`).
+- **스킨**: `SKINS[].art` = 그림 묶음 이름(`skindesert` · `skinsnow` · `skinnight` · `skingold`), 파일은 `units/<묶음>_<병과>(_atk)`. 군별·계급에 상관없이 한 벌이고, 계급대 장식(깃발·망토·후광)은 코드로 그려 준다. 앞의 "스킨(도색 4종, 색 필터)" 설명을 대체한다.
+- **건물**: `img/bld_camp` · `bld_up` · `bld_summon` · `bld_pick` · `bld_elite` (384px). 앞의 "건물은 인라인 SVG" 설명을 대체한다.
+- 지시문은 `tools/extra_jobs.py`, 원본은 `art/raw_soft/`(`sheet_hero_*`, `sheet_skin*`, `bld_*`).
+
