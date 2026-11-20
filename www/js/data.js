@@ -63,6 +63,35 @@ const MIL_HIDDEN = [
     how: '뽑기 — 훈련소 기본 등급이 레어~영웅일 때 신병 소집 3% 확률' },
 ];
 
+// 특수 병과 6종의 고유 기술 (모든 군별 공통 — 병과 이름은 군별마다 다르지만 기술은 병과 조합으로 정해진다). 수치는 core.js unitStats가 읽는다
+export const TYPE_SKILLS = {
+  'inf+art': { name: '연속 포격', text: '3번째 공격마다 피해 +50% · 광역 범위 2배', burst: 3, burstMul: 1.5 },
+  'inf+med': { name: '응급 처치', text: '이웃한 아군의 기절·화염 시간을 절반으로', guard: 0.5 },
+  'inf+sig': { name: '조준 사격', text: '치명타 확률 +10% (치명타 = 2.5배)', crit: 0.1 },
+  'art+med': { name: '오염', text: '맞은 적에게 3초간 초당 공격력의 12% 지속 피해', dot: 0.12, dotDur: 3 },
+  'art+sig': { name: '표적 지정', text: '맞은 적이 받는 피해 +30% (4초)', vuln: 0.3, vulnDur: 4 },
+  'med+sig': { name: '지휘 통신', text: '이웃한 아군의 사거리 +10%', rangeAura: 0.1 },
+};
+
+// 전설의 용사: 유니크 등급의 순수 병과 둘(서로 다른 병과)을 조합하면 탄생한다. 모든 군별 공통.
+//  · 전설 등급으로 태어나고, 병과는 두 재료를 섞은 특수 병과로 정해진다(무작위가 아니다).
+//  · 용사에 전설 등급 유닛을 조합하면 용사가 초월 등급으로 '각성'하고 기술이 강해진다.
+//  skill 값이 배열이면 [전설, 각성(초월)]
+export const HEROES = [
+  { id: 'storm', hero: true, name: '강철비', level: 5, pair: ['inf', 'art'], color: '#ff8a3c',
+    skill: { id: 'barrage', cd: 6, mul: [1, 1.6] }, text: '강철비 — 6초마다 전장의 모든 적에게 공격력의 100% 포격', up: '포격 피해 160%' },
+  { id: 'phoenix', hero: true, name: '불사조', level: 5, pair: ['inf', 'med'], color: '#ff6f9c',
+    skill: { id: 'guard', dmg: [0.06, 0.1] }, text: '불굴 — 아군 전체가 기절·화염에 걸리지 않고 공격력 +6%', up: '아군 전체 공격력 +10%' },
+  { id: 'hawk', hero: true, name: '매의 눈', level: 5, pair: ['inf', 'sig'], color: '#7fd0ff',
+    skill: { id: 'snipe', crit: 0.5, mul: [2.5, 4] }, text: '저격 — 사거리 무제한, 체력이 가장 많은 적을 노리고 치명타 확률 +50%', up: '치명타 피해 4배' },
+  { id: 'inferno', hero: true, name: '불바다', level: 5, pair: ['art', 'med'], color: '#ff5a2e',
+    skill: { id: 'fire', dur: 4, r: 75, dps: [0.25, 0.4] }, text: '불바다 — 포격이 떨어진 자리가 4초간 불타 그 위의 적에게 초당 공격력의 25% 피해', up: '화염 피해 초당 40%' },
+  { id: 'frost', hero: true, name: '동장군', level: 5, pair: ['art', 'sig'], color: '#9fe6ff',
+    skill: { id: 'freeze', cd: 8, dur: [1.5, 2.5] }, text: '혹한 — 8초마다 사거리 안의 모든 적을 1.5초간 얼린다 (보스·정예는 절반)', up: '빙결 2.5초' },
+  { id: 'marshal', hero: true, name: '총사령관', level: 5, pair: ['med', 'sig'], color: '#ffd45e',
+    skill: { id: 'command', haste: [0.12, 0.2] }, text: '총지휘 — 아군 전체 공격 속도 +12%', up: '아군 전체 공격 속도 +20%' },
+];
+
 // 병기 3단계가 바뀌는 계급 인덱스: [위관/간부 시작, 장성/지휘부 시작]
 const MIL_TIERS = [3, 5];
 const POLICE_TIERS = [3, 5];

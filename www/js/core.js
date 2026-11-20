@@ -1,5 +1,5 @@
 // 군인 랜덤 디펜스 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
-import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL } from './data.js';
+import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL, HEROES, TYPE_SKILLS } from './data.js';
 
 // ── 전장 ─────────────────────────────────────────────────
 // 가로 7칸 × 세로 9칸(칸 100×100)의 세로로 긴 전장. 적은 발판 덩어리 사이로 꺾이며 도는 닫힌 길을 계속 돈다.
@@ -63,9 +63,10 @@ export const CFG = {
   bossHp: 36,           // 보스 체력 = 그 단계 일반 적의 몇 배 (보스마다 특수 능력이 있어 42에서 낮춤)
   growth: 1.9,          // 계급 1단계(정규화)당 전투력 배수
   // 7계급 체계(2026-11-20)에 맞춰 다시 잡은 경제. 한 계급 = 전투력 1.9배 = 아래 계급 2명. 군자금으로 살 수 있는 '이등병 몇 명분'이 단계마다 약 5.5%씩 늘고,
-  // 적 체력은 그보다 조금 빠르게(5.9%) 늘어 뒤로 갈수록 빠듯해진다. 훈련소를 올리면 같은 전력을 20%씩 싸게 산다(summonGrowth 1.6 < 2).
+  // 적 체력은 그보다 빠르게(6.4%) 늘어 뒤로 갈수록 빠듯해진다 — 그 차이는 전설의 용사 · 병과 고유 기술 · 특수 발판 · 보급병으로 메운다
+  // (2026-11-20 기획안 1단계를 넣으며 5.9% → 6.4%. 봇 기준: 전부 쓰면 대부분 승리, 용사 없이는 100단계 보스에서 막힌다). 훈련소를 올리면 같은 전력을 20%씩 싸게 산다(summonGrowth 1.6 < 2).
   baseDmg: 10, summonBase: 20, summonGrowth: 1.6, campBase: 120, campGrowth: 2.4,
-  hpBase: 26, hpGrowth: 1.059, bountyBase: 0.3, bountyGrowth: 1.055,
+  hpBase: 26, hpGrowth: 1.064, bountyBase: 0.3, bountyGrowth: 1.055,
   startGold: 100, waveBonus: 15, sellRate: 0.4, auraRadius: 150,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
   upBase: 50, upGrowth: 1.35, upStep: 0.08,
@@ -74,6 +75,8 @@ export const CFG = {
   // 특수 임무(정예 표적): 직접 불러내는 추가 보스. 제한 시간 안에 잡으면 군자금·보급품
   eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
   tileCount: 3,         // 지역마다 특수 발판 칸 수 (종류마다 한 칸씩)
+  // 보급 기지: 군자금으로 보급병을 고용하면 단계가 시작될 때마다 군자금이 들어오고, 5단계마다 보급품도 들어온다
+  depotMax: 10, depotBase: 20, depotGrowth: 1.35, depotFlat: 1, depotRate: 0.03, depotSupEvery: 5, depotSupPer: 5,
 };
 
 // 특수 발판: 지역(맵)에 들어설 때마다 발판 25칸 가운데 3칸이 무작위로 특수 발판이 된다. 그 위에 선 유닛만 효과를 받는다
@@ -85,7 +88,7 @@ export const TILES = {
 export const CRIT_MUL = 2.5;
 
 // 난이도: 적 체력과 훈장 보상이 달라진다. need = 바로 아래 난이도에서 이 단계까지 가면 열린다
-// (7계급 경제에서는 화력과 적 체력이 거의 나란히 자라서 배수가 조금만 커도 훨씬 일찍 막힌다. 봇 기준 어려움은 70단계 안팎, 지옥은 50단계 안팎)
+// (7계급 경제에서는 화력과 적 체력이 거의 나란히 자라서 배수가 조금만 커도 훨씬 일찍 막힌다. 용사를 쓰는 봇 기준 어려움은 승률 40%쯤, 지옥은 대부분 20~60단계에서 막히고 가끔 이긴다)
 export const DIFFS = [
   { id: 'normal', name: '보통', hp: 1, medal: 1, text: '기본 난이도' },
   { id: 'hard', name: '어려움', hp: 1.3, medal: 1.6, need: 50, text: '적 체력 1.3배 · 훈장 1.6배' },
@@ -133,8 +136,14 @@ export function unitStats(branch, level, type, meta = {}, up = null) {
   if (k === 'infSpeed' && w.inf > 0) cd /= 1.15;
   if (k === 'splash') { splash *= 1.3; if (w.art > 0) dmg *= 1.1; }
   if (k === 'slow') { slow *= 1.3; dmg *= 0.85; }
-  return { dmg, cd, range, splash, slow, vuln, haste, crit: k === 'crit' ? 0.15 : 0 };
+  // 특수 병과의 고유 기술 (data.js TYPE_SKILLS)
+  const sk = (SKILL_ON && TYPE_SKILLS[typeKey(type)]) || {};
+  if (sk.vuln) vuln = Math.max(vuln, sk.vuln);
+  return { dmg, cd, range, splash, slow, vuln, haste, crit: (k === 'crit' ? 0.15 : 0) + (sk.crit || 0),
+    vulnDur: sk.vulnDur || 2, burst: sk.burst || 0, burstMul: sk.burstMul || 1, guard: sk.guard || 0, dot: sk.dot || 0, dotDur: sk.dotDur || 0, rangeAura: sk.rangeAura || 0 };
 }
+let SKILL_ON = true; export const setSkills = on => { SKILL_ON = on; };      // 봇 비교용
+export const typeSkill = type => TYPE_SKILLS[typeKey(type)] || null;
 
 export function waveInfo(wave) {
   const hp = CFG.hpBase * CFG.hpGrowth ** (wave - 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (wave - 1);
@@ -154,6 +163,8 @@ export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, 
     supply: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
     tiles: {}, rerolls: 0, streak: 0, fastBoss: 0, crisis: 0,      // 특수 발판 {칸 번호: 종류} · 히든 임무용 기록
+    depot: 0, depotGold: 0,                                        // 보급병 수 · 보급 기지로 번 군자금 합계
+    heroGot: 0, zones: [], buff: { haste: 0, dmg: 0, immune: false },   // 용사 탄생 횟수 · 화염 지대 · 용사가 아군 전체에 주는 효과
   };
   rollTiles(g); return g;
 }
@@ -186,14 +197,26 @@ export function summon(g) {
 function placeUnit(g, slot, level, type, hidden = null) {
   const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0, dealt: 0,
     stats: unitStats(g.branch, level, type, g.meta, g.up), flash: 0.5 };
-  if (hidden) { g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
+  if (hidden) { if (heroDef(hidden)) { if (level === heroDef(hidden).level) g.heroGot++; u.skT = 2; } else g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
   g.units[slot] = u; g.auraDirty = true; return u;
 }
-export const hiddenDef = (branch, id) => (id ? branch.hidden.find(h => h.id === id) : null) || null;
+export const heroDef = id => (id ? HEROES.find(h => h.id === id) : null) || null;
+// 히든 계급 또는 용사의 정의 (둘 다 유닛의 hidden 칸에 id가 적힌다. 용사는 .hero가 참)
+export const hiddenDef = (branch, id) => (id ? branch.hidden.find(h => h.id === id) || heroDef(id) : null) || null;
+export const heroOf = u => (u ? heroDef(u.hidden) : null);
+const sv = (u, v) => (Array.isArray(v) ? v[u.level > 5 ? 1 : 0] : v);      // 용사 기술 값: 각성(초월)하면 두 번째 값
+// 용사 조합식: 재료 둘이 유니크 등급의 순수 병과이고 서로 다른 병과일 때. 용사는 종류마다 한 명뿐이라, 그 용사가 이미 전장에 있으면 일반 조합이 된다
+export function heroRecipe(g, A, B) {
+  if (!HERO_ON || A.hidden || B.hidden || A.level !== B.level || A.type[0] !== A.type[1] || B.type[0] !== B.type[1] || A.type[0] === B.type[0]) return null;
+  const k = typeKey([A.type[0], B.type[0]]), h = HEROES.find(h => h.level - 1 === A.level && typeKey(h.pair) === k);
+  return h && !g.units.some(u => u && u.hidden === h.id) ? h : null;
+}
+let HERO_ON = true; export const setHeroes = on => { HERO_ON = on; };      // 봇 비교용 (용사 없이 돌려 보기)
 // 히든 조합 판정: 재료 두 유닛(일반 계급)이 히든 계급 바로 아래이고 조건을 만족하면 히든 계급 id
-export function hiddenRecipe(branch, A, B) {
+export function hiddenRecipe(g, A, B) {
   if (A.hidden || B.hidden) return null;
-  for (const h of branch.hidden) {
+  const hero = heroRecipe(g, A, B); if (hero) return hero.id;
+  for (const h of g.branch.hidden) {
     if (!h.recipe || A.level !== h.level - 1) continue;
     if (h.recipe === 'allDiff' && new Set([...A.type, ...B.type]).size === 4) return h.id;
   }
@@ -233,7 +256,7 @@ export function gamble(g, a) {
 // 병과 교체: 보급품을 써서 고른 유닛의 병과를 다시 뽑는다. 등급·누적 피해는 그대로이고, 지금 병과는 다시 나오지 않는다(나머지 9종 가운데 무작위)
 export function canReroll(g, a) {
   const u = g.units[a];
-  return !!(u && !g.over && g.supply >= CFG.rerollSupply);
+  return !!(u && !g.over && !heroOf(u) && g.supply >= CFG.rerollSupply);      // 용사는 병과가 정해져 있어 바꿀 수 없다
 }
 export function reroll(g, a) {
   if (!canReroll(g, a)) return null;
@@ -241,6 +264,19 @@ export function reroll(g, a) {
   g.supply -= CFG.rerollSupply; g.rerolls++;
   u.type = keyToType(ks[Math.floor(g.rand() * ks.length)]); u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up);
   u.flash = 0.5; g.auraDirty = true; return u;
+}
+// 보급 기지: 보급병 한 명이 단계마다 가져오는 군자금 = depotFlat + 그 단계 기본 수입(단계 보너스 + 적 부대 처치 보상)의 depotRate.
+// 일찍 고용할수록 오래 받지만 그만큼 초반 전력이 준다. 5단계마다 보급병 5명당 보급품 1개
+export const depotCost = g => Math.round(CFG.depotBase * CFG.depotGrowth ** g.depot);
+export function depotIncome(g, wave = Math.max(1, g.wave + 1)) {
+  const w = waveInfo(Math.min(wave, CFG.maxWave));
+  return Math.round(g.depot * (CFG.depotFlat + CFG.depotRate * (CFG.waveBonus + w.count * w.bounty)));
+}
+export const depotSupply = g => Math.floor(g.depot / CFG.depotSupPer);
+export function hireDepot(g) {
+  const cost = depotCost(g);
+  if (g.over || g.depot >= CFG.depotMax || g.gold < cost) return false;
+  g.gold -= cost; g.depot++; return true;
 }
 export const eliteState = g => (g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');
 export function callElite(g) {
@@ -266,6 +302,8 @@ export const MISSIONS = [
   { id: 'el1', sup: 1, text: () => '특수 임무 1회 완수', ok: g => g.elite.n >= 1 },
   { id: 'el5', sup: 2, text: () => '특수 임무 5회 완수', ok: g => g.elite.n >= 5 },
   { id: 'hid', sup: 2, text: () => '히든 계급 획득', ok: g => g.hiddenGot > 0, only: g => g.branch.hidden.length > 0 },
+  { id: 'hero1', sup: 3, text: () => '전설의 용사 탄생', ok: g => g.heroGot > 0 },
+  { id: 'depot5', sup: 2, text: () => '보급병 5명 고용', ok: g => g.depot >= 5 },
   { id: 'w30', sup: 2, text: () => '30단계 도달', ok: g => g.wave >= 30 },
   { id: 'w60', sup: 3, text: () => '60단계 도달', ok: g => g.wave >= 60 },
   // 히든 임무: 달성하기 전에는 조건이 보이지 않는다 (한 번 달성하면 다음 판부터는 조건이 보인다 — 화면 쪽에서 기억)
@@ -292,8 +330,13 @@ export function canMerge(g, a, b) {
 export function mergePreview(g, a, b) {
   if (!canMerge(g, a, b)) return null;
   const A = g.units[a], B = g.units[b];
+  // 용사 각성: 재료 가운데 용사가 있으면 용사가 한 등급 올라 초월이 된다 (둘 다 용사면 먼저 고른 쪽)
+  const hu = heroOf(A) ? A : heroOf(B) ? B : null;
+  if (hu) return { level: A.level + 1, type: hu.type, random: false, hidden: hu.hidden, awaken: true };
   const same = sameType(A.type, B.type);      // type이 null이고 random이 true면 조합할 때 병과가 무작위로 정해진다
-  return { level: A.level + 1, type: same ? A.type : null, random: !same, hidden: hiddenRecipe(g.branch, A, B) };
+  const hidden = hiddenRecipe(g, A, B), hero = heroDef(hidden);
+  if (hero) return { level: A.level + 1, type: sortType(hero.pair), random: false, hidden, hero: true };      // 용사 탄생: 병과는 두 재료를 섞은 특수 병과
+  return { level: A.level + 1, type: same ? A.type : null, random: !same, hidden };
 }
 // a = 먼저 고른 유닛(주재료), b = 결과가 놓일 자리
 export function merge(g, a, b) {
@@ -331,6 +374,11 @@ function startWave(g) {
   g.spawn = { ...w, hp: w.hp * g.hpMul, left: w.count, cd: 0 }; g.nextWave = CFG.waveGap;
   if (w.kind === 'boss') g.bossTimer = CFG.bossTime;
   g.gold += CFG.waveBonus; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
+  if (g.depot > 0) {      // 보급 도착
+    const gold = depotIncome(g, g.wave), sup = g.wave % CFG.depotSupEvery === 0 ? depotSupply(g) : 0;
+    g.gold += gold; g.depotGold += gold; g.supply += sup; g.log.push({ t: 'depot', gold, sup });
+    if (g.fx) g.effects.push({ txt: `보급 +${gold}`, x: FIELD.w * 0.7, y: FIELD.h - 34, t: 1.6 });
+  }
 }
 // 돌려주는 값: 실제로 깎은 체력 (누적 피해 기록용)
 function hit(g, e, dmg) {
@@ -360,19 +408,38 @@ function bossSkill(g, e, dt) {
   if (!k.cd || (e.skT -= dt) > 0) return;
   e.skT = k.cd;
   const live = g.units.filter(Boolean), slots = g.map.slots;
-  const stun = (list, dur) => { for (const u of list) { u.stunT = Math.max(u.stunT, dur); if (g.fx) g.effects.push({ puff: true, x: slots[u.slot].x, y: slots[u.slot].y, r: 34, t: 0.3 }); } };
+  const immune = g.buff.immune;      // 불사조: 아군 전체가 기절·화염에 걸리지 않는다
+  const stun = (list, dur) => { if (immune) return; for (const u of list) { u.stunT = Math.max(u.stunT, dur * (u.guard || 1)); if (g.fx) g.effects.push({ puff: true, x: slots[u.slot].x, y: slots[u.slot].y, r: 34, t: 0.3 }); } };
   const pick = n => { const a = [...live], out = []; while (out.length < n && a.length) out.push(a.splice(Math.floor(g.rand() * a.length), 1)[0]); return out; };
   if (k.id === 'summon') {
     const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * k.hp, bounty = CFG.bountyBase * CFG.bountyGrowth ** w * 0.3;
     for (let i = 0; i < k.n; i++) g.enemies.push({ id: g.uid++, s: e.s - 26 * (i + 1), hp, maxHp: hp, speed: k.kind === 'fast' ? 105 : 70, bounty, kind: k.kind, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
   } else if (k.id === 'dash') e.dashT = k.dur;
   else if (k.id === 'stun') stun(pick(k.n), k.dur);
-  else if (k.id === 'burn') { for (const u of live) { const p = slots[u.slot]; if (Math.hypot(p.x - e.x, p.y - e.y) <= k.r) { u.burnT = k.dur; u.burn = k.slow; } }
+  else if (k.id === 'burn') { if (!immune) for (const u of live) { const p = slots[u.slot]; if (Math.hypot(p.x - e.x, p.y - e.y) <= k.r) { u.burnT = k.dur * (u.guard || 1); u.burn = k.slow; } }
     if (g.fx) g.effects.push({ puff: true, x: e.x, y: e.y, r: k.r, t: 0.35, col: '#ff8a3c' }); }
   else if (k.id === 'bomb') { const c = slots[Math.floor(g.rand() * slots.length)];
     stun(live.filter(u => Math.hypot(slots[u.slot].x - c.x, slots[u.slot].y - c.y) <= k.r), k.dur);
     if (g.fx) g.effects.push({ puff: true, x: c.x, y: c.y, r: k.r, t: 0.4, col: '#ffb347' }); }
-  if (g.fx) { g.effects.push({ txt: k.label + '!', x: e.x, y: e.y - 46, t: 1.3 }); g.sfx.push('art'); }
+  if (g.fx) { g.effects.push({ txt: k.label + '!', x: e.x, y: e.y - 46, t: 1.3 }); g.sfx.push('art');
+    if (immune && (k.id === 'stun' || k.id === 'burn' || k.id === 'bomb')) g.effects.push({ txt: '불사조가 막아냈다', x: e.x, y: e.y - 72, t: 1.3, small: true }); }
+}
+
+// 용사의 주기 기술. 표적이 없으면 쓰지 않고 기다린다
+function heroCast(g, u, k, p, base) {
+  const live = g.enemies.filter(e => !e.dead);
+  if (k.id === 'barrage') {      // 강철비: 전장의 모든 적에게 포격
+    if (!live.length) { u.skT = 0.3; return; }
+    for (const e of live) { const d = hit(g, e, base * sv(u, k.mul)); u.dealt += d; g.dealt += d; g.dmg[u.type[0]] += d / 2; g.dmg[u.type[1]] += d / 2; }
+    if (g.fx) { live.slice(0, 14).forEach((e, i) => g.effects.push({ x1: e.x - 30, y1: e.y - 320 - i * 9, x2: e.x, y2: e.y, r: 46, t: 0.42, T: 0.42, c: 'art', c2: 'art' }));
+      g.effects.push({ txt: '강철비!', x: p.x, y: p.y - 60, t: 1.1 }); g.sfx.push('art'); }
+  } else if (k.id === 'freeze') {      // 혹한: 사거리 안의 적을 얼린다
+    const r2 = unitRange(u) ** 2, hitList = live.filter(e => (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2);
+    if (!hitList.length) { u.skT = 0.3; return; }
+    for (const e of hitList) e.freezeT = Math.max(e.freezeT || 0, sv(u, k.dur) * (e.kind === 'boss' || e.kind === 'elite' ? 0.5 : 1));
+    if (g.fx) { g.effects.push({ puff: true, x: p.x, y: p.y, r: unitRange(u), t: 0.4, col: '#bfefff' }); g.effects.push({ txt: '혹한!', x: p.x, y: p.y - 60, t: 1.1 }); g.sfx.push('sig'); }
+  }
+  u.skT = k.cd;
 }
 
 export function step(g, dt) {
@@ -402,15 +469,22 @@ export function step(g, dt) {
   }
   // 의무 계열 · 히든 계급 오라 (같은 종류는 겹치지 않고 가장 큰 값만 적용)
   if (g.auraDirty) {
+    const bf = g.buff = { haste: 0, dmg: 0, immune: false };      // 용사가 아군 전체에 주는 효과 (같은 효과는 겹치지 않고 큰 값만)
+    for (const m of g.units) { const h = heroOf(m), k = h && h.skill;
+      if (k && k.id === 'command') bf.haste = Math.max(bf.haste, sv(m, k.haste));
+      if (k && k.id === 'guard') { bf.immune = true; bf.dmg = Math.max(bf.dmg, sv(m, k.dmg)); } }
     for (const u of g.units) if (u) {
-      u.haste = u.dmgUp = u.rangeUp = 0; const p = g.map.slots[u.slot];
+      u.haste = u.dmgUp = u.rangeUp = u.guard = 0; const p = g.map.slots[u.slot];      // guard: 기절·화염 시간 배수(0이면 그대로)
+      if (bf.immune) u.stunT = u.burnT = 0;
       for (const m of g.units) if (m && m !== u) {
         const h = hiddenDef(g.branch, m.hidden);
-        if (!(m.stats.haste > 0) && !h) continue;
+        if (!(m.stats.haste > 0) && !(h && h.aura)) continue;
         const q = g.map.slots[m.slot];
         if (Math.hypot(p.x - q.x, p.y - q.y) > CFG.auraRadius) continue;
         u.haste = Math.max(u.haste, m.stats.haste);
-        if (h) { u.dmgUp = Math.max(u.dmgUp, h.aura.dmg || 0); u.rangeUp = Math.max(u.rangeUp, h.aura.range || 0); }
+        if (m.stats.rangeAura) u.rangeUp = Math.max(u.rangeUp, m.stats.rangeAura);      // 지휘 통신
+        if (m.stats.guard) u.guard = m.stats.guard;                                      // 응급 처치
+        if (h && h.aura) { u.dmgUp = Math.max(u.dmgUp, h.aura.dmg || 0); u.rangeUp = Math.max(u.rangeUp, h.aura.range || 0); }
       }
       const t = tileAt(g, u.slot); u.padH = (t && t.haste) || 0; u.padR = (t && t.range) || 0; u.padC = (t && t.crit) || 0;      // 특수 발판
     }
@@ -420,8 +494,12 @@ export function step(g, dt) {
   for (const e of g.enemies.slice()) if (e.skill && !e.dead) bossSkill(g, e, dt);
   for (const e of g.enemies) {
     e.slowT -= dt; e.vulnT -= dt;
+    if (e.freezeT > 0) e.freezeT -= dt;      // 빙결(동장군): 그 자리에 멈춘다
+    if (e.dotT > 0 && !e.dead) { e.dotT -= dt;      // 오염: 0.5초마다 지속 피해
+      if ((e.dotTk -= dt) <= 0) { e.dotTk += 0.5; const d = hit(g, e, e.dot * 0.5), o = g.units.find(u => u && u.id === e.dotBy);
+        if (o) o.dealt += d; g.dealt += d; g.dmg[e.dotC[0]] += d / 2; g.dmg[e.dotC[1]] += d / 2; } }
     const fast = e.dashT > 0 ? 2.2 : e.skill && e.skill.rage && e.hp < e.maxHp * e.skill.rage ? 1.5 : 1;
-    e.s += e.speed * fast * (1 - (e.slowT > 0 && !(e.dashT > 0) ? e.slow : 0)) * dt;
+    if (!(e.freezeT > 0)) e.s += e.speed * fast * (1 - (e.slowT > 0 && !(e.dashT > 0) ? e.slow : 0)) * dt;
     const p = g.map.pathPos(e.s); e.x = p.x; e.y = p.y; e.left = p.dx < 0;
   }
   // 아군 공격
@@ -429,25 +507,39 @@ export function step(g, dt) {
     if (!u) continue;
     u.flash -= dt; u.fireT -= dt; u.atkT -= dt; u.stunT -= dt; u.burnT -= dt;
     if (u.stunT > 0) continue;                                  // 기절: 공격하지 못한다
-    u.cd -= dt * (1 + u.haste + u.padH) * (u.burnT > 0 ? 1 - u.burn : 1);   // 화염: 공격 속도 감소
+    const p = g.map.slots[u.slot], st = u.stats, hk = u.hidden ? (heroOf(u) || {}).skill : null, base = st.dmg * (1 + u.dmgUp + g.buff.dmg);
+    if (hk && hk.cd && (u.skT -= dt) <= 0) heroCast(g, u, hk, p, base);      // 용사의 주기 기술 (강철비 · 혹한)
+    u.cd -= dt * (1 + u.haste + u.padH + g.buff.haste) * (u.burnT > 0 ? 1 - u.burn : 1);   // 화염: 공격 속도 감소
     if (u.cd > 0) continue;
-    const p = g.map.slots[u.slot], st = u.stats, r2 = unitRange(u) ** 2;
+    const r2 = unitRange(u) ** 2, snipe = hk && hk.id === 'snipe';
     let target = null;
-    for (const e of g.enemies) if (!e.dead && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2) { target = e; break; }
+    if (snipe) { for (const e of g.enemies) if (!e.dead && (!target || e.hp > target.hp)) target = e; }      // 매의 눈: 어디에 있든 체력이 가장 많은 적
+    else for (const e of g.enemies) if (!e.dead && (e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r2) { target = e; break; }
     if (!target) { u.cd = 0.05; continue; }
     u.cd = st.cd;
-    const cp = st.crit + u.padC, crit = cp > 0 && g.rand() < cp, dmg = st.dmg * (1 + u.dmgUp) * (crit ? CRIT_MUL : 1);
-    const victims = st.splash > 0
-      ? g.enemies.filter(e => !e.dead && (e.x - target.x) ** 2 + (e.y - target.y) ** 2 <= st.splash * st.splash)
+    const big = st.burst > 0 && (u.n = (u.n || 0) + 1) % st.burst === 0, sr = st.splash * (big ? 2 : 1);      // 연속 포격: n번째 공격마다 강화탄
+    const cp = st.crit + u.padC + (snipe ? hk.crit : 0), crit = cp > 0 && g.rand() < cp, dmg = base * (crit ? (snipe ? sv(u, hk.mul) : CRIT_MUL) : 1) * (big ? st.burstMul : 1);
+    const victims = sr > 0
+      ? g.enemies.filter(e => !e.dead && (e.x - target.x) ** 2 + (e.y - target.y) ** 2 <= sr * sr)
       : [target];
     for (const e of victims) {
       if (st.slow > 0) { const s = e.kind === 'boss' || e.kind === 'elite' ? st.slow / 2 : st.slow; if (s >= e.slow || e.slowT <= 0) { e.slow = s; e.slowT = 1.5; } }
-      if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = 2; }
+      if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = Math.max(e.vulnT, st.vulnDur); }
+      if (st.dot > 0 && !(e.dotT > 0 && e.dot > base * st.dot)) { e.dot = base * st.dot; e.dotT = st.dotDur; e.dotBy = u.id; e.dotC = u.type; if (!(e.dotTk > 0)) e.dotTk = 0.5; }
       const d = hit(g, e, dmg); u.dealt += d; g.dealt += d; g.dmg[u.type[0]] += d / 2; g.dmg[u.type[1]] += d / 2;
     }
+    if (hk && hk.id === 'fire') g.zones.push({ x: target.x, y: target.y, r: hk.r, t: hk.dur, tk: 0.5, dps: base * sv(u, hk.dps), uid: u.id, c: u.type });      // 불바다: 맞은 자리에 화염 지대
     if (g.fx) { u.fireT = 0.16; u.atkT = 0.3; u.faceL = target.x < p.x;      // atkT 동안 공격 자세 그림을 보여 준다 (faceL: 표적이 왼쪽)
       if (g.sfx.length < 8) g.sfx.push(u.type[0]);
-      g.effects.push({ x1: p.x, y1: p.y, x2: target.x, y2: target.y, r: st.splash, t: 0.36, T: 0.36, crit, c: u.type[0], c2: u.type[1] }); }
+      g.effects.push({ x1: p.x, y1: p.y, x2: target.x, y2: target.y, r: sr, t: 0.36, T: 0.36, crit: crit || big, c: u.type[0], c2: u.type[1] }); }
+  }
+  // 화염 지대: 0.5초마다 그 위의 적에게 피해
+  if (g.zones.length) {
+    for (const z of g.zones) { z.t -= dt; if ((z.tk -= dt) > 0) continue; z.tk += 0.5;
+      const owner = g.units.find(u => u && u.id === z.uid);
+      for (const e of g.enemies) if (!e.dead && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r) { const d = hit(g, e, z.dps * 0.5);
+        if (owner) owner.dealt += d; g.dealt += d; g.dmg[z.c[0]] += d / 2; g.dmg[z.c[1]] += d / 2; } }
+    g.zones = g.zones.filter(z => z.t > 0);
   }
   if (g.enemies.some(e => e.dead)) g.enemies = g.enemies.filter(e => !e.dead);
   if (g.fx) { for (const f of g.effects) f.t -= dt; g.effects = g.effects.filter(f => f.t > 0); }
@@ -478,7 +570,9 @@ export function loadGame(o, meta = {}) {
     for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff') g[k] = o[k];
     if (!Array.isArray(g.units) || g.units.length !== SLOT_COUNT || !MAPS[g.area] || !(g.wave >= 0)) return null;
     g.map = MAPS[g.area]; g.hpMul = DIFFS[g.diff].hp;
-    for (const u of g.units) if (u) { if (!(u.level >= 0 && u.level <= maxLevel(g.branch))) return null; u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up); u.flash = 0; }
+    for (const u of g.units) if (u) { if (!(u.level >= 0 && u.level <= maxLevel(g.branch))) return null; u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up); u.flash = 0;
+      if (u.hidden && !hiddenDef(g.branch, u.hidden)) u.hidden = null; }
+    if (!Array.isArray(g.zones)) g.zones = [];
     g.auraDirty = true; return g;
   } catch { return null; }
 }

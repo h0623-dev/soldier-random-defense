@@ -200,3 +200,8 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 #app.short #info { padding: 0.6rem 1rem 0.4rem; } #app.short .card { padding: 0.7rem 1rem 0.9rem; }
 #app.short #actions { min-height: 11rem; padding-top: 0.4rem; } #app.short .blds { margin-bottom: 0.9rem; padding-top: 0.2rem; } #app.short .ticker p { padding: 0.35rem 0.9rem; } #app.short .board { height: 2.8rem; }
 #app.short .pt img.u { width: 4.6rem; height: 4.6rem; } #app.short .pt.res img.u { width: 5.6rem; height: 5.6rem; } #app.short .btn { height: 3.8rem; } #app.short .unit img.u { width: 5.4rem; height: 5.4rem; }
+.up.depot small { display: block; font-size: 1.05rem; margin-top: 0.4rem; line-height: 1.35; } .up.depot .ic { font-size: 1.5rem; } .up.depot > div > b { margin-right: 0.3rem; }
+.tag.hero { background: linear-gradient(90deg, #ff5a4a, #ffb23f); color: #fff; border-color: #7a2a12; } .note .dim { color: var(--mute); font-weight: 600; }
+.wcard.hero { border-width: 0.3rem; } .wcard.hero .hrc { display: flex; align-items: center; gap: 0.2rem; flex: none; } .wcard.hero .hrc i { font-style: normal; font-weight: 900; color: var(--mute); } .wcard.hero .hrc img { width: 4rem; height: 4rem; object-fit: contain; }
+.wcard.hero .tag { margin-left: 0.5rem; display: inline-block; vertical-align: 0.15rem; font-size: 1rem; padding: 0.15rem 0.7rem; }
+.note.skill { color: #7a4a12; font-weight: 600; } .note.skill b { display: inline-block; background: #ffe2a8; border: 0.15rem solid var(--ink); border-radius: 0.7rem; padding: 0 0.6rem; margin-right: 0.4rem; color: var(--ink); font-weight: 900; }

@@ -1,6 +1,6 @@
 // 규칙 검사 + 자동 플레이 봇으로 난이도 확인:  node tests/sim.mjs
 import assert from 'node:assert';
-import { BRANCHES, CLASS_IDS, GRADES, rankOf } from '../www/js/data.js';
+import { BRANCHES, CLASS_IDS, GRADES, HEROES, TYPE_SKILLS, rankOf } from '../www/js/data.js';
 import * as C from '../www/js/core.js';
 
 // 1) 조합 규칙: 같은 병과끼리 → 같은 병과, 다른 병과끼리 → 10개 병과 가운데 무작위. 어느 쪽이든 한 등급 오른다
@@ -159,15 +159,92 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   // 저장 → 불러오기에도 특수 발판이 그대로다
   const g2 = C.loadGame(JSON.parse(JSON.stringify(C.saveGame(g))), g.meta); assert.deepEqual(g2.tiles, g.tiles); assert.equal(g2.rand.state(), g.rand.state());
 }
+// 3-7) 보급 기지: 보급병을 고용하면 단계가 시작될 때마다 군자금, 5단계마다 보급품
+{
+  const g = C.createGame({ branchId: 'army', seed: 2, fx: false });
+  assert.equal(C.depotCost(g), C.CFG.depotBase); assert.equal(C.depotIncome(g), 0);
+  g.gold = 10; assert.equal(C.hireDepot(g), false); g.gold = 1e6;
+  for (let i = 0; i < C.CFG.depotMax; i++) { const c = C.depotCost(g), g0 = g.gold; assert.equal(C.hireDepot(g), true); assert.equal(g.gold, g0 - c); }
+  assert.equal(C.hireDepot(g), false); assert.equal(g.depot, C.CFG.depotMax);                    // 최대 인원
+  const exp = C.depotIncome(g, 1), g0 = g.gold; g.nextWave = 0; C.step(g, 0.01);
+  assert.ok(exp >= C.CFG.depotMax && Math.abs(g.gold - g0 - C.CFG.waveBonus - exp) < 1e-6); assert.equal(g.depotGold, exp);
+  assert.ok(C.depotIncome(g, 60) > C.depotIncome(g, 30) && C.depotIncome(g, 30) > exp);            // 단계가 오를수록 수입도 는다
+  g.wave = 4; g.nextWave = 0; const s0 = g.supply; C.step(g, 0.01); assert.equal(g.supply - s0, Math.floor(C.CFG.depotMax / C.CFG.depotSupPer));
+  assert.ok(g.log.some(l => l.t === 'depot' && l.sup > 0));
+}
+// 3-8) 전설의 용사: 유니크 순수 병과 둘(서로 다른 병과) → 용사(전설) 탄생, 전설 유닛과 조합하면 각성(초월)
+{
+  const mk = () => { const g = C.createGame({ branchId: 'navy', seed: 4, fx: false }); g.tiles = {}; g.nextWave = 1e9; return g; };
+  const put = (g, slot, level, type, hidden = null) => { const u = { id: g.uid++, slot, level, type, hidden, cd: 0, skT: 0, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, dealt: 0, stunT: 0, burnT: 0, fireT: 0, atkT: 0,
+    stats: C.unitStats(g.branch, level, type), flash: 0 }; g.units[slot] = u; g.auraDirty = true; return u; };
+  const foe = (g, s, hp = 1e9, kind = 'normal') => { const e = { id: g.uid++, s, hp, maxHp: hp, speed: 70, bounty: 0, kind, slowT: 0, slow: 0, vulnT: 0, vuln: 0 }; g.enemies.push(e); return e; };
+  const g = mk(); assert.equal(HEROES.length, 6); assert.equal(new Set(HEROES.map(h => C.typeKey(h.pair))).size, 6);
+  for (const h of HEROES) { put(g, 0, 4, [h.pair[0], h.pair[0]]); put(g, 1, 4, [h.pair[1], h.pair[1]]);
+    const p = C.mergePreview(g, 0, 1); assert.equal(p.hidden, h.id); assert.equal(p.random, false); assert.equal(C.typeKey(p.type), C.typeKey(h.pair));
+    const u = C.merge(g, 0, 1); assert.equal(u.hidden, h.id); assert.equal(u.level, 5); assert.ok(C.unitName(g.branch, u).startsWith(h.name)); assert.equal(C.canReroll(g, 1), false);
+    put(g, 2, 4, [h.pair[0], h.pair[0]]); put(g, 3, 4, [h.pair[1], h.pair[1]]); assert.equal(C.mergePreview(g, 2, 3).hidden, null, '같은 용사는 한 명뿐');      // 이미 있으면 일반 조합(병과 무작위)
+    g.units[1] = g.units[2] = g.units[3] = null; }
+  assert.equal(g.heroGot, 6);
+  put(g, 0, 3, ['inf', 'inf']); put(g, 1, 3, ['art', 'art']); assert.equal(C.mergePreview(g, 0, 1).hidden, null);      // 유니크가 아니면 용사가 아니다
+  put(g, 0, 4, ['inf', 'inf']); put(g, 1, 4, ['inf', 'art']); assert.equal(C.mergePreview(g, 0, 1).hidden, null);      // 순수 병과가 아니면 아니다
+  put(g, 0, 4, ['inf', 'inf']); put(g, 1, 4, ['inf', 'inf']); assert.equal(C.mergePreview(g, 0, 1).hidden, null);      // 같은 병과끼리도 아니다
+  // 각성: 용사 + 전설 유닛 → 초월 용사(병과·기술 유지), 더는 조합할 수 없다
+  put(g, 0, 5, ['inf', 'art'], 'storm'); put(g, 1, 5, ['sig', 'sig']); let p = C.mergePreview(g, 1, 0); assert.equal(p.awaken, true); assert.equal(p.hidden, 'storm');
+  const aw = C.merge(g, 1, 0); assert.equal(aw.level, 6); assert.equal(aw.hidden, 'storm'); assert.equal(C.typeKey(aw.type), 'inf+art'); assert.equal(g.heroGot, 6);
+  // 강철비: 6초마다 전장의 모든 적에게 피해 (멀리 있는 적도)
+  { const g = mk(), u = put(g, 0, 5, ['inf', 'art'], 'storm'); const far = foe(g, g.map.len * 0.5), far2 = foe(g, g.map.len * 0.6); u.skT = 0.01; u.cd = 99;
+    C.step(g, 0.05); const d = u.stats.dmg * HEROES[0].skill.mul[0]; assert.ok(Math.abs(1e9 - far.hp - d) < 1e-6 * d && Math.abs(1e9 - far2.hp - d) < 1e-6 * d, '강철비 피해'); assert.ok(Math.abs(u.skT - 6) < 1e-9);
+    u.level = 6; u.skT = 0.01; const h0 = far.hp; C.step(g, 0.05); assert.ok(Math.abs(h0 - far.hp - u.stats.dmg * HEROES[0].skill.mul[1]) < 1e-3 * d, '각성하면 피해가 는다'); }
+  // 동장군: 사거리 안의 적이 멈춘다 (보스는 절반)
+  { const g = mk(), u = put(g, 0, 5, ['art', 'sig'], 'frost'); const near = foe(g, 0), boss = foe(g, 10, 1e9, 'boss'), far = foe(g, g.map.len * 0.5); u.skT = 0.01; u.cd = 99;
+    C.step(g, 0.05); assert.ok(near.freezeT > 1.4 && Math.abs(boss.freezeT - near.freezeT / 2) < 0.06 && !far.freezeT); const s0 = near.s; C.step(g, 0.5); assert.equal(near.s, s0); assert.ok(far.s > g.map.len * 0.5); }
+  // 총사령관 · 불사조: 아군 전체 효과. 겹치지 않는다
+  { const g = mk(); put(g, 0, 5, ['med', 'sig'], 'marshal'); put(g, 1, 6, ['med', 'sig'], 'marshal'); put(g, 2, 5, ['inf', 'med'], 'phoenix'); const u = put(g, 24, 0, ['inf', 'inf']); u.stunT = 5;
+    C.step(g, 0.01); assert.equal(g.buff.haste, 0.2); assert.equal(g.buff.dmg, 0.06); assert.equal(g.buff.immune, true); assert.ok(u.stunT <= 0, '불사조가 있으면 기절이 풀린다');
+    const e = foe(g, 0, 1e9); for (const x of g.units) if (x) x.cd = 99; u.cd = 0; g.map.slots[24] && (u.stats.range = 5000); C.step(g, 0.01); assert.ok(Math.abs(1e9 - e.hp - u.stats.dmg * 1.06) < 1e-5, '아군 전체 공격력 +6%'); }
+  // 매의 눈: 사거리 밖이어도 체력이 가장 많은 적을 쏜다
+  { const g = mk(), u = put(g, 0, 5, ['inf', 'sig'], 'hawk'); const weak = foe(g, 0, 100), strong = foe(g, g.map.len * 0.5, 1e9); C.step(g, 0.01); assert.equal(weak.hp, 100); assert.ok(strong.hp < 1e9); }
+  // 불바다: 맞은 자리에 화염 지대가 남아 그 위의 적이 계속 피해를 입는다
+  { const g = mk(), u = put(g, 0, 5, ['art', 'med'], 'inferno'); const e = foe(g, 0, 1e9); e.speed = 0; C.step(g, 0.01); assert.equal(g.zones.length, 1); u.cd = 99; const h0 = e.hp;
+    for (let i = 0; i < 40; i++) C.step(g, 0.05); assert.ok(Math.abs(h0 - e.hp - u.stats.dmg * 0.25 * 2) < 0.25 * u.stats.dmg, `화염 지대 2초 피해 ${(h0 - e.hp) / u.stats.dmg}`);
+    for (let i = 0; i < 60; i++) C.step(g, 0.05); assert.equal(g.zones.length, 0);
+    const g2 = C.loadGame(JSON.parse(JSON.stringify(C.saveGame(g))), g.meta); assert.equal(g2.units[0].hidden, 'inferno'); }
+  // 히든 계급(원사)의 조합식과 지원 효과는 그대로다
+  { const g = mk(); put(g, 0, 2, ['inf', 'art']); put(g, 1, 2, ['med', 'sig']); assert.equal(C.mergePreview(g, 0, 1).hidden, 'wonsa'); }
+}
+// 3-9) 특수 병과 6종의 고유 기술
+{
+  const army = BRANCHES[0], st = t => C.unitStats({ ...army, trait: { key: '' } }, 3, t);
+  assert.equal(Object.keys(TYPE_SKILLS).length, 6); for (const k of C.TYPE_KEYS) assert.equal(!!TYPE_SKILLS[k], k.includes('+'));      // 특수 병과에만 있다
+  assert.equal(st(['inf', 'sig']).crit, 0.1); assert.equal(st(['inf', 'inf']).crit, 0); assert.equal(st(['art', 'sig']).vuln, 0.3); assert.equal(st(['art', 'sig']).vulnDur, 4);
+  assert.equal(st(['inf', 'art']).burst, 3); assert.equal(st(['med', 'sig']).rangeAura, 0.1); assert.equal(st(['inf', 'med']).guard, 0.5); assert.equal(st(['art', 'med']).dot, 0.12);
+  const mk = () => { const g = C.createGame({ branchId: 'army', seed: 4, fx: false }); g.tiles = {}; g.nextWave = 1e9; return g; };
+  const put = (g, slot, level, type) => { const u = { id: g.uid++, slot, level, type, hidden: null, cd: 0, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, dealt: 0, stunT: 0, burnT: 0, fireT: 0, atkT: 0,
+    stats: C.unitStats(g.branch, level, type), flash: 0 }; g.units[slot] = u; g.auraDirty = true; return u; };
+  const foe = (g, s, hp = 1e6) => { const e = { id: g.uid++, s, hp, maxHp: hp, speed: 0, bounty: 0, kind: 'normal', slowT: 0, slow: 0, vulnT: 0, vuln: 0 }; g.enemies.push(e); return e; };
+  // 연속 포격: 세 번째 공격이 1.5배
+  { const g = mk(), u = put(g, 0, 3, ['inf', 'art']), e = foe(g, 0), hits = []; let hp = e.hp;
+    for (let i = 0; i < 400 && hits.length < 6; i++) { C.step(g, 0.05); if (e.hp < hp - 1e-9) { hits.push((hp - e.hp) / u.stats.dmg); hp = e.hp; } }
+    assert.deepEqual(hits.map(x => +x.toFixed(3)), [1, 1, 1.5, 1, 1, 1.5]); }
+  // 오염: 맞은 뒤 공격이 멈춰도 3초 동안 초당 12%
+  { const g = mk(), u = put(g, 0, 3, ['art', 'med']), e = foe(g, 0); C.step(g, 0.01); u.cd = 99; const h0 = e.hp;
+    for (let i = 0; i < 100; i++) C.step(g, 0.05); assert.ok(Math.abs((h0 - e.hp) / u.stats.dmg - 0.36) < 0.07, `오염 피해 ${(h0 - e.hp) / u.stats.dmg}`); assert.ok(Math.abs(u.dealt - (1e6 - e.hp)) < 1e-6); }
+  // 지휘 통신 · 응급 처치: 이웃한 아군에게만
+  { const g = mk(); put(g, 0, 3, ['med', 'sig']); put(g, 2, 3, ['inf', 'med']); const a = put(g, 1, 0, ['inf', 'inf']), far = put(g, 24, 0, ['inf', 'inf']); C.step(g, 0.01);
+    assert.equal(a.rangeUp, 0.1); assert.equal(a.guard, 0.5); assert.equal(far.rangeUp, 0); assert.equal(far.guard, 0); }
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
+if (process.env.HERO === '0') C.setHeroes(false);      // 용사 없이 돌려 비교
+if (process.env.SKILL === '0') C.setSkills(false);     // 병과 고유 기술 없이 돌려 비교
 const UPR = +process.env.UPR || 0.2;    // 봇이 병과 강화에 쓰는 군자금 비율
+const DPR = process.env.DPR != null ? +process.env.DPR : 0.15;    // 봇이 보급병 고용에 쓰는 군자금 비율 (0이면 고용하지 않음)
 // 4) 봇 플레이. 발판이 비면 소집하고 꽉 차면 낮은 계급부터 조합한다.
 //    smart면 쓴 돈의 일정 비율 안에서 훈련소(30%)와 병과 강화(UPR)를 산다 — 보스가 멀고 전장이 조용할 때는 소집을 멈추고 모은다. 특수 임무와 진급 심사도 쓴다.
 function play(branchId, seed, smart = true) {
-  const g = C.createGame({ branchId, seed, fx: false });
-  let acc = 0, spent = 0, upSpent = 0; g.first = [];
+  const g = C.createGame({ branchId, seed, fx: false, diff: +process.env.DIFF || 0 });      // DIFF=1 어려움, 2 지옥
+  let acc = 0, spent = 0, upSpent = 0, depSpent = 0; g.first = [];
   const pay = (cost, f) => { const ok = f(); if (ok) spent += cost; return ok; };
   while (!g.over && g.time < 4000) {
     C.step(g, 0.05); acc += 0.05;
@@ -179,6 +256,8 @@ function play(branchId, seed, smart = true) {
         const calm = nUnits >= 8 && g.enemies.length < 12 && w10 >= 1 && w10 <= 6 && !g.enemies.some(e => e.kind === 'boss');
         const cc = C.campCost(g.branch, g.camp);
         if (g.camp < C.maxCamp(g.branch) && nUnits >= 12 && cc <= 0.3 * (spent + cc)) { if (g.gold >= cc) { pay(cc, () => C.upgradeCamp(g)); continue; } saving = calm; }
+        const dc = C.depotCost(g);      // 보급병: 쓴 돈의 DPR 안에서, 유닛이 어느 정도 선 뒤에
+        if (DPR > 0 && g.depot < C.CFG.depotMax && nUnits >= 10 && depSpent + dc <= DPR * (spent + dc) && g.gold >= dc) { if (pay(dc, () => C.hireDepot(g))) depSpent += dc; continue; }
         const c = CLASS_IDS.reduce((a, b) => (g.up[b] < g.up[a] ? b : a)), uc = C.classUpCost(g, c);
         if (!saving && nUnits >= 20 && upSpent + uc <= UPR * (spent + uc)) { if (g.gold >= uc) { if (pay(uc, () => C.upgradeClass(g, c))) upSpent += uc; continue; } saving = calm; }
         C.callElite(g);
@@ -189,6 +268,11 @@ function play(branchId, seed, smart = true) {
       if (g.units.includes(null)) { const sc = C.summonCost(g.branch, g.camp); if (!pay(sc, () => C.summon(g))) break; continue; }
       const us = g.units.filter(Boolean).sort((a, b) => a.level - b.level);
       let done = false;
+      if (smart) {      // 용사 조합식이 맞는 짝이 있으면 먼저 조합한다. 용사는 각성(전설 유닛과 조합)에만 쓴다
+        const pure = us.filter(u => u.level === 4 && !u.hidden && u.type[0] === u.type[1]);
+        const pr = pure.flatMap((a, i) => pure.slice(i + 1).map(b => [a, b])).find(([a, b]) => C.heroRecipe(g, a, b));
+        if (pr) { C.merge(g, pr[0].slot, pr[1].slot); continue; }
+      }
       for (let i = 0; i + 1 < us.length; i++) if (C.canMerge(g, us[i].slot, us[i + 1].slot)) { C.merge(g, us[i].slot, us[i + 1].slot); done = true; break; }
       if (!done) break;
     }
@@ -198,7 +282,7 @@ function play(branchId, seed, smart = true) {
     }
     const mx = Math.max(-1, ...g.units.filter(Boolean).map(u => u.level)); for (let l = 0; l <= mx; l++) if (!g.first[l]) g.first[l] = g.wave || 1;      // 계급별 첫 등장 단계
   }
-  return g;
+  g.earned = spent + g.gold; return g;
 }
 const only = process.argv[2];
 const SEEDS = +process.env.SEEDS || 4;
@@ -210,5 +294,5 @@ for (const b of BRANCHES) {
     '| 소집·조합만:', `${lazy.wave}${lazy.over?.win ? '승' : '패'}`,
     '| 등급 첫 등장(중앙)', GRADES.slice(2).map((gr, i) => `${gr.name} ${med(rs.map(g => g.first[i + 2] || 999))}`).join(' · '),
     '| 끝 초월', med(rs.map(g => g.units.filter(u => u && u.level === 6).length)) + '명',
-    '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'));
+    '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'), '| 용사', rs.map(g => g.heroGot).join('/'), '| 보급병', rs.map(g => g.depot).join('/'), '수입비율', rs.map(g => Math.round(g.depotGold / (g.earned || 1) * 100) + '%').join('/'));
 }

@@ -1,5 +1,5 @@
 // 화면 · 입력 · 저장 연결
-import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, GROUP_OF_LEVEL } from './data.js';
+import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, GROUP_OF_LEVEL, HEROES } from './data.js';
 import * as C from './core.js';
 import { draw, areaColors } from './render.js';
 import { insigUrl, hasArt, unitArtName, loadBranchArt } from './sprites.js';
@@ -40,8 +40,14 @@ const buildLabel = b => { const d = new Date(b * 1000), z = n => String(n).padSt
   return `${d.getMonth() + 1}.${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())} 빌드`; };
 const fmt = n => { n = Math.floor(n); if (n < 1e4) return String(n);
   const u = ['만', '억', '조', '경']; let i = -1; while (n >= 1e4 && i < 3) { n /= 1e4; i++; } return (n >= 100 ? Math.floor(n) : n.toFixed(1)) + u[i]; };
-let toastT;
-function toast(msg, ms = 1400) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
+let toastT, toastHold = 0;
+// hold = true면 중요한 알림(용사 탄생, 히든 임무): 잠깐 동안은 다른 알림이 덮지 못하고 뒤에 이어서 뜬다
+function toast(msg, ms = 1400, hold = false) {
+  const now = performance.now();
+  if (!hold && now < toastHold) { setTimeout(() => toast(msg, ms), toastHold - now + 60); return; }
+  if (hold) toastHold = now + Math.min(ms, 2400);
+  const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms);
+}
 // 겹쳐 뜨는 화면. sheet=true면 아래에서 올라오는 시트로 뜨고 게임은 멈추지 않는다(전장이 계속 보인다)
 function show(html, sheet = false, cls = '') {
   overlay.innerHTML = `<div class="panel ${cls}">${sheet ? '<div class="grab"></div>' : ''}${html}</div>`;
@@ -120,12 +126,15 @@ const ACT = {
     show(`<h2>게임 방법</h2><div class="list">
       <p><b>1. 신병 소집</b> — 군자금으로 무작위 병과의 유닛을 뽑습니다. 빈 발판 가운데 무작위 자리에 배치됩니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
-      <p><b>주둔지</b> — 전장 아래의 건물을 눌러 명령합니다. 왼쪽부터 <b>훈련소</b>(천막) · <b>병과 강화</b>(병기창) · <b>신병 소집</b>(연병장) · <b>선택 소집</b>(보급창) · <b>특수 임무</b>(통신탑). 쓸 수 없는 건물은 흐리게 보이고, 특수 임무를 부를 수 있으면 통신탑이 빛납니다.</p>
+      <p><b>주둔지</b> — 전장 아래의 건물을 눌러 명령합니다. 왼쪽부터 <b>훈련소</b>(천막) · <b>병과 강화</b>(병기창) · <b>신병 소집</b>(연병장) · <b>보급창</b>(보급병 고용 · 선택 소집) · <b>특수 임무</b>(통신탑). 쓸 수 없는 건물은 흐리게 보이고, 특수 임무를 부를 수 있으면 통신탑이 빛납니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 등급이 올라갑니다(최고 영웅). 그 위 등급은 조합으로만 올립니다.</p>
+      <p><b>병과 고유 기술</b> — 다른 병과끼리 조합할 때 나오는 특수 병과 6종은 저마다 고유 기술이 있습니다(연속 포격, 응급 처치, 조준 사격, 오염, 표적 지정, 지휘 통신). 유닛을 누르면 카드에 적혀 있습니다.</p>
+      <p><b>전설의 용사</b> — <b>${GRADES[4].name}</b> 등급의 <b>기본 병과</b> 둘(예: 보병 + 포병)을 조합하면 고유 기술을 가진 용사가 태어납니다. 여섯 가지 짝마다 다른 용사가 나오고, 종류마다 한 명뿐입니다. 용사에 ${GRADES[5].name} 등급 유닛을 조합하면 ${GRADES[6].name}로 <b>각성</b>합니다. 조합식은 조합 도감에 있습니다.</p>
       <p><b>히든 계급</b> — 정규 계급표에 없는 특수 계급이 있습니다. 특정 조합이나 소집 때 낮은 확률로 나타나며, 주변 아군을 강화합니다. 발견하면 조합 도감에 기록됩니다.</p>
       <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기), <b>진급 심사</b>(유닛 선택 후 도전: 등급이 낮을수록 잘 붙고, 15%는 강등. 전설 등급부터는 받을 수 없음), <b>병과 교체</b>(유닛 선택 후: 등급은 그대로 두고 병과만 다시 뽑기)에 씁니다.</p>
       <p><b>특수 발판</b> — 지역마다 발판 ${C.CFG.tileCount}칸이 빛납니다. ${Object.values(C.TILES).map(t => `<b style="color:${t.color};-webkit-text-stroke:.03em #4a2f1b">${t.name}</b>(${t.text})`).join(' · ')}. 그 위에 선 유닛만 효과를 받으니 가장 강한 유닛을 올려 두세요. 다음 지역으로 넘어가면 자리가 바뀝니다.</p>
       <p><b>히든 임무</b> — 임무 창 아래쪽에 조건이 가려진 임무가 있습니다. 이것저것 시도하다 보면 달성되고, 한 번 달성한 임무는 다음 판부터 조건이 보입니다.</p>
+      <p><b>보급병</b> — 보급창에서 군자금으로 고용합니다(최대 ${C.CFG.depotMax}명). 단계가 시작될 때마다 군자금을 가져오고, ${C.CFG.depotSupPer}명마다 ${C.CFG.depotSupEvery}단계에 한 번 보급품도 가져옵니다. 일찍 고용할수록 오래 받지만 그만큼 초반 전력이 줄어듭니다.</p>
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
@@ -134,14 +143,22 @@ const ACT = {
       ${CLASS_IDS.map(c => `<p><span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span> ${CLASS_INFO[c].role}</p>`).join('')}
       </div><button class="wide sec" data-act="${g ? 'menu' : 'title'}">뒤로</button>`);
   },
-  // 선택 소집: 보급품을 써서 원하는 기본 병과를 고른다
+  // 보급창: 보급병 고용(단계마다 군자금이 들어오는 투자) + 선택 소집(보급품을 써서 원하는 기본 병과 고르기)
   pick() {
     const b = g.branch, sc = C.summonCost(b, g.camp), can = g.supply >= C.CFG.pickSupply && g.gold >= sc && g.units.includes(null);
-    show(`${sheetHead('선택 소집', `원하는 병과를 골라 소집합니다 · 보급품 ${C.CFG.pickSupply}개 + 군자금 ${fmt(sc)}`)}
+    const dc = C.depotCost(g), full = g.depot >= C.CFG.depotMax, inc = C.depotIncome(g), nextInc = C.depotIncome({ depot: g.depot + 1, wave: g.wave }), sup = C.depotSupply(g);
+    show(`${sheetHead('보급창', '보급병을 고용하면 단계마다 군자금이 들어옵니다')}
+      <div class="up depot"><div><b>보급병 <em>${g.depot}/${C.CFG.depotMax}명</em></b>
+        <span class="pips">${Array.from({ length: C.CFG.depotMax }, (_, i) => `<i class="${i < g.depot ? 'on' : ''}"></i>`).join('')}</span>
+        ${g.depot ? `단계마다 ${ic('coin')}<b>+${fmt(inc)}</b>${sup ? ` · ${C.CFG.depotSupEvery}단계마다 ${ic('box')}<b>+${sup}</b>` : ''}` : '아직 고용한 보급병이 없습니다'}${full ? '' : ` → 고용하면 ${ic('coin')}<b>+${fmt(nextInc)}</b>`}
+        <small>단계가 오를수록 수입도 늘어납니다 · 보급병 ${C.CFG.depotSupPer}명마다 ${C.CFG.depotSupEvery}단계에 보급품 1개${g.depotGold ? ` · 지금까지 ${fmt(g.depotGold)} 벌었습니다` : ''}</small></div>
+        <button class="btn gold" data-act="hire" ${full || g.gold < dc ? 'disabled' : ''}>${full ? '최대' : `고용 ${ic('coin')}${fmt(dc)}`}</button></div>
+      <h3 class="hmh">선택 소집 <small>원하는 병과를 골라 소집 · 보급품 ${C.CFG.pickSupply}개 + 군자금 ${fmt(sc)}</small></h3>
       <div class="cards">${CLASS_IDS.map(c => `<button class="bcard" style="background:${CLASS_INFO[c].color};color:#10140e" data-act="pickc" data-arg="${c}" ${can ? '' : 'disabled'}>
         <img src="${unitSrc(b, [c, c])}" alt=""><span><b>${b.types[c][0]}</b><small>${CLASS_INFO[c].role}</small></span></button>`).join('')}</div>
       <div class="sfoot"><div class="pill sup">${ic('box')}<b>${g.supply}</b></div><div class="pill gold">${ic('coin')}<b>${fmt(g.gold)}</b></div><button class="btn" data-act="resume">닫기</button></div>`, true);
   },
+  hire() { if (C.hireDepot(g)) Sound.play('camp'); else Sound.play('deny'); ACT.pick(); },
   pickc(c) { const u = C.summonPick(g, c); hide(); if (u) { toast(`${C.unitName(g.branch, u)} 소집`); Sound.play('summon'); } else { toast('보급품·군자금·빈 칸을 확인하세요'); Sound.play('deny'); } },
   // 병과 강화: 그 병과가 들어간 모든 유닛의 공격력이 오른다 (혼성 병과는 두 병과의 평균)
   upg() {
@@ -190,9 +207,9 @@ const ACT = {
       <h3>다른 병과끼리 → 무작위 병과로 진급</h3>
       <div class="rcp">${uimg(CLASS_IDS[0], 'ui s')}<i>+</i>${uimg(CLASS_IDS[1], 'ui s')}<i>→</i><b class="qm2">?</b><span><b>무작위 병과</b><small>한 등급 위 · 아래 10종 가운데 하나</small></span></div>
       <h3>특수 병과 6종 — 다른 병과끼리 조합할 때만 나옵니다</h3>
-      <div class="cx4">${mixKeys.map(k => `<div class="ucard">${uimg(k)}<b>${name(k)}</b><small>${chips(k)}</small></div>`).join('')}</div>
+      ${mixKeys.map(k => { const sk = C.typeSkill(k.split('+')); return `<div class="wcard">${uimg(k)}<div><b>${name(k)}</b> ${chips(k)}<p><em>${sk.name}</em> ${sk.text}</p></div></div>`; }).join('')}
       <div class="list" style="margin-top:10px">
-      <p>특수 병과는 두 기본 병과의 능력을 절반씩 가집니다(예: ${name('inf+art')} = ${name('inf')} + ${name('art')}). 원하는 병과를 지키려면 <b>같은 병과끼리</b> 조합하세요.</p></div>
+      <p>특수 병과는 두 기본 병과의 능력을 절반씩 가지고(예: ${name('inf+art')} = ${name('inf')} + ${name('art')}), 저마다 <b>고유 기술</b>이 하나 있습니다. 기본 병과는 고유 기술이 없는 대신 <b>전설의 용사</b>의 재료가 됩니다. 원하는 병과를 지키려면 <b>같은 병과끼리</b> 조합하세요.</p></div>
       <h2>병과 · 병기</h2>
       ${Object.entries(b.types).map(([k, [n, w]]) => `<div class="wcard">${uimg(k)}<div><b>${n}</b> ${chips(k)}
         <p><em>${GRADES[0].name}~</em> ${w[0]}</p><p><em>${GRADES[b.tiers[0]].name}~</em> ${w[1]}</p><p><em>${GRADES[b.tiers[1]].name}~</em> ${w[2]}</p></div></div>`).join('')}
@@ -206,6 +223,10 @@ const ACT = {
         ? `<div class="wcard hid"><div class="hbadge"><img src="${insigUrl(h.insig)}" alt=""><b>${h.name}</b></div><div><b>${h.name}</b> <small>${GRADES[h.level].name} 등급</small><p>${h.text}</p><p><em>얻는 법</em> ${h.how}</p></div></div>`
         : `<div class="wcard hid"><div class="hbadge"><b>?</b></div><div><b>???</b><p>아직 발견하지 못했습니다</p><p><em>단서</em> ${h.recipe ? '어떤 조합에서 나타납니다' : '신병 소집에서 드물게 나타납니다'}</p></div></div>`).join('')}
         <div class="list"><p>히든 계급을 조합 재료로 쓰면 일반 계급으로 진급하고 능력은 사라집니다.</p></div>` : ''}
+      <h2>전설의 용사</h2>
+      <p class="sub" style="text-align:left;margin:0 0 .8rem"><b>${GRADES[4].name}</b> 등급의 <b>기본 병과</b> 둘(서로 다른 병과)을 조합하면 용사가 태어납니다. 용사는 종류마다 한 명뿐이고, <b>${GRADES[5].name}</b> 등급 유닛과 조합하면 <b>${GRADES[6].name}</b>로 각성해 기술이 강해집니다.</p>
+      ${HEROES.map(h => { const k = C.typeKey(h.pair); return `<div class="wcard hero" style="border-color:${h.color}"><div class="hrc">${uimg(h.pair[0], 'ui s')}<i>+</i>${uimg(h.pair[1], 'ui s')}</div>
+        <div><b>${h.name}</b> <small>${name(h.pair[0])} + ${name(h.pair[1])} → ${name(k)}</small>${meta.found[h.id] ? '<span class="tag hero">탄생시킴</span>' : ''}<p>${h.text.split(' — ')[1]}</p><p><em>각성</em> ${h.up}</p></div></div>`; }).join('')}
       <h2>작전 지역 · 보스</h2>
       ${C.AREAS.map((a, i) => `<div class="wcard${i === g.area ? ' now' : ''}">${eimg(hasArt('enemy_boss' + (i + 1)) ? 'enemy_boss' + (i + 1) : 'enemy_boss', i + 1)}
         <div><b>${a.boss.name}</b> <small>${(i + 1) * 10}단계 · ${a.name}${i === g.area ? ' · 현재 지역' : ''}</small><p>${a.boss.text}</p></div></div>`).join('')}
@@ -252,8 +273,11 @@ canvas.addEventListener('pointerdown', e => {
 });
 function found(u) { if (u.hidden && !meta.found[u.hidden]) { meta.found[u.hidden] = 1; saveMeta(); } }
 function doMerge() {
-  const u = C.merge(g, ui.sel, ui.target); if (!u) return;
-  toast(u.hidden ? `히든 조합! ${C.unitName(g.branch, u)} 등장` : `${C.unitName(g.branch, u)} 진급!`); found(u); Sound.play(u.hidden ? 'hidden' : 'merge'); ui.sel = u.slot; ui.target = null;
+  const pv = C.mergePreview(g, ui.sel, ui.target), u = C.merge(g, ui.sel, ui.target); if (!u) return;
+  const hero = C.heroOf(u);
+  if (hero) toast(pv.awaken ? `★ ${hero.name} 각성! — ${hero.up}` : `★ 전설의 용사 탄생! ${hero.name} — ${hero.text.split(' — ')[1]}`, 3600, true);
+  else toast(u.hidden ? `히든 조합! ${C.unitName(g.branch, u)} 등장` : `${C.unitName(g.branch, u)} 진급!`);
+  found(u); Sound.play(u.hidden ? 'hidden' : 'merge'); ui.sel = u.slot; ui.target = null;
 }
 $('info').addEventListener('click', e => {
   const a = e.target.dataset.do; if (!a || !g) return;
@@ -293,30 +317,35 @@ function statChips(st, prev, unit) {
 }
 function renderInfo() {
   const b = g.branch, A = ui.sel != null ? g.units[ui.sel] : null, B = ui.target != null ? g.units[ui.target] : null;
-  const key = [A && A.id + A.type.join('') + A.slot, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join('')].join('|');
+  const key = [A && A.id + A.type.join('') + A.slot, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join(''), g.buff.haste, g.buff.dmg, g.buff.immune].join('|');
   if (key === infoKey) {      // 카드는 그대로 두고 누적 피해 숫자만 바꾼다 (카드를 통째로 다시 만들면 누르던 버튼이 사라진다)
     if (A && !B) { const d = $('u-dealt'), v = fmt(A.dealt); if (d && d.textContent !== v) d.textContent = v; }
     return;
   }
   infoKey = key;
-  const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitSrc(b, u.type, C.rankGroup(b, u))}" alt=""><b><i class="gdot" style="background:${GRADES[u.level].color}"></i>${C.unitName(b, u)}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
+  const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitSrc(b, u.type, C.rankGroup(b, u))}" alt=""><b><i class="gdot" style="background:${GRADES[u.level].color}"></i>${C.heroOf(u) ? C.rankName(b, u) : C.unitName(b, u)}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
   $('app').classList.toggle('sel', !!A);       // 유닛을 고른 동안에는 하단 버튼 자리까지 카드가 쓴다
   if (A && B) {
     const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type, hidden: p.hidden }, h = C.hiddenDef(b, p.hidden), gr = GRADES[p.level];
     // 같은 병과끼리는 결과가 정해져 있고, 다른 병과끼리는 병과가 무작위라 물음표로 보여 준다
     const result = p.random ? `<div class="pt res rnd" style="border-color:${gr.color}"><div class="qm" style="color:${gr.color}">?</div><b><i class="gdot" style="background:${gr.color}"></i>${h ? h.name + ' · ' : ''}무작위 병과</b></div>` : portrait(nu, 'res');
-    el.innerHTML = `<div class="card"><div class="ttl"><b>조합 미리보기</b><span class="tag${h ? ' hid' : ''}">${h ? '★ 히든 조합' : p.random ? `${gr.name} 등급 · 병과 무작위` : `${C.rankName(b, A)} → ${C.rankName(b, nu)} 진급`}</span></div>
+    const lost = [A, B].filter(x => x.hidden && !(h && h.hero && x.hidden === p.hidden && (x === A || !C.heroOf(A))));      // 조합하면 능력이 사라지는 재료 (각성하는 용사 자신은 빼고)
+    el.innerHTML = `<div class="card"><div class="ttl"><b>조합 미리보기</b><span class="tag${h ? (h.hero ? ' hero' : ' hid') : ''}">${h ? (p.awaken ? '★ 용사 각성' : h.hero ? '★ 전설의 용사 탄생' : '★ 히든 조합') : p.random ? `${gr.name} 등급 · 병과 무작위` : `${C.rankName(b, A)} → ${C.rankName(b, nu)} 진급`}</span></div>
       <div class="mix">${portrait(A)}<span class="op">${ic('plus')}</span>${portrait(B)}<span class="op go">${ic('arrow')}</span>${result}</div>
       ${p.random ? `<p class="note">병과가 다른 유닛끼리 조합하면 <b>${gr.name}</b> 등급으로 오르고, 병과는 10종 가운데 무작위로 정해집니다. 같은 병과끼리 조합하면 그 병과가 유지됩니다.</p>` : statChips(C.unitStats(b, p.level, p.type, meta, g.up), A.stats)}
-      ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${A.hidden || B.hidden ? '<p class="note">⚠ 히든 계급의 능력은 조합하면 사라집니다</p>' : ''}
+      ${!p.random && C.typeSkill(p.type) ? `<p class="note skill"><b>${C.typeSkill(p.type).name}</b> ${C.typeSkill(p.type).text}</p>` : ''}
+      ${h ? `<p class="note star">★ ${p.awaken ? `각성 — ${h.up}` : h.text}</p>` : ''}${lost.length ? `<p class="note">⚠ 재료로 쓰는 ${lost.map(x => C.rankName(b, x)).join(' · ')}의 능력은 조합하면 사라집니다</p>` : ''}
       <div class="acts"><button class="btn" data-do="cancel">취소</button><button class="btn primary" data-do="merge">조합하기</button></div></div>`;
   } else if (A) {
-    const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean), tile = C.tileAt(g, A.slot);
+    const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean), tile = C.tileAt(g, A.slot), sk = C.typeSkill(A.type);
+    const bf = [g.buff.haste && `공격 속도 +${Math.round(g.buff.haste * 100)}%`, g.buff.dmg && `공격력 +${Math.round(g.buff.dmg * 100)}%`, g.buff.immune && '기절·화염 면역'].filter(Boolean);
     el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitSrc(b, A.type, C.rankGroup(b, A))}" alt="">
-      <div><h3><i class="gdot" style="background:${GRADES[A.level].color}"></i>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? '<span class="tag hid">히든</span>' : ''}</h3>
+      <div><h3><i class="gdot" style="background:${GRADES[A.level].color}"></i>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? (h.hero ? `<span class="tag hero">${A.level > h.level ? '각성 용사' : '용사'}</span>` : '<span class="tag hid">히든</span>') : ''}</h3>
         <small><b style="color:${GRADES[A.level].color}">${GRADES[A.level].name}</b> · ${C.unitWeapon(b, A)}</small></div></div>
       ${statChips(A.stats, null, A)}
-      ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${up.length ? `<p class="note star">히든 계급 지원: ${up.join(' · ')}</p>` : ''}
+      ${h ? `<p class="note star">★ ${h.text}${h.hero ? (A.level > h.level ? ` → <b>각성: ${h.up}</b>` : ` <span class="dim">(전설 등급 유닛과 조합하면 각성 — ${h.up})</span>`) : ''}</p>` : ''}${up.length ? `<p class="note star">주변 지원: ${up.join(' · ')}</p>` : ''}
+      ${sk ? `<p class="note skill"><b>${sk.name}</b> ${sk.text}</p>` : ''}${A.guard ? '<p class="note star">응급 처치 지원: 기절·화염 시간 절반</p>' : ''}
+      ${bf.length ? `<p class="note star">용사 지원: ${bf.join(' · ')}</p>` : ''}
       ${tile ? `<p class="note tile"><i style="background:${tile.color}"></i><b>${tile.name}</b> 위에 있습니다 — ${tile.text}</p>` : ''}
       <p class="note">${A.level < C.maxLevel(b) ? '색칠된 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 그 자리로 이동(이동하면 선택이 풀립니다)' : '최고 계급입니다'}</p>
       <div class="acts three"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>심사 ${Math.round(C.gambleChance(A) * 100)}% ${ic('box')}${C.CFG.gambleSupply}</button>
@@ -353,7 +382,8 @@ function renderHud() {
     const n = g.area + 1, f = hasArt('enemy_boss' + n) ? 'enemy_boss' + n : 'enemy_boss'; $('brief-img').src = `img/${f}.webp`;
     $('brief-w').textContent = `${n * 10}단계 보스 · ${ar.name}`; $('brief-t').textContent = ar.boss.name; $('brief-s').textContent = ar.boss.text; }
   putOff('b-camp', maxed || g.gold < cc);
-  put('c-pick', `보급 ${C.CFG.pickSupply}`); putOff('b-pick', g.supply < C.CFG.pickSupply || g.gold < sc || !g.units.includes(null));
+  put('c-pick', `보급병 ${g.depot}/${C.CFG.depotMax}`);
+  putCls('b-pick', 'hot', g.depot < C.CFG.depotMax && g.depot < 3 && g.wave >= 3 && g.gold >= C.depotCost(g) * 3);      // 여유가 있는데 보급병이 거의 없으면 보급창이 빛난다
   put('c-up', `합계 Lv${CLASS_IDS.reduce((n, c) => n + g.up[c], 0)}`);
   const es = C.eliteState(g), el = g.enemies.find(e => e.kind === 'elite');
   put('c-elite', es === 'ready' ? '출동 가능' : es === 'active' ? `진행 ${Math.ceil(el ? el.life : 0)}초` : es === 'cd' ? `대기 ${Math.ceil(g.elite.cd)}초` : '1단계부터');
@@ -382,8 +412,9 @@ function frame(now) {
     if (l.t === 'wave') { saveRun(); Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); if (l.wave % 10 === 0) toast(`보스 출현 — ${C.AREAS[g.area].boss.text}`, 3200); }
     else if (l.t === 'area') { ui.trans = { t: 2.6, total: 2.6, area: l.area }; hold = 1.3; ui.sel = ui.target = null; infoKey = '';
       for (const u of g.units) if (u) u.flash = 0.9; Sound.play('hidden'); }
-    else if (l.t === 'mission') { if (l.hidden) { meta.foundM[l.id] = 1; saveMeta(); toast(`★ 히든 임무 달성: ${l.text} · 보급품 +${l.sup}`, 3200); Sound.play('hidden'); }
+    else if (l.t === 'mission') { if (l.hidden) { meta.foundM[l.id] = 1; saveMeta(); toast(`★ 히든 임무 달성: ${l.text} · 보급품 +${l.sup}`, 3200, true); Sound.play('hidden'); }
       else { toast(`임무 완수: ${l.text} · 보급품 +${l.sup}`); Sound.play('camp'); } }
+    else if (l.t === 'depot') { if (l.sup && g.wave % 10) toast(`보급 도착 — 군자금 +${fmt(l.gold)} · 보급품 +${l.sup}`); }
     else if (l.t === 'eliteKill') { toast(`특수 임무 성공! 보급품 +${C.CFG.eliteSupply}`); Sound.play('merge'); }
     else if (l.t === 'eliteFail') { toast('특수 임무 실패 — 표적이 빠져나갔습니다'); Sound.play('deny'); } }
   if (ui.sel != null && !g.units[ui.sel]) ui.sel = ui.target = null;

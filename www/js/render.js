@@ -1,6 +1,6 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
-import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig } from './core.js';
+import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig, mergePreview, heroOf } from './core.js';
 import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
@@ -204,9 +204,10 @@ export function draw(ctx, g, ui, quality = 2) {
   SLOTS.forEach((s, i) => {
     const x = s.x - CELL.w / 2 + 4, y = s.y - CELL.h / 2 - 4, mergeable = sel && i !== ui.sel && canMerge(g, ui.sel, i);
     // 조합할 수 있는 칸: 같은 병과(병과 유지)는 노란색, 다른 병과(무작위)는 보라색 점선
-    if (mergeable) { const keep = sameType(sel.type, g.units[i].type), a = 0.32 + 0.18 * Math.sin(now * 6);
-      ctx.fillStyle = keep ? `rgba(255,212,94,${a})` : `rgba(190,150,255,${a * 0.8})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill();
-      ctx.strokeStyle = keep ? '#ffd45e' : '#c9a3ff'; ctx.lineWidth = 4; if (!keep) ctx.setLineDash([9, 7]); ctx.stroke(); ctx.setLineDash([]); }
+    if (mergeable) { const pv = mergePreview(g, ui.sel, i), keep = !pv.random, star = !!pv.hidden, a = 0.32 + 0.18 * Math.sin(now * 6);
+      ctx.fillStyle = star ? `rgba(255,120,80,${a})` : keep ? `rgba(255,212,94,${a})` : `rgba(190,150,255,${a * 0.8})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill();
+      ctx.strokeStyle = star ? '#ff5a4a' : keep ? '#ffd45e' : '#c9a3ff'; ctx.lineWidth = star ? 5 : 4; if (!keep) ctx.setLineDash([9, 7]); ctx.stroke(); ctx.setLineDash([]);
+      if (star) starAt(ctx, s.x + 34, s.y - 42, 11 + 2 * Math.sin(now * 6), '#ffd45e'); }      // 용사·히든 조합이 되는 짝: 붉은 테두리와 별
     else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.stroke(); }
   });
   // 선택 유닛 사거리 · 지원 범위 (바닥에 눕힌 원)
@@ -214,9 +215,13 @@ export function draw(ctx, g, ui, quality = 2) {
     const p = SLOTS[sel.slot];
     ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(p.x, p.y, unitRange(sel), 0, 7); ctx.fill(); ctx.stroke();
-    if (sel.hidden || sel.stats.haste > 0) { ctx.strokeStyle = sel.hidden ? '#ffd45e' : CLASS_INFO.med.color; ctx.setLineDash([6, 6]);
+    if ((sel.hidden && !heroOf(sel)) || sel.stats.haste > 0) { ctx.strokeStyle = sel.hidden ? '#ffd45e' : CLASS_INFO.med.color; ctx.setLineDash([6, 6]);
       ctx.beginPath(); ctx.arc(p.x, p.y, CFG.auraRadius, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   }
+  // 화염 지대(불바다): 바닥에서 일렁이는 불
+  for (const z of g.zones) { const a = Math.min(1, z.t / 0.6) * (0.3 + 0.1 * Math.sin(now * 9 + z.x));
+    ctx.fillStyle = `rgba(255,110,40,${a})`; ctx.beginPath(); ctx.ellipse(z.x, z.y + 6, z.r, z.r * 0.62, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = `rgba(255,214,94,${a * 0.9})`; ctx.beginPath(); ctx.ellipse(z.x, z.y + 6, z.r * 0.55, z.r * 0.34, 0, 0, 7); ctx.fill(); }
   // 적: 화면 아래쪽에 있는 것이 위쪽 것을 가리도록 y 순서로 그린다
   const es = g.enemies.length > 1 ? [...g.enemies].sort((p, q) => p.y - q.y) : g.enemies;
   for (const e of es) enemy(ctx, e, k, quality);
@@ -274,6 +279,11 @@ function tile(ctx, s, kind, k, now, quality) {
   }), s.x + TILE_BOX[0], s.y + TILE_BOX[1], TILE_BOX[2] - TILE_BOX[0], TILE_BOX[3] - TILE_BOX[1]);
 }
 
+function starAt(ctx, x, y, r, col) {
+  ctx.fillStyle = col; ctx.strokeStyle = '#4a2f1b'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.beginPath();
+  for (let j = 0; j < 10; j++) { const q = -Math.PI / 2 + j * Math.PI / 5, rr2 = j % 2 ? r * 0.45 : r; ctx[j ? 'lineTo' : 'moveTo'](x + Math.cos(q) * rr2, y + Math.sin(q) * rr2); }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+}
 function enemy(ctx, e, k, quality) {
   const elite = e.kind === 'elite', art = elite ? 'armor' : e.kind;
   const r = ENEMY_R[e.kind], half = r + 8, left = e.left;
@@ -284,6 +294,7 @@ function enemy(ctx, e, k, quality) {
   if (e.dashT > 0) { ctx.strokeStyle = '#7fe3ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
   else if (e.skill && e.skill.id === 'armor' && e.hp > e.maxHp * 0.5) { ctx.strokeStyle = '#cfd6dc'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
   if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.5)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 4, (r + 4) * 0.45, 0, 0, 7); ctx.fill(); }
+  if (e.freezeT > 0) { ctx.fillStyle = 'rgba(190,240,255,.55)'; ctx.strokeStyle = '#e8fbff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(e.x, e.y - 2, r + 7, 0, 7); ctx.fill(); ctx.stroke(); }      // 빙결
   if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 5, (r + 5) * 0.45, 0, 0, 7); ctx.stroke(); }
   const im = (e.kind === 'boss' && bossImage(e.boss)) || (elite && enemyArt('elite')) || enemyArt(art) || sprite('e:' + art, half, k, ENEMY_DRAW[art]);
   put(ctx, fit(im, half * 2, k, left), e.x - half, e.y - half + by - fly);
@@ -374,7 +385,17 @@ function unit(ctx, b, u, p, k, now, quality, T) {
   const fy = p.y + FEET - 5;
   // 발밑: 소집·진급 때 번쩍임, 히든 계급의 금빛, 병과 색 띠, 그림자
   if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 50, 26, 0, 0, 7); ctx.fill(); }
-  if (u.hidden) { ctx.fillStyle = `rgba(255,212,94,${0.3 + 0.12 * Math.sin(now * 3 + u.id)})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 42, 19, 0, 0, 7); ctx.fill();
+  const hero = u.hidden ? heroOf(u) : null;
+  if (hero) {      // 전설의 용사: 용사 색으로 타오르는 발밑(각성하면 고리가 하나 더), 위로 피어오르는 불티
+    const pu = 0.5 + 0.5 * Math.sin(now * 4 + u.id), aw = u.level > hero.level;
+    ctx.fillStyle = hero.color; ctx.globalAlpha = 0.34 + 0.16 * pu; ctx.beginPath(); ctx.ellipse(p.x, fy, 46, 21, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = hero.color; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.ellipse(p.x, fy, 44 + pu * 2, 20 + pu, 0, 0, 7); ctx.stroke();
+    ctx.strokeStyle = '#fff6d6'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.ellipse(p.x, fy, 38, 16.5, 0, 0, 7); ctx.stroke();
+    if (aw) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2.5; ctx.setLineDash([10, 6]); ctx.lineDashOffset = -now * 26; ctx.beginPath(); ctx.ellipse(p.x, fy, 51, 24, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0; }
+    if (quality > 0) for (let i = 0; i < (aw ? 5 : 3); i++) { const ph = (now * 0.7 + i * 0.37 + u.id * 0.13) % 1, sx = p.x + Math.sin(i * 2.4 + u.id) * 30, sy = fy - ph * 66;
+      ctx.globalAlpha = (1 - ph) * 0.9; ctx.fillStyle = i % 2 ? '#fff6d6' : hero.color; ctx.beginPath(); ctx.arc(sx + Math.sin(now * 3 + i) * 3, sy, 2.6 * (1 - ph * 0.5), 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  } else if (u.hidden) { ctx.fillStyle = `rgba(255,212,94,${0.3 + 0.12 * Math.sin(now * 3 + u.id)})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 42, 19, 0, 0, 7); ctx.fill();
     ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]); }
   // 계급대별 모습: 병 → 부사관 → 위관 → 영관 → 장성으로 갈수록 몸집이 커지고 받침대·깃발·망토·후광이 붙는다
   const grp = rankGroup(b, u), size = CHAR * RANK_SIZE[lv], top = p.y + FEET - size;      // grp: 그림·장식이 바뀌는 계급대(병·부사관·위관·영관·장성), lv: 계급
