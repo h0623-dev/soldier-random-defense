@@ -25,6 +25,11 @@ export const ICON = {
   help: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9.2 9.3a3 3 0 115 2.2c-1 .8-2.2 1.3-2.2 3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.4" fill="currentColor"/></svg>',
   play: '<svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>',
   exit: '<svg viewBox="0 0 24 24"><path d="M10 4H5v16h5M14 8l5 4-5 4M19 12H9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  // 하단 탭용 (한 색으로 굵게)
+  cart: '<svg viewBox="0 0 24 24"><path d="M2 4h3l2.6 10.5h10.2L20 7H7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19" r="1.9" fill="currentColor"/><circle cx="16.5" cy="19" r="1.9" fill="currentColor"/></svg>',
+  paw: '<svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="5.5" cy="10.5" rx="2.2" ry="2.9"/><ellipse cx="9.8" cy="6" rx="2.3" ry="3.1"/><ellipse cx="14.2" cy="6" rx="2.3" ry="3.1"/><ellipse cx="18.5" cy="10.5" rx="2.2" ry="2.9"/><path d="M12 11.5c3.2 0 6 3.2 6 6 0 2.2-1.9 3-3.6 2.6-1.6-.4-3.2-.4-4.8 0C7.9 20.5 6 19.7 6 17.5c0-2.8 2.8-6 6-6z"/></svg>',
+  swords: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11 11M4 4v3.5M4 4h3.5M13 17l4-4M16.5 16.5L20 20"/><path d="M20 4L9 15M20 4v3.5M20 4h-3.5M11 17l-4-4M7.5 16.5L4 20"/></svg>',
+  tkt: '<svg viewBox="0 0 24 24"><path d="M3 7h18v3.5a1.5 1.5 0 000 3V17H3v-3.5a1.5 1.5 0 000-3z" fill="currentColor"/><path d="M14.5 8v8" stroke="#3b2e23" stroke-width="1.6" stroke-dasharray="2 2"/></svg>',
   shop: '<svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M5 9v11h14V9M4 9h16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"/><path d="M10 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="2.3"/></svg>',
 };
 export const ic = (name, cls = '') => `<span class="ic ${cls}">${ICON[name] || ''}</span>`;

@@ -151,7 +151,7 @@ const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math
 // 훈장 · 티켓 · 보석 · 행동력을 한 줄로 (본부·상점 위쪽)
 const resBar = () => { const now = Date.now(), en = M.energyNow(meta, now), w = M.energyWait(meta, now);
   return `<div class="res"><div class="pill en">${ic('bolt')}<b>${en}/${M.ENERGY.max}</b>${w ? `<small id="en-t">${mmss(w)}</small>` : ''}</div><div class="pill">${ic('gem')}<b>${meta.gems}</b></div><div class="pill">${ic('medal')}<b>${meta.medals}</b></div><div class="pill">${ic('ticket')}<b>${meta.tickets}</b></div></div>`; };
-setInterval(() => { const el = document.getElementById('en-t'); if (!el) return; const w = M.energyWait(meta, Date.now()); if (w && M.energyNow(meta, Date.now()) < M.ENERGY.max) el.textContent = mmss(w); else if (!g) ACT.title(); }, 1000);
+setInterval(() => { const el = document.getElementById('en-t'); if (!el) return; const w = M.energyWait(meta, Date.now()); if (w && M.energyNow(meta, Date.now()) < M.ENERGY.max) el.textContent = mmss(w); else if (!g) ACT[tabNow](); }, 1000);
 // 보상형 광고를 보고, 끝까지 봤으면 then(보상 처리)을 부른다. 전투 중이면 그동안 멈춘다
 async function watchAd(then) {
   if (!Ads.available()) { toast('지금은 광고를 불러올 수 없습니다'); return; }
@@ -186,10 +186,28 @@ function toast(msg, ms = 1400, hold = false) {
 }
 // 겹쳐 뜨는 화면. sheet=true면 아래에서 올라오는 시트로 뜨고 게임은 멈추지 않는다(전장이 계속 보인다)
 function show(html, sheet = false, cls = '') {
+  tabNow = 'title';
   overlay.innerHTML = `<div class="panel ${cls}">${sheet ? '<div class="grab"></div>' : ''}${html}</div>`;
   if (!sheet) $('toast').classList.remove('on');      // 전체 화면(처음 화면·결과 등)을 띄울 때는 전투 중 알림을 치운다
   overlay.classList.add('on'); overlay.classList.toggle('sheet', sheet); overlay.scrollTop = 0; if (!sheet) paused = true;
 }
+// 하단 탭 5개(대기실과 그 옆 화면들): 상점 · 부대 · 전투 · 표창 · 뽑기. 탭 화면은 위(프로필·재화) · 가운데(내용 — 여기만 스크롤) · 아래(탭)로 짜인다
+let tabNow = 'title', mBranch = '', cmSel = '';      // 지금 떠 있는 탭 화면(ACT 이름) · 부대 탭에서 보던 군별 · 표창 탭에서 고른 표창
+const TABS = [['shop', 'cart', '상점'], ['mastery', 'paw', '부대'], ['title', 'swords', '전투'], ['commend', 'star', '표창'], ['board', 'tkt', '뽑기']];
+const navBar = cur => { const day = today(), dots = { shop: M.adLeft(meta, day, 'gem') > 0, commend: meta.medals >= M.CM_BOX, board: meta.tickets > 0 };
+  return `<nav class="nav5">${TABS.map(([act, icon, label]) => `<button class="${act === cur ? 'on' : ''}" data-act="${act}">${ic(icon)}<b>${label}</b>${dots[act] && act !== cur ? '<i class="dot"></i>' : ''}</button>`).join('')}</nav>`; };
+const topBar = self => { M.ensureId(meta); const top = M.topWave(meta);
+  return `<div class="ltop"><button class="lprof" data-act="rank"><img src="img/icon-192.png" alt=""><span><b>${esc(meta.name)}</b><small>${top ? `최고 ${top}단계` : '첫 출격 전'}</small></span></button>
+    <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="${self}" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${ic('sound')}</button></div>${resBar()}`; };
+// tab: 아래 탭에서 불이 켜질 자리, self: 이 화면을 다시 그리는 ACT 이름, sub: 내용과 탭 사이에 붙는 줄(하위 메뉴·실행 버튼), keep: 스크롤 자리 유지
+function tabPage(tab, self, html, sub = '', keep = false) {
+  const old = overlay.querySelector('.tbody'), y = keep && old && tabNow === self ? old.scrollTop : 0;
+  show(`<div class="thead">${topBar(self)}</div><div class="tbody">${html}</div>${sub ? `<div class="subbar">${sub}</div>` : ''}${navBar(tab)}`, false, 'tabp'); tabNow = self;
+  if (y) overlay.querySelector('.tbody').scrollTop = y;
+}
+const unitSub = cur => [['mastery', '숙련도'], ['skins', '스킨'], ['upgrades', '영구 강화']].map(([a, t]) => `<button class="${a === cur ? 'on' : ''}" data-act="${a}">${t}</button>`).join('');
+const c2 = (c, lv) => c.text(cmVal(c, lv));      // 표창의 그 단계 효과 문구
+const CM_ICON = { summon: 'plus', luck: 'ring', tile: 'target', depot: 'box', supply: 'box', elite: 'skull', boss: 'sword', crit: 'target', gamble: 'up', time: 'flag', sell: 'exit', medal: 'medal' };
 const BOARD_LABEL = { big: ['특등', '표창 3장'], cm: ['표창', '1장'], m3: ['훈장', '3개'], m1: ['훈장', '1개'], xp: ['교본', '경험치'] };
 const sheetHead = (title, sub) => `<div class="sh"><div><b>${title}</b><small>${sub}</small></div><button class="hbtn" data-act="resume" aria-label="닫기">${ic('x')}</button></div>`;
 const unitSrc = (b, type, grp = 0) => `img/${unitArtName(b.id, C.sortType(type), grp)}.webp`;     // 계급대에 맞는 그림이 있으면 그 그림
@@ -202,22 +220,16 @@ function enter() { loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui 
 
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {
-  title() {      // 대기실(작전 본부). 한 화면에 다 들어온다: 위 = 프로필·재화, 양옆 = 기능 버튼, 가운데 = 무대, 아래 = 출격
-    M.ensureId(meta);
-    const run = peekRun(), day = today(), top = M.topWave(meta), ds = M.dailyState(meta, day);
+  title() {      // 대기실(전투 탭). 한 화면에 다 들어온다: 위 = 프로필·재화, 양옆 = 그림 버튼, 가운데 = 무대, 아래 = 출격 + 탭 5개
+    const run = peekRun(), day = today(), ds = M.dailyState(meta, day);
     const todo = M.canAttend(meta, day) || ds.some(m => m.done && !m.got);      // 받을 보상이 있으면 빨간 점
     const tile = (act, icon, label, col, on) => `<button class="lt" data-act="${act}"><span style="background:${col}">${ic(icon)}${on ? '<i class="dot"></i>' : ''}</span><b>${label}</b></button>`;
-    show(`<div class="lstage">
-        <div class="ltop">
-          <button class="lprof" data-act="rank"><img src="img/icon-192.png" alt=""><span><b>${esc(meta.name)}</b><small>${top ? `최고 ${top}단계` : '첫 출격 전'}</small></span></button>
-          <button class="hbtn" data-act="help" aria-label="게임 방법">${ic('help')}</button>
-          <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="title" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${ic('sound')}</button>
-        </div>
-        ${resBar()}
+    show(`<div class="lwrap"><div class="lstage">
+        ${topBar('title')}
         <div class="lmid">
-          <div class="lcol">${tile('daily', 'list', '임무', '#ffd45e', todo)}${tile('board', 'ticket', '뽑기판', '#ffb347', meta.tickets > 0)}${tile('shop', 'shop', '상점', '#7fd0ff', M.adLeft(meta, day, 'gem') > 0)}${tile('rank', 'ring', '랭킹', '#c9a6ff', false)}</div>
+          <div class="lcol">${tile('daily', 'list', '임무', '#ffd45e', todo)}${tile('rank', 'ring', '랭킹', '#c9a6ff', false)}</div>
           <div class="lcen"><div class="tlogo"><h1>털뭉치수비대</h1><p>계급을 올리고 병과를 조합해 고철 군단을 막아라</p></div></div>
-          <div class="lcol">${tile('commend', 'star', '부대 표창', '#ff9d8a', meta.medals >= M.CM_BOX)}${tile('mastery', 'up', '숙련도', '#8fe08a', false)}${tile('upgrades', 'medal', '영구 강화', '#ffd45e', false)}${tile('records', 'flag', '기록', '#f0deb0', false)}</div>
+          <div class="lcol">${tile('records', 'flag', '기록', '#f0deb0', false)}${tile('help', 'help', '게임 방법', '#8fe08a', false)}</div>
         </div>
       </div>
       <div class="lbot">
@@ -225,7 +237,7 @@ const ACT = {
         <div class="lgo"><button class="lplay${run ? ' sec' : ''}" data-act="branches"><b>${ic('play')}${run ? '새로 출격' : '출격'}</b><small>${ic('bolt')}1</small></button>
           <button class="lcoop" data-act="coop">${ic('hand')}<b>2인 협동</b></button></div>
         <p class="sub ver">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · ${buildLabel(buildInfo.live || buildInfo.bundled)}` : ''}</p>
-      </div>`, false, 'title');
+      </div></div>${navBar('title')}`, false, 'title tabp');
   },
   daily() {      // 오늘의 임무: 출석 + 일일 임무 3개
     const day = today(), can = M.canAttend(meta, day), ar = M.ATTEND[M.attendDay(meta)], ds = M.dailyState(meta, day), dr = M.DAILY_REWARD;
@@ -332,40 +344,52 @@ const ACT = {
   attend() { const r = M.attend(meta, today(), rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.daily(); toast(`출석 보상 — ${M.rewardText(r.reward)}${r.cms.length ? ` (${r.cms.map(c => c.name).join(', ')})` : ''}`, 2600); } },
   dclaim(id) { const r = M.dailyClaim(meta, today(), id, rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.daily(); toast(`일일 임무 보상 — ${M.rewardText(r)}`, 2200); } },
   // 병과 숙련도: 군별마다 10개 병과. 판이 끝나면 그 판에서 준 피해 비율대로 경험치가 쌓인다
-  mastery(id) {
-    const b = BRANCHES.find(x => x.id === id) || BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0], mine = meta.xp[b.id] || {}, pct = Math.round(C.MASTERY.step * 100);
-    show(`<h2>병과 숙련도</h2><p class="sub">판이 끝나면 그 판에서 싸운 병과에 경험치가 쌓입니다(준 피해 비율대로). 숙련 한 단계마다 그 병과 공격력 +${pct}% · 최고 ${C.MASTERY.max}단계</p>
-      <div class="tabs">${BRANCHES.map(x => `<button class="${x.id === b.id ? 'on' : ''}" data-act="mastery" data-arg="${x.id}">${x.name}</button>`).join('')}</div>
-      ${C.TYPE_KEYS.map(k => { const i = C.masteryInfo(mine[k] || 0), top = i.level >= C.MASTERY.max; return `<div class="up"><img src="img/units/${b.id}_${k.replace('+', '-')}.webp" alt="">
-        <div><b>${b.types[k][0]} <em>${top ? '최고 단계' : `${i.level}단계`}</em></b><span class="xbar"><u style="width:${top ? 100 : Math.round(i.cur / i.need * 100)}%"></u></span>
-          공격력 +${i.level * pct}%${top ? '' : ` · 다음 단계까지 ${i.need - i.cur}`}</div></div>`; }).join('')}
-      <button class="wide sec" data-act="title">뒤로</button>`);
+  mastery(id) {      // 부대 탭 — 병과 카드(그림 · 단계 · 경험치)
+    const b = BRANCHES.find(x => x.id === id) || BRANCHES.find(x => x.id === mBranch) || BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0], mine = meta.xp[b.id] || {}, pct = Math.round(C.MASTERY.step * 100);
+    mBranch = b.id;
+    tabPage('mastery', 'mastery', `<div class="tabs">${BRANCHES.map(x => `<button class="${x.id === b.id ? 'on' : ''}" data-act="mastery" data-arg="${x.id}">${x.name}</button>`).join('')}</div>
+      <div class="cgrid">${C.TYPE_KEYS.map(k => { const i = C.masteryInfo(mine[k] || 0), top = i.level >= C.MASTERY.max;
+        return `<div class="ci"><div class="cc${i.level ? ' has' : ''}"><img src="img/units/${b.id}_${k.replace('+', '-')}.webp" alt=""><b>Lv.${i.level}</b>
+          <span class="cbar"><u style="width:${top ? 100 : Math.round(i.cur / i.need * 100)}%"></u><em>${top ? '최고' : `${i.cur}/${i.need}`}</em></span></div>
+          <small>${b.types[k][0]}<i>공격 +${i.level * pct}%</i></small></div>`; }).join('')}</div>
+      <p class="sub">판이 끝나면 그 판에서 싸운 병과에 경험치가 쌓입니다(준 피해 비율대로). 한 단계마다 그 병과 공격력 +${pct}% · 최고 ${C.MASTERY.max}단계</p>`, unitSub('mastery'), id != null);
+  },
+  skins(msg) {      // 부대 탭 > 스킨
+    const b0 = BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0];
+    tabPage('mastery', 'skins', `<p class="note cmmsg">${typeof msg === 'string' && msg ? msg : `보유 보석 ${meta.gems}개`}</p>
+      <div class="skins">${M.SKINS.map(k => { const own = M.skinOwned(meta, k.id), on = meta.skins.on === k.id;
+        return `<div class="skin${on ? ' on' : ''}"><img src="img/units/${k.art || b0.id}_inf.webp" onerror="this.onerror=null;this.src='img/units/${b0.id}_inf.webp'" alt=""><b>${k.name}</b>
+          <button class="btn${own ? '' : ' gold'}" data-act="${own ? 'skinuse' : 'skinbuy'}" data-arg="${k.id}" ${on || (!own && meta.gems < k.cost) ? 'disabled' : ''}>${on ? '사용 중' : own ? '사용' : `${ic('gem')}${k.cost}`}</button></div>`; }).join('')}</div>
+      <p class="sub" style="margin:1rem 0 0">스킨을 쓰면 내 유닛이 군별·계급에 상관없이 그 복장으로 보입니다(능력은 같음, 용사는 제 모습 그대로). 상점의 고급 보급 상자에서도 나옵니다</p>`, unitSub('skins'), typeof msg === 'string');
   },
   // 부대 표창: 모든 판에 적용되는 영구 효과. 같은 표창을 모으면 단계가 오른다
-  commend(msg) {
-    const sum = Object.values(meta.cmN).reduce((a, n) => a + n, 0);
-    show(`<h2>부대 표창</h2><p class="sub">모든 판에 적용되는 영구 효과입니다. 같은 표창을 모으면 단계가 오릅니다(${CM_NEED.join('·')}장). 표창 상자 · 뽑기판 · 출석으로 얻습니다 · 모은 표창 ${sum}장</p>
-      <div class="up cmbox"><div><b>표창 상자</b><br>아직 최고 단계가 아닌 표창 가운데 무작위 1장</div><button class="btn gold" data-act="cmbox" ${meta.medals < M.CM_BOX ? 'disabled' : ''}>${ic('medal')}${M.CM_BOX}</button></div>
-      <p class="note cmmsg">${msg || `보유 훈장 ${meta.medals}개`}</p>
-      ${COMMENDS.map(c => { const n = meta.cmN[c.id] || 0, lv = M.cmLevel(n), nx = M.cmNext(n); return `<div class="up cm${lv ? '' : ' off'}"><div><b>${c.name} <em>${lv ? `${lv}단계` : '없음'}</em></b>
-        <span class="pips">${CM_NEED.map((_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</span>${c.text(cmVal(c, Math.max(1, lv)))}${lv ? '' : ' (1단계)'}
-        <small>${nx ? `${n}/${nx}장${lv && lv < CM_NEED.length ? ` · 다음 단계: ${c.text(cmVal(c, lv + 1))}` : ''}` : '최고 단계'}</small></div></div>`; }).join('')}
-      <button class="wide sec" data-act="title">뒤로</button>`);
+  commend(msg) {      // 표창 탭 — 표창 카드(단계 · 모은 장수). 카드를 누르면 위에 효과가 나온다
+    const sum = Object.values(meta.cmN).reduce((a, n) => a + n, 0), sel = COMMENDS.find(c => c.id === cmSel) || COMMENDS[0];
+    const sn = meta.cmN[sel.id] || 0, slv = M.cmLevel(sn), snx = M.cmNext(sn);
+    tabPage('commend', 'commend', `<div class="cinfo"><b>${sel.name} <em>${slv ? `${slv}단계` : '없음'}</em></b>
+        <span>${slv ? c2(sel, slv) : `${c2(sel, 1)} (1단계부터)`}</span>
+        <small>${snx ? `${sn}/${snx}장${slv && slv < CM_NEED.length ? ` · 다음 단계: ${c2(sel, slv + 1)}` : ''}` : '최고 단계'}</small></div>
+      <p class="note cmmsg">${typeof msg === 'string' && msg ? msg : `모은 표창 ${sum}장 · 보유 훈장 ${meta.medals}개`}</p>
+      <div class="cgrid">${COMMENDS.map(c => { const n = meta.cmN[c.id] || 0, lv = M.cmLevel(n), nx = M.cmNext(n);
+        return `<div class="ci"><button class="cc cm${lv ? ' has' : ''}${c.id === sel.id ? ' sel' : ''}" data-act="cmsel" data-arg="${c.id}">${c.branch ? `<img src="img/units/${c.branch}_inf.webp" alt="">` : `<span class="cic">${ic(CM_ICON[c.id] || 'star')}</span>`}<b>Lv.${lv}</b>
+          <span class="cbar"><u style="width:${nx ? Math.round(n / nx * 100) : 100}%"></u><em>${nx ? `${n}/${nx}` : '최고'}</em></span></button>
+          <small>${c.name.replace(/ 표창$/, '')}</small></div>`; }).join('')}</div>
+      <p class="sub">모든 판에 적용되는 영구 효과입니다. 같은 표창을 모으면 단계가 오릅니다(${CM_NEED.join('·')}장). 표창 상자 · 뽑기 · 출석으로 얻습니다</p>`,
+      `<button class="go" data-act="cmbox" ${meta.medals < M.CM_BOX ? 'disabled' : ''}>표창 상자 열기 ${ic('medal')}${M.CM_BOX}</button>`, msg != null);
   },
+  cmsel(id) { cmSel = id; ACT.commend(''); },
   cmbox() { const c = M.buyCmBox(meta, rnd); if (!c) { Sound.play('deny'); return; } saveMeta(); Sound.play('merge');
-    ACT.commend(`★ <b>${c.name}</b> 획득 — ${M.cmLevel(meta.cmN[c.id])}단계 (${meta.cmN[c.id]}장) · 보유 훈장 ${meta.medals}개`); },
+    cmSel = c.id; ACT.commend(`★ <b>${c.name}</b> 획득 — ${M.cmLevel(meta.cmN[c.id])}단계 (${meta.cmN[c.id]}장) · 보유 훈장 ${meta.medals}개`); },
   // 보급 뽑기판: 티켓 한 장으로 한 칸. 특등을 찾거나 다 뒤집으면 새 판
-  board(msg) {
+  board(msg) {      // 뽑기 탭
     if (!meta.board) { meta.board = M.newBoard(rnd); saveMeta(); }
-    const bd = meta.board, done = M.boardDone(bd), left = k => bd.cells.filter(c => c.r === k && !c.open).length;
-    show(`<h2>보급 뽑기판</h2><p class="sub">티켓 한 장으로 한 칸을 뒤집습니다. <b>특등</b>을 찾으면 새 판을 깔 수 있습니다. 티켓은 판을 마치거나(20단계마다 1장, 최대 5장) 일일 임무 · 출석으로 얻습니다</p>
-      <div class="res"><div class="pill">${ic('ticket')}<b>${meta.tickets}</b></div><div class="pill">누적 보상 <b>${meta.flips % M.BOARD_BONUS}/${M.BOARD_BONUS}</b></div></div>
+    const bd = meta.board, done = M.boardDone(bd), left = k => bd.cells.filter(c => c.r === k && !c.open).length, adl = M.adLeft(meta, today(), 'ticket');
+    tabPage('board', 'board', `<div class="res"><div class="pill">${ic('ticket')}<b>${meta.tickets}</b></div><div class="pill">누적 보상 <b>${meta.flips % M.BOARD_BONUS}/${M.BOARD_BONUS}</b></div></div>
       <div class="bgrid">${bd.cells.map((c, i) => (c.open ? `<div class="bc open ${c.r}"><b>${BOARD_LABEL[c.r][0]}</b><small>${BOARD_LABEL[c.r][1]}</small></div>`
         : `<button class="bc" data-act="flip" data-arg="${i}" ${meta.tickets < 1 || done ? 'disabled' : ''}>?</button>`)).join('')}</div>
-      <p class="note cmmsg">${msg || (done ? '이 판은 끝났습니다 — 새 판을 까세요' : meta.tickets < 1 ? '티켓이 없습니다' : '뒤집을 칸을 고르세요')}</p>
-      <p class="sub" style="margin:0">남은 칸 · 특등 ${left('big')} · 표창 ${left('cm')} · 훈장 3개 ${left('m3')} · 훈장 1개 ${left('m1')} · 숙련 교본 ${left('xp')}<br>${M.BOARD_BONUS}칸을 뒤집을 때마다 표창 1장을 더 받습니다</p>
-      ${done ? `<button class="wide" data-act="newboard">새 판 깔기</button>` : ''}
-      <button class="wide sec" data-act="title">뒤로</button>`);
+      <p class="note cmmsg">${typeof msg === 'string' && msg ? msg : (done ? '이 판은 끝났습니다 — 새 판을 까세요' : meta.tickets < 1 ? '티켓이 없습니다' : '뒤집을 칸을 고르세요')}</p>
+      <p class="sub" style="margin:0">남은 칸 · 특등 ${left('big')} · 표창 ${left('cm')} · 훈장 3개 ${left('m3')} · 훈장 1개 ${left('m1')} · 숙련 교본 ${left('xp')}<br>${M.BOARD_BONUS}칸을 뒤집을 때마다 표창 1장을 더 받습니다. <b>특등</b>을 찾으면 새 판을 깔 수 있습니다<br>티켓은 판을 마치거나(20단계마다 1장, 최대 5장) 일일 임무 · 출석으로 얻습니다</p>`,
+      `<button class="go ad" data-act="ad" data-arg="ticket" data-back="board" ${adl ? '' : 'disabled'}>${ic('play')}광고로 티켓 ${adl}/${M.AD_PLACES.ticket.limit}</button>${done ? '<button class="go" data-act="newboard">새 판 깔기</button>' : ''}`, msg != null);
   },
   flip(i) {
     const o = M.flip(meta, +i, rnd); if (!o) { Sound.play('deny'); return; }
@@ -384,13 +408,13 @@ const ACT = {
       <div class="list"><p>조합 도감 발견: 히든 계급 ${['wonsa', 'junwi'].filter(k => meta.found[k]).length}/2 · 전설의 용사 ${HEROES.filter(h => meta.found[h.id]).length}/${HEROES.length} · 히든 임무 ${Object.keys(meta.foundM).length}/${C.MISSIONS.filter(m => m.hidden).length}</p></div>
       <button class="wide sec" data-act="title">뒤로</button>`);
   },
-  upgrades() {
-    show(`<h2>영구 강화</h2><p class="sub">보유 훈장 ${meta.medals}개 · 5단계마다 1개, 100단계 방어 시 +20개</p>
+  upgrades(keep) {      // 부대 탭 > 영구 강화
+    tabPage('mastery', 'upgrades', `<p class="note cmmsg">보유 훈장 ${meta.medals}개</p>
       ${UPGRADES.map(u => { const lv = meta[u.key], cost = 2 + lv * 2; return `<div class="up"><div><b>${u.name} <em>Lv${lv}/${u.max}</em></b><br>${u.desc}</div>
         <button class="btn gold" data-act="buy" data-arg="${u.key}" ${lv >= u.max || meta.medals < cost ? 'disabled' : ''}>${lv >= u.max ? '최대' : `${ic('medal')}${cost}`}</button></div>`; }).join('')}
-      <button class="wide sec" data-act="title">뒤로</button>`);
+      <p class="sub">훈장은 5단계마다 1개, 100단계 방어 시 +20개</p>`, unitSub('upgrades'), keep === true);
   },
-  buy(key) { const lv = meta[key], cost = 2 + lv * 2; if (meta.medals >= cost) { meta.medals -= cost; meta[key]++; saveMeta(); } ACT.upgrades(); },
+  buy(key) { const lv = meta[key], cost = 2 + lv * 2; if (meta.medals >= cost) { meta.medals -= cost; meta[key]++; saveMeta(); } ACT.upgrades(true); },
   // 행동력이 없을 때
   noenergy() {
     const day = today(), left = M.adLeft(meta, day, 'energy'), it = M.GEM_SHOP.find(x => x.id === 'energy5');
@@ -400,11 +424,10 @@ const ACT = {
       <button class="wide sec" data-act="title">작전 본부로</button>`);
   },
   // 보급 상점: 무료 보상(광고) · 보석 충전(결제) · 보석으로 사는 것 · 고급 보급 상자(유료 뽑기) · 스킨
-  shop(msg, keep) {
-    const day = today(), y = overlay.scrollTop, odds = M.pullOdds(), b0 = BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0];
+  shop(msg, keep) {      // 상점 탭
+    const day = today(), odds = M.pullOdds();
     const adRow = k => { const p = M.AD_PLACES[k], left = M.adLeft(meta, day, k); return `<div class="up"><div><b>${p.text}</b><br>오늘 ${left}/${p.limit}회 남음</div><button class="btn gold" data-act="ad" data-arg="${k}" ${left ? '' : 'disabled'}>${ic('play')}광고</button></div>`; };
-    show(`<h2>보급 상점</h2>${resBar()}
-      <p class="note cmmsg">${typeof msg === 'string' && msg ? msg : '광고를 보거나 보석으로 재화를 얻습니다'}</p>
+    tabPage('shop', 'shop', `<p class="note cmmsg">${typeof msg === 'string' && msg ? msg : '광고를 보거나 보석으로 재화를 얻습니다'}</p>
       <h3>무료 보상 — 광고를 끝까지 보면 받습니다${Ads.testing ? ' (지금은 시험 광고)' : ''}</h3>
       ${['gem', 'energy', 'ticket'].map(adRow).join('')}
       <h3>보석 충전</h3>
@@ -417,13 +440,7 @@ const ACT = {
       <div class="up cmbox"><div><b>10회 열기</b><br>10% 할인</div><button class="btn gold" data-act="pull" data-arg="10" ${meta.gems < M.PULL.cost10 ? 'disabled' : ''}>${ic('gem')}${M.PULL.cost10}</button></div>
       <div class="list odds"><p><b>확률 정보</b></p>${odds.map(o => `<p>${o.name} — <b>${(o.p * 100).toFixed(1)}%</b>${o.each ? ` (종류마다 ${(o.each * 100).toFixed(2)}%)` : ''}</p>`).join('')}
         <p>이미 최고 단계인 표창이 나오면 훈장 ${M.PULL.dupMedals}개, 스킨을 모두 가졌으면 보석 ${M.PULL.dupGems}개로 바뀝니다.</p></div>
-      <h3>스킨 — 내 유닛의 복장</h3>
-      <div class="skins">${M.SKINS.map(k => { const own = M.skinOwned(meta, k.id), on = meta.skins.on === k.id;
-        return `<div class="skin${on ? ' on' : ''}"><img src="img/units/${k.art || b0.id}_inf.webp" onerror="this.onerror=null;this.src='img/units/${b0.id}_inf.webp'" alt=""><b>${k.name}</b>
-          <button class="btn${own ? '' : ' gold'}" data-act="${own ? 'skinuse' : 'skinbuy'}" data-arg="${k.id}" ${on || (!own && meta.gems < k.cost) ? 'disabled' : ''}>${on ? '사용 중' : own ? '사용' : `${ic('gem')}${k.cost}`}</button></div>`; }).join('')}</div>
-      <p class="sub" style="margin:.6rem 0 0">스킨을 쓰면 내 유닛이 군별·계급에 상관없이 그 복장으로 보입니다(능력은 같음, 용사는 제 모습 그대로). 고급 보급 상자에서도 나옵니다</p>
-      <button class="wide sec" data-act="title">뒤로</button>`);
-    if (keep === true) overlay.scrollTop = y;
+      <p class="sub" style="margin:1rem 0 0">스킨은 <b>부대 › 스킨</b>에서 사고 바꿉니다</p>`, '', keep === true);
   },
   ad(place, el) {
     const back = el && el.dataset.back;
@@ -435,8 +452,8 @@ const ACT = {
     if (el && el.dataset.back) { ACT[el.dataset.back](); toast(`${it.name} 구매`); } else ACT.shop(`${it.name} 구매`, true); },
   pull(n) { const rs = M.pull(meta, +n, rnd); if (!rs) { Sound.play('deny'); return; } saveMeta(); applySkin(); Sound.play(rs.some(r => r.kind === 'skin') ? 'hidden' : 'merge');
     ACT.shop(`${rs.some(r => r.kind === 'skin') ? '★ ' : ''}${rs.map(r => r.text).join(' / ')}`, true); },
-  skinbuy(id) { if (M.buySkin(meta, id)) { M.useSkin(meta, id); saveMeta(); applySkin(); Sound.play('merge'); ACT.shop(`${M.skinOf(meta).name} 구매 — 바로 적용했습니다`, true); } else Sound.play('deny'); },
-  skinuse(id) { if (M.useSkin(meta, id)) { saveMeta(); applySkin(); Sound.play('camp'); ACT.shop(`${M.skinOf(meta).name} 적용`, true); } },
+  skinbuy(id) { if (M.buySkin(meta, id)) { M.useSkin(meta, id); saveMeta(); applySkin(); Sound.play('merge'); ACT.skins(`${M.skinOf(meta).name} 구매 — 바로 적용했습니다`); } else Sound.play('deny'); },
+  skinuse(id) { if (M.useSkin(meta, id)) { saveMeta(); applySkin(); Sound.play('camp'); ACT.skins(`${M.skinOf(meta).name} 적용`); } },
   help() {
     show(`<h2>게임 방법</h2><div class="list">
       <p>털뭉치 마을에 <b>고철 군단</b>이 쳐들어왔습니다. 털뭉치 병사들을 소집하고 계급을 올려 100단계를 막아 내세요.</p>
@@ -453,7 +470,7 @@ const ACT = {
       <p><b>보급병</b> — 보급창에서 군자금으로 고용합니다(최대 ${C.CFG.depotMax}명). 단계가 시작될 때마다 군자금을 가져오고, ${C.CFG.depotSupPer}명마다 ${C.CFG.depotSupEvery}단계에 한 번 보급품도 가져옵니다. 일찍 고용할수록 오래 받지만 그만큼 초반 전력이 줄어듭니다.</p>
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
-      <p><b>작전 본부</b> — 처음 화면입니다. <b>출석</b>과 <b>일일 임무</b>로 훈장·뽑기 티켓을 받고, <b>부대 표창</b>(모든 판에 적용되는 영구 효과), <b>병과 숙련도</b>(판을 마치면 싸운 병과에 경험치), <b>보급 뽑기판</b>(티켓으로 칸 뒤집기), <b>영구 강화</b>로 부대를 키웁니다.</p>
+      <p><b>대기실</b> — 처음 화면입니다. 아래 탭으로 오갑니다: <b>상점</b>(광고 보상·보석) · <b>부대</b>(병과 숙련도 — 판을 마치면 싸운 병과에 경험치, 스킨, 영구 강화) · <b>전투</b>(출격) · <b>표창</b>(모든 판에 적용되는 영구 효과) · <b>뽑기</b>(티켓으로 칸 뒤집기). <b>임무</b> 버튼에서 출석과 일일 임무 보상을 받습니다.</p>
       <p><b>2인 협동</b> — 본부의 <b>2인 협동</b>에서 빠른 매칭을 하거나 방 번호로 만납니다. 한 전장을 둘이 나눠 맡습니다(방장은 위쪽, 손님은 아래쪽 발판). 적과 임무는 함께 쓰고, 누가 잡든 둘 다 보상을 받습니다. 군자금과 유닛은 각자입니다.</p>
       <p><b>랭킹</b> — 판을 마치면 기록이 자동으로 올라갑니다(이번 주 · 전체). 별명은 랭킹 화면에서 바꿉니다.</p>
       <p><b>행동력</b> — 한 판을 시작할 때 1이 듭니다(이어하기는 들지 않음). 1시간에 1씩 차고 최대 ${M.ENERGY.max}까지 모입니다. 광고나 보석으로 더 받을 수 있습니다.</p>
