@@ -15,17 +15,18 @@ const L_SIDE = ['RRRRRRR', 'RPPPPPR', 'RRRRRPR', 'DPPPRPR', 'RRRRRPR', 'RPPPPPR'
 const L_ZIG = ['RRRRRRR', 'RPPPPPR', 'RRRPPPR', 'DPRPPPR', 'RRRPRRR', 'RPPPRPD', 'RPPPRRR', 'RPPPPPR', 'RRRRRRR'];    // 양쪽에서 엇갈려 파고드는 길
 
 // 작전 지역 10곳: 10단계마다 다음 지역으로 넘어간다. 지역마다 맵 모양·배경이 다르고 마지막 단계에 그 지역의 보스가 나온다.
+// boss.hpMul: 보스마다 능력·맵 때문에 잡는 시간이 크게 달라서(봇 측정), 체력 배수를 따로 두어 단계가 오를수록 고르게 어려워지게 맞췄다
 export const AREAS = [
-  { name: '초원 훈련장', theme: 'meadow', layout: L_S, boss: { name: '지휘 전차', speed: 48, skill: { id: 'summon', label: '증원 호출', cd: 9, n: 3, kind: 'normal', hp: 0.6 }, text: '증원 호출 — 9초마다 호위병 3명을 부른다' } },
-  { name: '해안 교두보', theme: 'beach', layout: L_NOTCH, boss: { name: '상륙 공기부양정', speed: 58, skill: { id: 'dash', label: '고속 기동', cd: 8, dur: 2.5, cut: 0.5 }, text: '고속 기동 — 8초마다 2.5초간 빨라지고 받는 피해가 절반' } },
-  { name: '사막 보급로', theme: 'desert', layout: L_SIDE, boss: { name: '중자주포', speed: 42, skill: { id: 'stun', label: '포격', cd: 7, n: 4, dur: 3 }, text: '포격 — 7초마다 무작위 유닛 4명을 3초간 기절시킨다' } },
-  { name: '설원 고지', theme: 'snow', layout: L_ZIG, boss: { name: '설상 중장갑차', speed: 46, skill: { id: 'armor', cut: 0.3 }, text: '중장갑 — 체력이 절반 이상이면 받는 피해 30% 감소' } },
-  { name: '폐허 도심', theme: 'city', layout: flipH(L_S), boss: { name: '공격 헬기', speed: 60, fly: true, skill: { id: 'evade', p: 0.15 }, text: '회피 기동 — 공격의 15%를 피한다' } },
-  { name: '밀림 강변', theme: 'jungle', layout: flipV(L_NOTCH), boss: { name: '화염방사 장갑차', speed: 50, skill: { id: 'burn', label: '화염 방사', cd: 6, r: 260, dur: 3, slow: 0.5 }, text: '화염 방사 — 6초마다 주변 유닛의 공격 속도를 3초간 절반으로' } },
-  { name: '화산 지대', theme: 'volcano', layout: flipH(L_SIDE), boss: { name: '다연장 로켓차', speed: 44, skill: { id: 'stun', label: '일제 사격', cd: 10, n: 6, dur: 2.5 }, text: '일제 사격 — 10초마다 무작위 유닛 6명을 2.5초간 기절시킨다' } },
-  { name: '군항 부두', theme: 'harbor', layout: flipH(L_ZIG), boss: { name: '드론 모함', speed: 52, fly: true, skill: { id: 'summon', label: '드론 사출', cd: 7, n: 4, kind: 'fast', hp: 0.4 }, text: '드론 사출 — 7초마다 드론 4기를 내보낸다' } },
-  { name: '전방 비행장', theme: 'airfield', layout: flipV(L_S), boss: { name: '전략 폭격기', speed: 56, fly: true, skill: { id: 'bomb', label: '융단 폭격', cd: 9, r: 150, dur: 3 }, text: '융단 폭격 — 9초마다 한 구역의 유닛을 3초간 기절시킨다' } },
-  { name: '적 사령부', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', speed: 40, skill: { id: 'stun', label: '충격파', cd: 12, n: 5, dur: 2.5, regen: 0.004, rage: 0.3 }, text: '재생 장갑 · 충격파 — 체력을 조금씩 회복하고, 12초마다 유닛 5명을 기절시키며, 체력 30% 아래에서 빨라진다' } },
+  { name: '초원 훈련장', theme: 'meadow', layout: L_S, boss: { name: '지휘 전차', hpMul: 0.9, speed: 48, skill: { id: 'summon', label: '증원 호출', cd: 9, n: 3, kind: 'normal', hp: 0.6 }, text: '증원 호출 — 9초마다 호위병 3명을 부른다' } },
+  { name: '해안 교두보', theme: 'beach', layout: L_NOTCH, boss: { name: '상륙 공기부양정', hpMul: 1.3, speed: 58, skill: { id: 'dash', label: '고속 기동', cd: 8, dur: 2.5, cut: 0.5 }, text: '고속 기동 — 8초마다 2.5초간 빨라지고 받는 피해가 절반' } },
+  { name: '사막 보급로', theme: 'desert', layout: L_SIDE, boss: { name: '중자주포', hpMul: 0.9, speed: 42, skill: { id: 'stun', label: '포격', cd: 7, n: 4, dur: 3 }, text: '포격 — 7초마다 무작위 유닛 4명을 3초간 기절시킨다' } },
+  { name: '설원 고지', theme: 'snow', layout: L_ZIG, boss: { name: '설상 중장갑차', hpMul: 0.67, speed: 46, skill: { id: 'armor', cut: 0.3 }, text: '중장갑 — 체력이 절반 이상이면 받는 피해 30% 감소' } },
+  { name: '폐허 도심', theme: 'city', layout: flipH(L_S), boss: { name: '공격 헬기', hpMul: 0.85, speed: 60, fly: true, skill: { id: 'evade', p: 0.15 }, text: '회피 기동 — 공격의 15%를 피한다' } },
+  { name: '밀림 강변', theme: 'jungle', layout: flipV(L_NOTCH), boss: { name: '화염방사 장갑차', hpMul: 1.0, speed: 50, skill: { id: 'burn', label: '화염 방사', cd: 6, r: 260, dur: 3, slow: 0.5 }, text: '화염 방사 — 6초마다 주변 유닛의 공격 속도를 3초간 절반으로' } },
+  { name: '화산 지대', theme: 'volcano', layout: flipH(L_SIDE), boss: { name: '다연장 로켓차', hpMul: 0.85, speed: 44, skill: { id: 'stun', label: '일제 사격', cd: 10, n: 6, dur: 2.5 }, text: '일제 사격 — 10초마다 무작위 유닛 6명을 2.5초간 기절시킨다' } },
+  { name: '군항 부두', theme: 'harbor', layout: flipH(L_ZIG), boss: { name: '드론 모함', hpMul: 1.1, speed: 52, fly: true, skill: { id: 'summon', label: '드론 사출', cd: 7, n: 4, kind: 'fast', hp: 0.4 }, text: '드론 사출 — 7초마다 드론 4기를 내보낸다' } },
+  { name: '전방 비행장', theme: 'airfield', layout: flipV(L_S), boss: { name: '전략 폭격기', hpMul: 0.77, speed: 56, fly: true, skill: { id: 'bomb', label: '융단 폭격', cd: 9, r: 150, dur: 3 }, text: '융단 폭격 — 9초마다 한 구역의 유닛을 3초간 기절시킨다' } },
+  { name: '적 사령부', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', hpMul: 0.69, speed: 40, skill: { id: 'stun', label: '충격파', cd: 12, n: 5, dur: 2.5, regen: 0.004, rage: 0.3 }, text: '재생 장갑 · 충격파 — 체력을 조금씩 회복하고, 12초마다 유닛 5명을 기절시키며, 체력 30% 아래에서 빨라진다' } },
 ];
 export const areaOfWave = wave => Math.min(AREAS.length - 1, Math.max(0, Math.floor((wave - 1) / 10)));
 
@@ -61,22 +62,25 @@ export const CFG = {
   maxWave: 100, enemyLimit: 50, bossTime: 55, waveGap: 24, prepTime: 8,
   bossHp: 36,           // 보스 체력 = 그 단계 일반 적의 몇 배 (보스마다 특수 능력이 있어 42에서 낮춤)
   growth: 1.9,          // 계급 1단계(정규화)당 전투력 배수
-  baseDmg: 10, summonBase: 20, summonGrowth: 1.75, campBase: 110, campGrowth: 1.95,
-  hpBase: 26, hpGrowth: 1.129, bountyBase: 2.2, bountyGrowth: 1.098,
-  startGold: 100, sellRate: 0.4, auraRadius: 150,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
+  // 7계급 체계(2026-11-20)에 맞춰 다시 잡은 경제. 한 계급 = 전투력 1.9배 = 아래 계급 2명. 군자금으로 살 수 있는 '이등병 몇 명분'이 단계마다 약 5.5%씩 늘고,
+  // 적 체력은 그보다 조금 빠르게(5.9%) 늘어 뒤로 갈수록 빠듯해진다. 훈련소를 올리면 같은 전력을 20%씩 싸게 산다(summonGrowth 1.6 < 2).
+  baseDmg: 10, summonBase: 20, summonGrowth: 1.6, campBase: 120, campGrowth: 2.4,
+  hpBase: 26, hpGrowth: 1.059, bountyBase: 0.3, bountyGrowth: 1.055,
+  startGold: 100, waveBonus: 15, sellRate: 0.4, auraRadius: 150,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
-  upBase: 80, upGrowth: 1.55, upStep: 0.08,
+  upBase: 50, upGrowth: 1.35, upStep: 0.08,
   // 보급품(두 번째 재화): 보스·특수 임무·임무 완수로 얻고 선택 소집·진급 심사에 쓴다
-  bossSupply: 3, pickSupply: 2, gambleSupply: 1, gambleUp: 0.45, gambleDown: 0.15,
+  bossSupply: 3, pickSupply: 2, gambleSupply: 1, gambleUp: [0.55, 0.45, 0.35, 0.22, 0.12], gambleDown: 0.15,      // 진급 심사 성공률은 지금 계급이 높을수록 낮다. 대장(전설)부터는 심사를 받을 수 없다 — 원수는 조합으로만
   // 특수 임무(정예 표적): 직접 불러내는 추가 보스. 제한 시간 안에 잡으면 군자금·보급품
   eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
 };
 
 // 난이도: 적 체력과 훈장 보상이 달라진다. need = 바로 아래 난이도에서 이 단계까지 가면 열린다
+// (7계급 경제에서는 화력과 적 체력이 거의 나란히 자라서 배수가 조금만 커도 훨씬 일찍 막힌다. 봇 기준 어려움은 70단계 안팎, 지옥은 50단계 안팎)
 export const DIFFS = [
   { id: 'normal', name: '보통', hp: 1, medal: 1, text: '기본 난이도' },
-  { id: 'hard', name: '어려움', hp: 1.8, medal: 1.6, need: 50, text: '적 체력 1.8배 · 훈장 1.6배' },
-  { id: 'hell', name: '지옥', hp: 3, medal: 2.5, need: 50, text: '적 체력 3배 · 훈장 2.5배' },
+  { id: 'hard', name: '어려움', hp: 1.3, medal: 1.6, need: 50, text: '적 체력 1.3배 · 훈장 1.6배' },
+  { id: 'hell', name: '지옥', hp: 1.7, medal: 2.5, need: 50, text: '적 체력 1.7배 · 훈장 2.5배' },
 ];
 
 function rng(seed) {
@@ -106,9 +110,9 @@ export function combineTypes(t1, t2) {
 }
 
 // ── 수치 ─────────────────────────────────────────────────
-const expo = (branch, level) => level * 17 / (branch.ranks.length - 1); // 계급 수가 달라도 최종 계급 전투력 동일
+const expo = (branch, level) => level;       // 계급 한 단계 = 전투력 CFG.growth배. (18계급 시절에는 계급 수가 달라도 최종 전투력이 같게 늘려 썼다)
 export const maxLevel = branch => branch.ranks.length - 1;
-export const maxCamp = branch => branch.ranks.length - 5;
+export const maxCamp = branch => branch.ranks.length - 4;      // 훈련소 최고 단계의 기본 소집 계급 = 대위급. 그 위 3계급(대령·대장·원수)은 조합으로만 올린다
 export const summonCost = (branch, camp) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, camp));
 export const campCost = (branch, camp) => Math.round(CFG.campBase * CFG.campGrowth ** expo(branch, camp));
 export const unitValue = (branch, level) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, level));
@@ -126,14 +130,14 @@ export function unitStats(branch, level, type, meta = {}, up = null) {
   if (k === 'range') range *= 1.1;
   if (k === 'infSpeed' && w.inf > 0) cd /= 1.15;
   if (k === 'splash') { splash *= 1.3; if (w.art > 0) dmg *= 1.1; }
-  if (k === 'slow') { slow *= 1.3; dmg *= 0.48; }
+  if (k === 'slow') { slow *= 1.3; dmg *= 0.85; }
   return { dmg, cd, range, splash, slow, vuln, haste, crit: k === 'crit' ? 0.15 : 0 };
 }
 
 export function waveInfo(wave) {
   const hp = CFG.hpBase * CFG.hpGrowth ** (wave - 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (wave - 1);
   if (wave % 10 === 0) { const n = areaOfWave(wave), b = AREAS[n].boss;      // 지역마다 다른 보스 (체력 배수는 같고 속도·모습이 다르다)
-    return { kind: 'boss', boss: n + 1, fly: !!b.fly, skill: b.skill, name: b.name, count: 1, hp: hp * CFG.bossHp, speed: b.speed, bounty: bounty * 25, gap: 1 }; }
+    return { kind: 'boss', boss: n + 1, fly: !!b.fly, skill: b.skill, name: b.name, count: 1, hp: hp * CFG.bossHp * (b.hpMul || 1), speed: b.speed, bounty: bounty * 25, gap: 1 }; }
   if (wave % 5 === 0) return { kind: 'armor', name: '장갑차 부대', count: 14, hp: hp * 2.3, speed: 52, bounty: bounty * 1.5, gap: 0.85 };
   if (wave % 3 === 0) return { kind: 'fast', name: '드론 편대', count: 26, hp: hp * 0.6, speed: 105, bounty: bounty * 0.75, gap: 0.42 };
   return { kind: 'normal', name: '적 보병', count: 20, hp, speed: 70, bounty, gap: 0.6 };
@@ -159,7 +163,7 @@ export function summon(g) {
   const cost = summonCost(g.branch, g.camp), slot = randomEmptySlot(g);
   if (g.over || g.gold < cost || slot < 0) return null;
   g.gold -= cost;
-  const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.06 ? 2 : r < 0.28 ? 1 : 0));
+  const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.03 ? 2 : r < 0.18 ? 1 : 0));      // 3% 두 계급 위, 15% 한 계급 위
   const c = CLASS_IDS[Math.floor(g.rand() * 4)];
   // 히든 계급 뽑기
   for (const h of g.branch.hidden) if (h.draw && g.camp >= h.drawCamp[0] && g.camp <= h.drawCamp[1] && g.rand() < h.draw)
@@ -200,14 +204,15 @@ export function summonPick(g, c) {
   return placeUnit(g, slot, Math.min(maxLevel(g.branch), g.camp + (r < 0.06 ? 2 : r < 0.28 ? 1 : 0)), [c, c]);
 }
 // 진급 심사: 보급품 1로 선택한 유닛에 도전. 성공하면 한 계급 진급, 실패하면 그대로, 낮은 확률로 강등
+export const gambleChance = u => CFG.gambleUp[u.level] || 0;
 export function canGamble(g, a) {
   const u = g.units[a];
-  return !!(u && !g.over && !u.hidden && g.supply >= CFG.gambleSupply && u.level < maxLevel(g.branch));
+  return !!(u && !g.over && !u.hidden && g.supply >= CFG.gambleSupply && u.level < CFG.gambleUp.length);
 }
 export function gamble(g, a) {
   if (!canGamble(g, a)) return null;
   const u = g.units[a], r = g.rand(); g.supply -= CFG.gambleSupply;
-  const res = r < CFG.gambleUp ? 'up' : r < 1 - CFG.gambleDown || u.level === 0 ? 'same' : 'down';
+  const res = r < gambleChance(u) ? 'up' : r < 1 - CFG.gambleDown || u.level === 0 ? 'same' : 'down';
   if (res !== 'same') placeUnit(g, a, u.level + (res === 'up' ? 1 : -1), u.type);
   return res;
 }
@@ -288,7 +293,7 @@ function startWave(g) {
     g.auraDirty = true; g.log.push({ t: 'area', area }); }
   g.spawn = { ...w, hp: w.hp * g.hpMul, left: w.count, cd: 0 }; g.nextWave = CFG.waveGap;
   if (w.kind === 'boss') g.bossTimer = CFG.bossTime;
-  g.gold += 10 + g.wave * 2; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
+  g.gold += CFG.waveBonus; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
 }
 // 돌려주는 값: 실제로 깎은 체력 (누적 피해 기록용)
 function hit(g, e, dmg) {
@@ -418,7 +423,7 @@ export const medalsFor = g => Math.floor((Math.floor(g.wave / 5) + (g.over && g.
 
 // ── 중간 저장 · 이어하기 ─────────────────────────────────
 // 진행 중인 게임을 글자로 바꿀 수 있는 값으로 만든다. 군별·맵·난수 함수처럼 다시 만들 수 있는 것은 빼고, 능력치는 불러올 때 다시 계산한다.
-const SAVE_V = 1, SAVE_SKIP = new Set(['branch', 'meta', 'rand', 'map', 'effects', 'sfx', 'log']);
+const SAVE_V = 2, SAVE_SKIP = new Set(['branch', 'meta', 'rand', 'map', 'effects', 'sfx', 'log']);
 export function saveGame(g) {
   if (!g || g.over) return null;
   const o = { v: SAVE_V, branchId: g.branch.id, seed: g.rand.state() };

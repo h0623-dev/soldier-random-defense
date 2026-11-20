@@ -156,7 +156,7 @@ export function drawTag(c, o, part) {
   c.font = `800 ${fs}px sans-serif`;
   const tw = Math.ceil(c.measureText(rank).width), w = Math.min(96, cw + tw + 14), x0 = -w / 2;
   c.fillStyle = 'rgba(62,40,22,.9)'; rr(c, x0, 26, w, 15, 7.5); c.fill();      // 캐릭터 그림의 갈색 선과 맞춘 짙은 갈색 바탕
-  c.strokeStyle = hidden ? GOLD : ['#a98a5e', '#e6dcc6', GOLD][tier]; c.lineWidth = 1.8; c.stroke();
+  c.strokeStyle = o.gcol || (hidden ? GOLD : ['#a98a5e', '#e6dcc6', GOLD][tier]); c.lineWidth = 2.2; c.stroke();      // 테두리는 계급(등급) 색
   c.fillStyle = hidden ? GOLD : '#fff6e0'; c.fillText(rank, x0 + cw + 5 + tw / 2, 34);
   c.font = '800 11px sans-serif';
   cls.forEach((k, i) => {

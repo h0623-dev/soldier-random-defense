@@ -1,6 +1,6 @@
 // 규칙 검사 + 자동 플레이 봇으로 난이도 확인:  node tests/sim.mjs
 import assert from 'node:assert';
-import { BRANCHES, CLASS_IDS } from '../www/js/data.js';
+import { BRANCHES, CLASS_IDS, GRADES } from '../www/js/data.js';
 import * as C from '../www/js/core.js';
 
 // 1) 조합 규칙
@@ -17,27 +17,29 @@ const keys = []; CLASS_IDS.forEach((a, i) => CLASS_IDS.slice(i).forEach(b => key
 for (const b of BRANCHES) for (const key of keys) {
   assert.ok(b.types[key], `${b.name} ${key} 없음`); assert.equal(b.types[key][1].length, 3);
 }
-// 3) 최종 계급 전투력은 군별 계급 수와 무관하게 동일
+// 3) 계급은 모든 군별이 7단계이고 최종 계급 전투력이 같다. 한 계급 오르면 전투력이 CFG.growth배
 const top = b => C.unitStats({ ...b, trait: { key: '' } }, b.ranks.length - 1, ['inf', 'inf']).dmg;
 assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]));
+for (const b of BRANCHES) { assert.equal(b.ranks.length, 7, b.name); assert.equal(b.insig.length, 7); assert.equal(GRADES.length, 7); }
+{ const b = { ...BRANCHES[0], trait: { key: '' } }; assert.ok(Math.abs(C.unitStats(b, 4, ['inf', 'inf']).dmg / C.unitStats(b, 3, ['inf', 'inf']).dmg - C.CFG.growth) < 1e-9); }
 // 3-1) 히든 계급: 원사 = 상사+상사 4병과 히든 조합, 준위 = 소집 뽑기
 {
   const g = C.createGame({ branchId: 'army', seed: 1, fx: false });
   const put = (slot, level, type, hidden = null) => { g.units[slot] = { id: g.uid++, slot, level, type, hidden, cd: 0, haste: 0, dmgUp: 0, rangeUp: 0,
     stats: C.unitStats(g.branch, level, type), flash: 0 }; };
-  put(0, 6, ['inf', 'art']); put(1, 6, ['med', 'sig']);
+  put(0, 2, ['inf', 'art']); put(1, 2, ['med', 'sig']);
   assert.equal(C.mergePreview(g, 0, 1).hidden, 'wonsa');
-  const w = C.merge(g, 0, 1); assert.equal(C.unitName(g.branch, w), '원사 전투의무병'); assert.equal(w.level, 7);
-  put(2, 5, ['inf', 'art']); put(3, 5, ['med', 'sig']); assert.equal(C.mergePreview(g, 2, 3).hidden, null);   // 상사가 아니면 일반 조합
-  put(4, 6, ['inf', 'inf']); put(5, 6, ['art', 'med']); assert.equal(C.mergePreview(g, 4, 5).hidden, null);   // 3병과뿐이면 일반 조합
-  put(6, 7, ['inf', 'inf']); const m = C.mergePreview(g, 1, 6); assert.equal(m.level, 8); assert.equal(m.hidden, null); // 히든을 재료로 쓰면 일반 진급
+  const w = C.merge(g, 0, 1); assert.equal(C.unitName(g.branch, w), '원사 전투의무병'); assert.equal(w.level, 3);
+  put(2, 1, ['inf', 'art']); put(3, 1, ['med', 'sig']); assert.equal(C.mergePreview(g, 2, 3).hidden, null);   // 상사가 아니면 일반 조합
+  put(4, 2, ['inf', 'inf']); put(5, 2, ['art', 'med']); assert.equal(C.mergePreview(g, 4, 5).hidden, null);   // 3병과뿐이면 일반 조합
+  put(6, 3, ['inf', 'inf']); const m = C.mergePreview(g, 1, 6); assert.equal(m.level, 4); assert.equal(m.hidden, null); // 히든을 재료로 쓰면 일반 진급
   g.auraDirty = true; C.step(g, 0.01);
   assert.equal(g.units[6].dmgUp, 0.2); assert.equal(g.units[1].dmgUp, 0);       // 원사 주변만 강화, 자기 자신 제외
   for (const u of g.units) if (u) g.units[u.slot] = null;
-  g.camp = 5; g.gold = 1e12; let jw = 0;
-  for (let i = 0; i < 2000; i++) { const u = C.summon(g); if (u.hidden === 'junwi') { jw++; assert.equal(u.level, 7); } g.units[u.slot] = null; }
+  g.camp = 2; g.gold = 1e12; let jw = 0;
+  for (let i = 0; i < 2000; i++) { const u = C.summon(g); if (u.hidden === 'junwi') { jw++; assert.equal(u.level, 3); } g.units[u.slot] = null; }
   assert.ok(jw > 30 && jw < 100, `준위 뽑기 횟수 ${jw}/2000`);
-  g.camp = 3; for (let i = 0; i < 500; i++) { const u = C.summon(g); assert.equal(u.hidden, null); g.units[u.slot] = null; }
+  g.camp = 1; for (let i = 0; i < 500; i++) { const u = C.summon(g); assert.equal(u.hidden, null); g.units[u.slot] = null; }
   assert.equal(BRANCHES.find(b => b.id === 'police').hidden.length, 0);
 }
 // 3-2) 병과 강화 · 선택 소집 · 진급 심사 · 특수 임무 · 임무
@@ -49,8 +51,8 @@ assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]
   assert.equal(C.summonPick(g, 'art'), null);                                   // 보급품이 없으면 선택 소집 불가
   g.supply = 10; const pu = C.summonPick(g, 'art'); assert.deepEqual(pu.type, ['art', 'art']); assert.equal(g.supply, 10 - C.CFG.pickSupply);
   const tally = { up: 0, same: 0, down: 0 };
-  for (let i = 0; i < 3000; i++) { g.supply = 1; g.units[0] = { ...u0, level: 5, hidden: null }; tally[C.gamble(g, 0)]++; }
-  assert.ok(Math.abs(tally.up / 3000 - C.CFG.gambleUp) < 0.04 && Math.abs(tally.down / 3000 - C.CFG.gambleDown) < 0.04, JSON.stringify(tally));
+  for (let i = 0; i < 3000; i++) { g.supply = 1; g.units[0] = { ...u0, level: 3, hidden: null }; tally[C.gamble(g, 0)]++; }
+  assert.ok(Math.abs(tally.up / 3000 - C.CFG.gambleUp[3]) < 0.04 && Math.abs(tally.down / 3000 - C.CFG.gambleDown) < 0.04, JSON.stringify(tally));
   assert.equal(C.callElite(g), false);                                          // 1단계 전에는 호출 불가
   g.nextWave = 0; C.step(g, 0.05); assert.equal(C.callElite(g), true); assert.equal(C.callElite(g), false);
   const el = g.enemies.find(e => e.kind === 'elite'), sup = g.supply; el.hp = 1e-9;
@@ -89,7 +91,7 @@ assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]
   const mk = diff => { const g = C.createGame({ branchId: 'army', seed: 5, fx: false, diff }); g.gold = 1e6; for (let i = 0; i < 10; i++) C.summon(g); for (let i = 0; i < 400; i++) C.step(g, 0.05); return g; };
   const n = mk(0), h = mk(2);
   assert.ok(Math.abs(Math.max(...h.enemies.map(e => e.maxHp)) / Math.max(...n.enemies.map(e => e.maxHp)) - C.DIFFS[2].hp) < 1e-9, '지옥 난이도는 적 체력이 배수만큼 많다');
-  assert.equal(C.medalsFor({ wave: 50, diff: 0 }), 10); assert.equal(C.medalsFor({ wave: 50, diff: 2 }), 25);
+  assert.equal(C.medalsFor({ wave: 50, diff: 0 }), 10); assert.equal(C.medalsFor({ wave: 50, diff: 2 }), 25);      // 훈장: 5단계마다 1개 × 난이도 배수
   const sum = n.units.filter(Boolean).reduce((a, u) => a + u.dealt, 0);
   assert.ok(n.dealt > 0 && Math.abs(sum - n.dealt) < 1e-6 * n.dealt, '유닛별 누적 피해의 합 = 전체 피해');
   assert.ok(Math.abs(Object.values(n.dmg).reduce((a, b) => a + b, 0) - n.dealt) < 1e-6 * n.dealt);
@@ -106,42 +108,49 @@ assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
-const UPR = +process.env.UPR || 0.12;   // 봇이 병과 강화에 쓰는 군자금 비율
-// 4) 봇 플레이
+const UPR = +process.env.UPR || 0.2;    // 봇이 병과 강화에 쓰는 군자금 비율
+// 4) 봇 플레이. 발판이 비면 소집하고 꽉 차면 낮은 계급부터 조합한다.
+//    smart면 쓴 돈의 일정 비율 안에서 훈련소(30%)와 병과 강화(UPR)를 산다 — 보스가 멀고 전장이 조용할 때는 소집을 멈추고 모은다. 특수 임무와 진급 심사도 쓴다.
 function play(branchId, seed, smart = true) {
   const g = C.createGame({ branchId, seed, fx: false });
-  let acc = 0;
+  let acc = 0, spent = 0, upSpent = 0; g.first = [];
+  const pay = (cost, f) => { const ok = f(); if (ok) spent += cost; return ok; };
   while (!g.over && g.time < 4000) {
     C.step(g, 0.05); acc += 0.05;
     if (acc < 0.5) continue; acc = 0;
     for (let n = 0; n < 40; n++) {
-      if (smart && C.campCost(g.branch, g.camp) <= g.gold * 0.5 && C.upgradeCamp(g)) continue;
-      if (smart) {      // 새 시스템도 단순하게 사용: 가장 낮은 병과 강화, 특수 임무는 될 때마다, 보급품은 최고 계급 유닛 진급 심사
-        const c = CLASS_IDS.reduce((a, b) => (g.up[b] < g.up[a] ? b : a));
-        if (C.classUpCost(g, c) <= g.gold * UPR && C.upgradeClass(g, c)) continue;
+      let saving = false;
+      if (smart) {
+        const nUnits = g.units.filter(Boolean).length, w10 = g.wave % 10;
+        const calm = nUnits >= 8 && g.enemies.length < 12 && w10 >= 1 && w10 <= 6 && !g.enemies.some(e => e.kind === 'boss');
+        const cc = C.campCost(g.branch, g.camp);
+        if (g.camp < C.maxCamp(g.branch) && nUnits >= 12 && cc <= 0.3 * (spent + cc)) { if (g.gold >= cc) { pay(cc, () => C.upgradeCamp(g)); continue; } saving = calm; }
+        const c = CLASS_IDS.reduce((a, b) => (g.up[b] < g.up[a] ? b : a)), uc = C.classUpCost(g, c);
+        if (!saving && nUnits >= 20 && upSpent + uc <= UPR * (spent + uc)) { if (g.gold >= uc) { if (pay(uc, () => C.upgradeClass(g, c))) upSpent += uc; continue; } saving = calm; }
         C.callElite(g);
-        const top = g.units.filter(u => u && !u.hidden && u.level < C.maxLevel(g.branch)).sort((a, b) => b.level - a.level)[0];
-        if (top && C.canGamble(g, top.slot)) { C.gamble(g, top.slot); continue; }
+        const top = g.units.filter(u => u && !u.hidden && C.canGamble(g, u.slot)).sort((a, b) => b.level - a.level)[0];
+        if (top) { C.gamble(g, top.slot); continue; }
       }
-      if (g.units.includes(null)) { if (!C.summon(g)) break; continue; }
+      if (saving) break;
+      if (g.units.includes(null)) { const sc = C.summonCost(g.branch, g.camp); if (!pay(sc, () => C.summon(g))) break; continue; }
       const us = g.units.filter(Boolean).sort((a, b) => a.level - b.level);
       let done = false;
       for (let i = 0; i + 1 < us.length; i++) if (C.canMerge(g, us[i].slot, us[i + 1].slot)) { C.merge(g, us[i].slot, us[i + 1].slot); done = true; break; }
-      if (done) continue;
-      if (smart && us[0].level < g.camp && g.gold >= C.summonCost(g.branch, g.camp)) { C.sell(g, us[0].slot); continue; }
-      break;
+      if (!done) break;
     }
+    const mx = Math.max(-1, ...g.units.filter(Boolean).map(u => u.level)); for (let l = 0; l <= mx; l++) if (!g.first[l]) g.first[l] = g.wave || 1;      // 계급별 첫 등장 단계
   }
   return g;
 }
 const only = process.argv[2];
+const SEEDS = +process.env.SEEDS || 4;
 for (const b of BRANCHES) {
   if (only && b.id !== only) continue;
-  const rs = [1, 2, 3].map(s => play(b.id, s));
-  const lazy = play(b.id, 1, false);
+  const rs = Array.from({ length: SEEDS }, (_, i) => play(b.id, i + 1));
+  const lazy = play(b.id, 1, false), med = xs => [...xs].sort((x, y) => x - y)[Math.floor(xs.length / 2)];
   console.log(b.name.padEnd(4), '봇:', rs.map(g => `${g.wave}${g.over?.win ? '승' : '패'}`).join(' '),
-    '| 훈련소 미강화 봇:', `${lazy.wave}${lazy.over?.win ? '승' : '패'}`,
-    '| 최고계급', b.ranks[Math.max(...rs[0].units.filter(Boolean).map(u => u.level))],
-    '| 히든', rs.map(g => g.log.filter(l => l.t === 'hidden').length).join('/'),
-    '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'), '| 임무', rs.map(g => Object.keys(g.done).length).join('/'));
+    '| 소집·조합만:', `${lazy.wave}${lazy.over?.win ? '승' : '패'}`,
+    '| 계급 첫 등장(중앙)', b.ranks.slice(2).map((r, i) => `${r} ${med(rs.map(g => g.first[i + 2] || 999))}`).join(' · '),
+    '| 끝 ' + b.ranks.at(-1), med(rs.map(g => g.units.filter(u => u && u.level === 6).length)) + '명',
+    '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'));
 }

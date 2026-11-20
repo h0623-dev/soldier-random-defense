@@ -97,7 +97,7 @@ ROLE = {'inf': 'rifleman', 'art': 'gunner', 'med': 'medic', 'sig': 'signaller'}
 PAIRS = {'army': [('art', 'inf-med'), ('inf-sig', 'art-med'), ('art-sig', 'med-sig')]}
 DEFAULT_PAIRS = [('inf', 'art'), ('med', 'sig'), ('inf-art', 'inf-med'), ('inf-sig', 'art-med'), ('art-sig', 'med-sig')]
 
-# ── 계급대별 그림 (부사관 t1 · 위관 t2 · 영관 t3 · 장성 t4). 의경은 위관급이 없어 t1·t3·t4만.
+# ── 계급대별 그림 (부사관 t1 · 위관 t2 · 영관 t3 · 장성 t4). 7계급 체계에서 상사·대위·대령·대장(원수 포함)이 차례로 쓴다.
 # 같은 계급대의 10병과는 얼굴·모자·옷이 같고 장비와 동작만 다르다. 전용 복장 병과(잠수·조종 등)는 TIER_GEAR의 문구를 쓴다.
 T_FACE = {
  1: 'a tough veteran sergeant in his thirties with thick dark eyebrows, a little stubble on the chin and a small scar on one cheek',
@@ -126,7 +126,8 @@ T_OUT = {
          2: 'a blue garrison side cap, a brown leather flight jacket with a white fur collar over a sky-blue shirt, a white scarf, dark blue trousers, and black shoes',
          3: 'a blue peaked cap with a silver band and a black visor, a blue dress jacket with silver buttons and small colorful ribbon bars on the chest, white gloves, and black shoes',
          4: 'a blue peaked cap with silver leaf trim on the visor, a long dark blue greatcoat draped over the shoulders like a cape with light blue lining and silver trim, silver shoulder boards, round silver medals on the chest, and black shoes'},
- 'police': {1: 'a plain navy blue police cap with a black brim, a neon yellow reflective vest over a light blue police shirt with rolled-up sleeves, navy blue trousers, a silver whistle around the neck, and black shoes',
+ 'police': {2: 'a navy blue police officer cap with a silver band and a black brim, a light blue police shirt with a navy blue tie, a dark navy vest with small pockets, navy blue trousers, a black belt with a holster, and black shoes',
+            1: 'a plain navy blue police cap with a black brim, a neon yellow reflective vest over a light blue police shirt with rolled-up sleeves, navy blue trousers, a silver whistle around the neck, and black shoes',
             3: 'a navy blue peaked police cap with a gold band and a black brim, a navy blue dress jacket with gold buttons and small colorful ribbon bars on the chest, white gloves, and black shoes',
             4: 'a navy blue peaked cap with gold leaf trim on the brim, a long navy blue greatcoat draped over the shoulders like a cape with gold trim, gold shoulder boards, round gold medals on the chest, and black shoes'},
 }
@@ -200,8 +201,8 @@ for i, names in enumerate(EN_SHEETS):
     jobs.append({'file': f"art/raw_soft/enemies_{'__'.join(names)}.png", 'w': 1024, 'h': 1024, 'prompt': EN_HEAD.format(n=len(names), grid=grid) + parts + ' ' + EN_TAIL})
 jobs.append({'file': 'art/raw_soft/title_keyart.png', 'w': 1024, 'h': 1536, 'prompt': TITLE})
 # 계급대 그림: 군별 → 계급대 순서. 기본 그림 33장 뒤에 붙는다(번호 33부터)
-for b in BR:
-    for t in sorted(T_OUT[b]):
+LATE = [('police', 2)]      # 나중에 추가한 묶음(7계급 체계에서 의경 경감용 위관급 그림)은 맨 뒤에 붙여 앞 번호가 바뀌지 않게 한다
+for b, t in [(b, t) for b in BR for t in sorted(T_OUT[b]) if (b, t) not in LATE] + LATE:
         for k1, k2 in DEFAULT_PAIRS:
             jobs.append({'file': f'art/raw_soft/sheet_{b}_t{t}_{k1}__{k2}.png', 'w': 1024, 'h': 1024, 'prompt': tier_sheet(b, t, k1, k2)})
 json.dump(jobs, open('art/jobs_soft.json', 'w'), ensure_ascii=False, indent=1)

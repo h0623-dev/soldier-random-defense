@@ -10,34 +10,36 @@ export const CLASS_INFO = {
   sig: { short: '통', color: '#4aa3e8', role: '적 둔화 · 받는 피해 증가' },
 };
 
-// 국군 계급 (기획서 지정 18단계). 원사·준위는 정규 진급 사다리 밖의 '히든 계급'(MIL_HIDDEN).
-const MIL_RANKS = ['이등병', '일병', '상병', '병장', '하사', '중사', '상사', '소위', '중위', '대위',
-  '소령', '중령', '대령', '준장', '소장', '중장', '대장', '원수'];
-// 의무경찰 4계급 + 경찰공무원법 제3조 11계급
-const POLICE_RANKS = ['이경', '일경', '상경', '수경', '순경', '경장', '경사', '경위', '경감', '경정',
-  '총경', '경무관', '치안감', '치안정감', '치안총감'];
+// 계급 7단계 (2026-11-20 사용자 결정: 18단계는 끝까지 조합하기가 너무 길어서, 다른 게임의 "일반~초월" 7등급에 맞춰 줄였다).
+// 병 · 부사관 · 위관 · 영관 · 장성 묶음에서 가장 익숙한 계급을 하나씩 뽑았다. 화면에서는 등급 이름 없이 색으로만 구분하고, 등급 이름은 도감에만 적는다.
+const MIL_RANKS = ['이등병', '병장', '상사', '대위', '대령', '대장', '원수'];
+const POLICE_RANKS = ['이경', '수경', '경사', '경감', '총경', '치안정감', '치안총감'];
+// 등급: 계급 인덱스와 1:1. color는 이름표 테두리·받침대·도감에 쓴다
+export const GRADES = [
+  { name: '일반', color: '#aeb4bb' }, { name: '고급', color: '#5fd35a' }, { name: '희귀', color: '#4aa3e8' }, { name: '영웅', color: '#b15bf0' },
+  { name: '유니크', color: '#ff8a3c' }, { name: '전설', color: '#ffcf3f' }, { name: '초월', color: '#ff5a4a' },
+];
 
 // 계급장: 계급마다 [모양, 개수]. 모양 — bar 병(막대) / chev 부사관(갈매기) / dia 위관(다이아) / flower 영관(꽃) / star 장성(별)
-// 실제 계급장을 그대로 그린 것이 아니라 단계가 한눈에 보이도록 단순화한 표시다.
-const insig = spec => spec.flatMap(([shape, n, from = 1]) => Array.from({ length: n }, (_, i) => [shape, from + i]));
-const MIL_INSIG = insig([['bar', 4], ['chev', 3], ['dia', 3], ['flower', 3], ['star', 5]]);
-const POLICE_INSIG = insig([['bar', 4], ['chev', 3, 2], ['flower', 4], ['star', 4]]);
+// 실제 계급장을 그대로 그린 것이 아니라 단계가 한눈에 보이도록 단순화한 표시다. 모양은 캐릭터 그림의 계급대(기본 · 부사관 · 위관 · 영관 · 장성)도 정한다.
+const MIL_INSIG = [['bar', 1], ['bar', 4], ['chev', 3], ['dia', 3], ['flower', 3], ['star', 4], ['star', 5]];
+const POLICE_INSIG = [['bar', 1], ['bar', 4], ['chev', 4], ['dia', 2], ['flower', 4], ['star', 3], ['star', 4]];
 
 // 히든 계급: 정규 조합으로는 나오지 않고 히든 조합(recipe) 또는 소집 뽑기 확률(draw)로만 얻는다.
-//  level  : 조합할 때 취급되는 계급 인덱스(7 = 소위급). 조합하면 일반 계급으로 진급하며 능력은 사라진다.
+//  level  : 조합할 때 취급되는 계급 인덱스(3 = 대위급). 조합하면 일반 계급으로 진급하며 능력은 사라진다.
 //  recipe : 'allDiff' = 한 계급 아래(상사) 두 유닛의 병과 4칸이 모두 다를 때
 //  draw   : 훈련소 기본 계급이 drawCamp[0]~[1] 범위일 때 신병 소집 1회당 등장 확률
 //  aura   : 주변 아군에게 주는 효과 (dmg = 공격력, range = 사거리)
 const MIL_HIDDEN = [
-  { id: 'wonsa', name: '원사', level: 7, insig: ['chev', 4], recipe: 'allDiff', aura: { dmg: 0.2 }, text: '주변 아군 공격력 +20%',
+  { id: 'wonsa', name: '원사', level: 3, insig: ['chev', 4], recipe: 'allDiff', aura: { dmg: 0.2 }, text: '주변 아군 공격력 +20%',
     how: '히든 조합 — 상사 + 상사, 두 유닛의 병과 4칸이 모두 다를 때 (보·포·의·통)' },
-  { id: 'junwi', name: '준위', level: 7, insig: ['dia', 1], draw: 0.03, drawCamp: [4, 6], aura: { range: 0.15 }, text: '주변 아군 사거리 +15%',
-    how: '뽑기 — 훈련소 기본 계급이 하사~상사일 때 신병 소집 3% 확률' },
+  { id: 'junwi', name: '준위', level: 3, insig: ['dia', 1], draw: 0.03, drawCamp: [2, 3], aura: { range: 0.15 }, text: '주변 아군 사거리 +15%',
+    how: '뽑기 — 훈련소 기본 계급이 상사~대위일 때 신병 소집 3% 확률' },
 ];
 
 // 병기 3단계가 바뀌는 계급 인덱스: [위관/간부 시작, 장성/지휘부 시작]
-const MIL_TIERS = [7, 13];
-const POLICE_TIERS = [4, 9];
+const MIL_TIERS = [3, 5];
+const POLICE_TIERS = [3, 5];
 
 // types 키: 순수 병과는 'inf', 혼성은 'inf+art' (CLASS_IDS 순서로 정렬)
 // 값: [병과 이름, [병·부사관 병기, 장교 병기, 장성 병기]]
@@ -124,7 +126,7 @@ export const BRANCHES = [
   },
   {
     id: 'police', name: '의경', color: '#27408b', ranks: POLICE_RANKS, tiers: POLICE_TIERS, hidden: [], insig: POLICE_INSIG,
-    trait: { key: 'slow', text: '둔화 효과 +30% · 처치 보상 +10% · 공격력 -52% (소수정예: 15계급)' },
+    trait: { key: 'slow', text: '둔화 효과 +30% · 처치 보상 +10% · 공격력 -15%' },
     types: {
       'inf': ['방범순찰', ['경찰봉', '테이저건', '순찰차']],
       'art': ['기동대', ['진압방패', '살수차', '기동대 차벽']],

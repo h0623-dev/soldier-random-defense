@@ -1,4 +1,4 @@
-# TASK FOR THE IMAGE AGENT — generate 124 game art images
+# TASK FOR THE IMAGE AGENT — generate 129 game art images
 
 You are helping me finish the art for my own original mobile game. This file is the complete brief. Follow it exactly.
 
@@ -34,26 +34,27 @@ You are helping me finish the art for my own original mobile game. This file is 
 | 3 | Police — NCO tier (rank-tier set of 5 sheets) | 5 |
 | 4 | Police — senior officer tier (rank-tier set of 5 sheets) | 5 |
 | 5 | Police — general tier (rank-tier set of 5 sheets) | 5 |
-| 6 | Air force — NCO tier (rank-tier set of 5 sheets) | 5 |
-| 7 | Air force — junior officer tier (rank-tier set of 5 sheets) | 5 |
-| 8 | Air force — senior officer tier (rank-tier set of 5 sheets) | 5 |
-| 9 | Air force — general tier (rank-tier set of 5 sheets) | 5 |
-| 10 | Special forces — NCO tier (rank-tier set of 5 sheets) | 5 |
-| 11 | Special forces — junior officer tier (rank-tier set of 5 sheets) | 5 |
-| 12 | Special forces — senior officer tier (rank-tier set of 5 sheets) | 5 |
-| 13 | Special forces — general tier (rank-tier set of 5 sheets) | 5 |
-| 14 | Marines — NCO tier (rank-tier set of 5 sheets) | 5 |
-| 15 | Marines — junior officer tier (rank-tier set of 5 sheets) | 5 |
-| 16 | Marines — senior officer tier (rank-tier set of 5 sheets) | 5 |
-| 17 | Marines — general tier (rank-tier set of 5 sheets) | 5 |
-| 18 | Navy — NCO tier (rank-tier set of 5 sheets) | 5 |
-| 19 | Navy — junior officer tier (rank-tier set of 5 sheets) | 5 |
-| 20 | Navy — senior officer tier (rank-tier set of 5 sheets) | 5 |
-| 21 | Navy — general tier (rank-tier set of 5 sheets) | 5 |
-| 22 | Army — NCO tier (rank-tier set of 5 sheets) | 5 |
-| 23 | Army — junior officer tier (rank-tier set of 5 sheets) | 5 |
-| 24 | Army — senior officer tier (rank-tier set of 5 sheets) | 5 |
-| 25 | Army — general tier (rank-tier set of 5 sheets) | 5 |
+| 6 | Police — junior officer tier (rank-tier set of 5 sheets) | 5 |
+| 7 | Air force — NCO tier (rank-tier set of 5 sheets) | 5 |
+| 8 | Air force — junior officer tier (rank-tier set of 5 sheets) | 5 |
+| 9 | Air force — senior officer tier (rank-tier set of 5 sheets) | 5 |
+| 10 | Air force — general tier (rank-tier set of 5 sheets) | 5 |
+| 11 | Special forces — NCO tier (rank-tier set of 5 sheets) | 5 |
+| 12 | Special forces — junior officer tier (rank-tier set of 5 sheets) | 5 |
+| 13 | Special forces — senior officer tier (rank-tier set of 5 sheets) | 5 |
+| 14 | Special forces — general tier (rank-tier set of 5 sheets) | 5 |
+| 15 | Marines — NCO tier (rank-tier set of 5 sheets) | 5 |
+| 16 | Marines — junior officer tier (rank-tier set of 5 sheets) | 5 |
+| 17 | Marines — senior officer tier (rank-tier set of 5 sheets) | 5 |
+| 18 | Marines — general tier (rank-tier set of 5 sheets) | 5 |
+| 19 | Navy — NCO tier (rank-tier set of 5 sheets) | 5 |
+| 20 | Navy — junior officer tier (rank-tier set of 5 sheets) | 5 |
+| 21 | Navy — senior officer tier (rank-tier set of 5 sheets) | 5 |
+| 22 | Navy — general tier (rank-tier set of 5 sheets) | 5 |
+| 23 | Army — NCO tier (rank-tier set of 5 sheets) | 5 |
+| 24 | Army — junior officer tier (rank-tier set of 5 sheets) | 5 |
+| 25 | Army — senior officer tier (rank-tier set of 5 sheets) | 5 |
+| 26 | Army — general tier (rank-tier set of 5 sheets) | 5 |
 
 ---
 
@@ -269,7 +270,51 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 06 — Air force — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_06.zip`
+## Batch 06 — Police — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_06.zip`
+
+### Job 148 — save as `sheet_police_t2_inf__art.png` — size 1024x1024
+Style reference: `reference/sheet_police_inf__art.png`
+
+Prompt (use verbatim):
+```
+A game sprite sheet with exactly four separate chibi character illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. No borders, no panels, no labels, no text, no arrows, no ground. Art style: soft hand-drawn storybook illustration, very cute chibi with a big round head and tiny body (2 heads tall), thin dark brown outlines, gentle watercolor and colored-pencil shading with subtle paper grain, warm muted colors, round rosy pink blush on the cheeks, small oval dark brown eyes with a white highlight, tiny mouth. All four figures are the same person: a neat young officer with tidy short black hair and a calm determined look, drawn as a very cute chibi. All four wear exactly the same outfit: a navy blue police officer cap with a silver band and a black brim, a light blue police shirt with a navy blue tie, a dark navy vest with small pockets, navy blue trousers, a black belt with a holster, and black shoes. Top-left: standing idle, holding a short black police baton, friendly smile. Top-right: the same character in action, swinging the baton to the right with a curved white swoosh arc, shouting. Bottom-left: standing idle, holding a big rectangular transparent riot shield in front. Bottom-right: the same character in action, bashing forward to the right with the riot shield, a yellow impact star at the right. The action poses face and act toward the right side. Each figure is full body, the same size, centered inside its own quadrant, nothing overlapping, nothing touching the image edges and nothing crossing into another quadrant. No insignia, no emblems, no flags, no letters, no numbers, original character design.
+```
+
+### Job 149 — save as `sheet_police_t2_med__sig.png` — size 1024x1024
+Style reference: `reference/sheet_police_inf__art.png`
+
+Prompt (use verbatim):
+```
+A game sprite sheet with exactly four separate chibi character illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. No borders, no panels, no labels, no text, no arrows, no ground. Art style: soft hand-drawn storybook illustration, very cute chibi with a big round head and tiny body (2 heads tall), thin dark brown outlines, gentle watercolor and colored-pencil shading with subtle paper grain, warm muted colors, round rosy pink blush on the cheeks, small oval dark brown eyes with a white highlight, tiny mouth. All four figures are the same person: a neat young officer with tidy short black hair and a calm determined look, drawn as a very cute chibi. All four wear exactly the same outfit: a navy blue police officer cap with a silver band and a black brim, a light blue police shirt with a navy blue tie, a dark navy vest with small pockets, navy blue trousers, a black belt with a holster, and black shoes. Top-left: standing idle, a white armband with a red cross, holding a white first-aid kit box with a red cross. Top-right: the same character in action, throwing a white bandage roll to the right with one arm stretched out, small green plus-shaped sparkles around, cheerful open mouth. Bottom-left: standing idle, holding a black walkie-talkie up to the mouth. Bottom-right: the same character in action, shouting into the walkie-talkie and pointing forward to the right, yellow lightning-bolt signal marks. The action poses face and act toward the right side. Each figure is full body, the same size, centered inside its own quadrant, nothing overlapping, nothing touching the image edges and nothing crossing into another quadrant. No insignia, no emblems, no flags, no letters, no numbers, original character design.
+```
+
+### Job 150 — save as `sheet_police_t2_inf-art__inf-med.png` — size 1024x1024
+Style reference: `reference/sheet_police_inf__art.png`
+
+Prompt (use verbatim):
+```
+A game sprite sheet with exactly four separate chibi character illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. No borders, no panels, no labels, no text, no arrows, no ground. Art style: soft hand-drawn storybook illustration, very cute chibi with a big round head and tiny body (2 heads tall), thin dark brown outlines, gentle watercolor and colored-pencil shading with subtle paper grain, warm muted colors, round rosy pink blush on the cheeks, small oval dark brown eyes with a white highlight, tiny mouth. All four figures are the same person: a neat young officer with tidy short black hair and a calm determined look, drawn as a very cute chibi. All four wear exactly the same outfit: a navy blue police officer cap with a silver band and a black brim, a light blue police shirt with a navy blue tie, a dark navy vest with small pockets, navy blue trousers, a black belt with a holster, and black shoes. Top-left: standing idle, holding a small round shield in one hand and a baton in the other. Top-right: the same character in action, lunging to the right and striking with the baton, the small round shield raised, a yellow impact star at the right. Bottom-left: standing idle, holding an orange life buoy ring, a coiled rope over the shoulder. Bottom-right: the same character in action, throwing the orange life buoy ring to the right with the rope trailing behind it. The action poses face and act toward the right side. Each figure is full body, the same size, centered inside its own quadrant, nothing overlapping, nothing touching the image edges and nothing crossing into another quadrant. No insignia, no emblems, no flags, no letters, no numbers, original character design.
+```
+
+### Job 151 — save as `sheet_police_t2_inf-sig__art-med.png` — size 1024x1024
+Style reference: `reference/sheet_police_inf__art.png`
+
+Prompt (use verbatim):
+```
+A game sprite sheet with exactly four separate chibi character illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. No borders, no panels, no labels, no text, no arrows, no ground. Art style: soft hand-drawn storybook illustration, very cute chibi with a big round head and tiny body (2 heads tall), thin dark brown outlines, gentle watercolor and colored-pencil shading with subtle paper grain, warm muted colors, round rosy pink blush on the cheeks, small oval dark brown eyes with a white highlight, tiny mouth. All four figures are the same person: a neat young officer with tidy short black hair and a calm determined look, drawn as a very cute chibi. All four wear exactly the same outfit: a navy blue police officer cap with a silver band and a black brim, a light blue police shirt with a navy blue tie, a dark navy vest with small pockets, navy blue trousers, a black belt with a holster, and black shoes. Top-left: standing idle, holding up a glowing red traffic baton. Top-right: the same character in action, blowing a silver whistle and thrusting the glowing red traffic baton to the right with a red light streak. Bottom-left: standing idle, holding small wire cutters in one hand and a round green bomb-disposal helmet under the other arm. Bottom-right: the same character in action, tossing a small round black cartoon bomb with a sparking fuse to the right. The action poses face and act toward the right side. Each figure is full body, the same size, centered inside its own quadrant, nothing overlapping, nothing touching the image edges and nothing crossing into another quadrant. No insignia, no emblems, no flags, no letters, no numbers, original character design.
+```
+
+### Job 152 — save as `sheet_police_t2_art-sig__med-sig.png` — size 1024x1024
+Style reference: `reference/sheet_police_inf__art.png`
+
+Prompt (use verbatim):
+```
+A game sprite sheet with exactly four separate chibi character illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. No borders, no panels, no labels, no text, no arrows, no ground. Art style: soft hand-drawn storybook illustration, very cute chibi with a big round head and tiny body (2 heads tall), thin dark brown outlines, gentle watercolor and colored-pencil shading with subtle paper grain, warm muted colors, round rosy pink blush on the cheeks, small oval dark brown eyes with a white highlight, tiny mouth. All four figures are the same person: a neat young officer with tidy short black hair and a calm determined look, drawn as a very cute chibi. All four wear exactly the same outfit: a navy blue police officer cap with a silver band and a black brim, a light blue police shirt with a navy blue tie, a dark navy vest with small pockets, navy blue trousers, a black belt with a holster, and black shoes. Top-left: standing idle, holding a white and red megaphone. Top-right: the same character in action, shouting into the megaphone aimed to the right, big curved sound wave arcs spreading to the right. Bottom-left: standing idle, holding a leash with a small cute brown police dog sitting beside him. Bottom-right: the same character in action, pointing forward to the right while the small brown police dog leaps forward to the right, barking. The action poses face and act toward the right side. Each figure is full body, the same size, centered inside its own quadrant, nothing overlapping, nothing touching the image edges and nothing crossing into another quadrant. No insignia, no emblems, no flags, no letters, no numbers, original character design.
+```
+
+---
+
+## Batch 07 — Air force — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_07.zip`
 
 ### Job 113 — save as `sheet_air_t1_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_air_inf__art.png`
@@ -313,7 +358,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 07 — Air force — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_07.zip`
+## Batch 08 — Air force — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_08.zip`
 
 ### Job 118 — save as `sheet_air_t2_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_air_inf__art.png`
@@ -357,7 +402,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 08 — Air force — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_08.zip`
+## Batch 09 — Air force — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_09.zip`
 
 ### Job 123 — save as `sheet_air_t3_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_air_inf__art.png`
@@ -401,7 +446,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 09 — Air force — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_09.zip`
+## Batch 10 — Air force — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_10.zip`
 
 ### Job 128 — save as `sheet_air_t4_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_air_inf__art.png`
@@ -445,7 +490,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 10 — Special forces — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_10.zip`
+## Batch 11 — Special forces — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_11.zip`
 
 ### Job 93 — save as `sheet_sf_t1_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_sf_inf__art.png`
@@ -489,7 +534,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 11 — Special forces — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_11.zip`
+## Batch 12 — Special forces — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_12.zip`
 
 ### Job 98 — save as `sheet_sf_t2_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_sf_inf__art.png`
@@ -533,7 +578,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 12 — Special forces — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_12.zip`
+## Batch 13 — Special forces — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_13.zip`
 
 ### Job 103 — save as `sheet_sf_t3_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_sf_inf__art.png`
@@ -577,7 +622,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 13 — Special forces — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_13.zip`
+## Batch 14 — Special forces — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_14.zip`
 
 ### Job 108 — save as `sheet_sf_t4_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_sf_inf__art.png`
@@ -621,7 +666,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 14 — Marines — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_14.zip`
+## Batch 15 — Marines — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_15.zip`
 
 ### Job 73 — save as `sheet_marine_t1_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_marine_inf__art.png`
@@ -665,7 +710,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 15 — Marines — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_15.zip`
+## Batch 16 — Marines — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_16.zip`
 
 ### Job 78 — save as `sheet_marine_t2_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_marine_inf__art.png`
@@ -709,7 +754,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 16 — Marines — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_16.zip`
+## Batch 17 — Marines — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_17.zip`
 
 ### Job 83 — save as `sheet_marine_t3_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_marine_inf__art.png`
@@ -753,7 +798,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 17 — Marines — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_17.zip`
+## Batch 18 — Marines — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_18.zip`
 
 ### Job 88 — save as `sheet_marine_t4_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_marine_inf__art.png`
@@ -797,7 +842,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 18 — Navy — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_18.zip`
+## Batch 19 — Navy — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_19.zip`
 
 ### Job 53 — save as `sheet_navy_t1_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_navy_inf__art.png`
@@ -841,7 +886,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 19 — Navy — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_19.zip`
+## Batch 20 — Navy — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_20.zip`
 
 ### Job 58 — save as `sheet_navy_t2_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_navy_inf__art.png`
@@ -885,7 +930,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 20 — Navy — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_20.zip`
+## Batch 21 — Navy — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_21.zip`
 
 ### Job 63 — save as `sheet_navy_t3_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_navy_inf__art.png`
@@ -929,7 +974,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 21 — Navy — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_21.zip`
+## Batch 22 — Navy — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_22.zip`
 
 ### Job 68 — save as `sheet_navy_t4_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_navy_inf__art.png`
@@ -973,7 +1018,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 22 — Army — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_22.zip`
+## Batch 23 — Army — NCO tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_23.zip`
 
 ### Job 33 — save as `sheet_army_t1_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_army_inf__art.png`
@@ -1017,7 +1062,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 23 — Army — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_23.zip`
+## Batch 24 — Army — junior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_24.zip`
 
 ### Job 38 — save as `sheet_army_t2_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_army_inf__art.png`
@@ -1061,7 +1106,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 24 — Army — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_24.zip`
+## Batch 25 — Army — senior officer tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_25.zip`
 
 ### Job 43 — save as `sheet_army_t3_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_army_inf__art.png`
@@ -1105,7 +1150,7 @@ A game sprite sheet with exactly four separate chibi character illustrations arr
 
 ---
 
-## Batch 25 — Army — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_25.zip`
+## Batch 26 — Army — general tier (rank-tier set of 5 sheets) (5 images) → deliver as `batch_26.zip`
 
 ### Job 48 — save as `sheet_army_t4_inf__art.png` — size 1024x1024
 Style reference: `reference/sheet_army_inf__art.png`

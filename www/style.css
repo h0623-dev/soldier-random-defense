@@ -165,9 +165,9 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .wcard > div { min-width: 0; } .wcard b { font-size: 1.5rem; font-weight: 900; } .wcard small { font-size: 1.1rem; color: var(--mute); }
 .wcard p { margin: 0.25rem 0 0; font-size: 1.25rem; color: #5a4a3a; line-height: 1.35; } .wcard em { font-style: normal; font-size: 1.05rem; font-weight: 800; color: #c2410c; margin-right: 0.3rem; }
 .ranks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-.rk { background: var(--paper); border-radius: 1rem; padding: 0.6rem 0.4rem; text-align: center; border: 0.2rem solid var(--ink); min-width: 0; }
-.rk.t1 { background: #e9eef2; } .rk.t2 { background: var(--paper2); }
-.rk img { height: 1.9rem; max-width: 100%; display: block; margin: 0 auto 0.3rem; } .rk b { font-size: 1.35rem; font-weight: 900; } .rk small { font-size: 1.05rem; color: var(--mute); margin-left: 0.3rem; }
+.rk { background: var(--paper); border-radius: 1rem; padding: 0.6rem 0.4rem 0.9rem; text-align: center; border: 0.3rem solid var(--ink); min-width: 0; }
+.gdot { display: inline-block; width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 0.18rem solid var(--ink); margin-right: 0.5rem; vertical-align: -0.05em; flex: none; }      /* 계급(등급) 색 점 */
+.rk img { height: 1.9rem; max-width: 100%; display: block; margin: 0 auto 0.3rem; } .rk b { font-size: 1.35rem; font-weight: 900; } .rk small { display: block; font-size: 1.05rem; color: var(--mute); }
 .hbadge { width: 6.4rem; flex: none; text-align: center; } .hbadge img { height: 2rem; max-width: 100%; display: block; margin: 0 auto 0.3rem; } .hbadge b { font-size: 1.8rem; color: #7a3fb8; }
 
 /* ── 세로가 짧은 화면: 여백과 버튼 높이를 줄인다 ── */

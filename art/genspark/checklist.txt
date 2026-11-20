@@ -122,3 +122,8 @@ sheet_police_t4_med__sig.png
 sheet_police_t4_inf-art__inf-med.png
 sheet_police_t4_inf-sig__art-med.png
 sheet_police_t4_art-sig__med-sig.png
+sheet_police_t2_inf__art.png
+sheet_police_t2_med__sig.png
+sheet_police_t2_inf-art__inf-med.png
+sheet_police_t2_inf-sig__art-med.png
+sheet_police_t2_art-sig__med-sig.png
