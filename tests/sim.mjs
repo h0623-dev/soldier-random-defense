@@ -353,29 +353,56 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   const s = M.fillMeta({ gems: 300 }); assert.equal(M.skinOf(s).id, 'base'); assert.equal(M.useSkin(s, 'desert'), false); assert.equal(M.buySkin(s, 'gold'), false); assert.equal(M.buySkin(s, 'desert'), true); assert.equal(s.gems, 0);
   assert.equal(M.buySkin(s, 'desert'), false); assert.equal(M.useSkin(s, 'desert'), true); assert.equal(M.skinOf(s).filter, M.SKINS[1].filter); assert.equal(M.fillMeta({ skins: { own: {}, on: 'nope' } }).skins.on, 'base');
 }
-// 3-14) 2인 협동: 한 바퀴를 돈 적은 동료에게 넘어가고, 넘어온 적을 받는다. 손님은 방장이 알릴 때 단계를 시작한다
+// 3-14) 2인 협동: 한 전장을 둘이 나눠 쓴다. 발판·유닛·군자금은 따로, 적·단계·임무는 함께. 두 기기가 같은 걸음·같은 명령으로 똑같이 계산한다
 {
-  const mk = (seed, ext) => { const g = C.createGame({ branchId: 'army', seed, fx: false, coop: true }); g.coop.linked = true; g.coop.ext = ext; return g; };
-  const host = mk(1, false), guest = mk(2, true);
-  assert.equal(C.saveGame(host), null, '협동 판은 저장하지 않는다'); assert.equal(C.createGame({ branchId: 'army', seed: 1, fx: false }).coop, null);
-  for (let i = 0; i < 400; i++) { C.step(host, 0.05); C.step(guest, 0.05); }      // 20초
-  assert.equal(host.wave, 1); assert.equal(guest.wave, 0, '손님은 스스로 단계를 시작하지 않는다'); C.startWaveTo(guest, host.wave); assert.equal(guest.wave, 1);
-  // 유닛이 없으면 적이 한 바퀴 돌고 동료에게 넘어간다. 넘어간 적은 내 전장에서 사라지고 처치로 세지 않는다
-  for (let i = 0; i < 20 * 50; i++) C.step(host, 0.05);
-  assert.ok(host.coop.out.length > 0 && host.coop.sent === host.coop.out.length); assert.equal(host.kills, 0); const d = host.coop.out[0]; assert.equal(d.k, 'normal'); assert.ok(d.hp > 0 && d.mx >= d.hp);
-  const n0 = guest.enemies.length; assert.equal(C.receiveEnemy(guest, JSON.parse(JSON.stringify(d))), true); assert.equal(guest.enemies.length, n0 + 1); assert.equal(guest.enemies.at(-1).s, 0); assert.equal(guest.coop.got, 1);
-  assert.equal(C.receiveEnemy(guest, { k: 'elite', hp: 1, mx: 1, sp: 50 }), false); assert.equal(C.receiveEnemy(guest, { k: 'normal', hp: -1, mx: 1, sp: 50 }), false); assert.equal(C.receiveEnemy(guest, { k: 'normal', hp: 5, mx: 5, sp: 9999 }), false);
-  const boss = { k: 'boss', hp: 100, mx: 200, sp: 48, bo: 3, bs: 3, fl: 0 }; C.receiveEnemy(guest, boss); assert.equal(guest.enemies.at(-1).skill.id, C.AREAS[2].boss.skill.id); assert.ok(guest.bossTimer >= 10);
-  // 이어져 있는 동안에는 혼자 이기지 않는다. 끊기면 혼자 하는 판처럼 돈다(적이 넘어가지 않고 계속 돈다)
-  const w = mk(3, false); w.wave = 100; w.spawn = { left: 0 }; C.step(w, 0.05); assert.equal(w.over, null); assert.equal(C.fieldClear(w), true); w.coop.linked = false; C.step(w, 0.05); assert.equal(w.over.win, true);
-  const solo = mk(4, false); solo.coop.linked = false; for (let i = 0; i < 20 * 80; i++) C.step(solo, 0.05); assert.equal(solo.coop.out.length, 0); assert.ok(solo.enemies.length > 0);
-  // 두 전장을 이어 돌려도 적 수가 보존된다(넘긴 수 = 받은 수)
-  const A = mk(5, false), B = mk(6, true); A.gold = B.gold = 400; for (let i = 0; i < 8; i++) { C.summon(A); C.summon(B); }
-  for (let i = 0; i < 20 * 150; i++) { C.step(A, 0.05); if (B.wave < A.wave) C.startWaveTo(B, A.wave); C.step(B, 0.05);
-    for (const x of A.coop.out.splice(0)) C.receiveEnemy(B, x); for (const x of B.coop.out.splice(0)) C.receiveEnemy(A, x); }
-  assert.equal(A.wave, B.wave); assert.equal(A.coop.sent, B.coop.got); assert.equal(B.coop.sent, A.coop.got); assert.ok(A.kills + B.kills > 20);
+  const players = [{ branchId: 'army', meta: M.fillMeta({ atk: 2 }), name: '방장' }, { branchId: 'police', meta: M.fillMeta({}), name: '손님' }];
+  const mk = me => C.createDuo({ players, seed: 77, me, fx: false });
+  const g = mk(0); assert.equal(g.duo.ps.length, 2); assert.equal(g.branch.id, 'army'); assert.equal(C.act(g, 1, () => g.branch.id), 'police'); assert.equal(g.hpMul, C.CFG.duoHp);
+  assert.equal(C.saveGame(g), null, '협동 판은 저장하지 않는다'); assert.equal(C.createGame({ branchId: 'army', seed: 1, fx: false }).duo, null);
+  // 발판은 위쪽 13칸이 방장, 아래 12칸이 손님. 소집은 자기 몫의 발판에만
+  assert.equal(C.ownerOf(0), 0); assert.equal(C.ownerOf(12), 0); assert.equal(C.ownerOf(13), 1); assert.equal(C.ownerOf(24), 1);
+  g.duo.ps[0].gold = g.duo.ps[1].gold = 1e6;
+  for (let i = 0; i < 30; i++) { C.exec(g, 0, ['summon']); C.exec(g, 1, ['summon']); }
+  assert.ok(g.units.every((u, i) => u && u.o === C.ownerOf(i)), '모든 유닛이 주인의 발판에 선다'); assert.equal(g.units.filter(u => u.o === 0).length, 13); assert.equal(C.exec(g, 0, ['summon']), null);
+  assert.equal(C.unitName(C.branchOf(g, g.units[0]), g.units[0]).split(' ')[0].length > 0, true); assert.equal(C.branchOf(g, g.units[20]).id, 'police');
+  // 남의 유닛은 조합·이동·전역·심사할 수 없다
+  const same = (o, n) => g.units.filter(u => u.o === o).slice(0, n);
+  const [a0, a1] = same(0, 2), [b0, b1] = same(1, 2); for (const u of [a0, a1, b0, b1]) u.level = 0;
+  assert.equal(C.canMerge(g, a0.slot, a1.slot), true); assert.equal(C.canMerge(g, a0.slot, b0.slot), false); assert.equal(C.act(g, 1, () => C.canMerge(g, a0.slot, a1.slot)), false); assert.equal(C.act(g, 1, () => C.canMerge(g, b0.slot, b1.slot)), true);
+  assert.equal(C.exec(g, 1, ['sell', a0.slot]), 0); assert.equal(g.units[a0.slot], a0); assert.equal(C.exec(g, 0, ['move', a0.slot, b0.slot]), false); assert.equal(C.exec(g, 1, ['merge', a0.slot, a1.slot]), null);
+  const m = C.exec(g, 0, ['merge', a0.slot, a1.slot]); assert.ok(m && m.o === 0 && m.level === 1); assert.equal(C.hasFree(g), true); assert.equal(C.act(g, 1, () => C.hasFree(g)), false);
+  // 병과 강화는 자기 유닛에만
+  const mine0 = g.units.find(u => u && u.o === 0 && u !== m), theirs = g.units.find(u => u && u.o === 1), d0 = mine0.stats.dmg, d1 = theirs.stats.dmg, c0 = mine0.type[0];
+  C.exec(g, 0, ['up', c0]); assert.ok(mine0.stats.dmg > d0 || mine0.type[0] !== c0); assert.equal(theirs.stats.dmg, d1); assert.equal(g.duo.ps[0].up[c0], 1); assert.equal(g.duo.ps[1].up[c0], 0);
+  // 수입은 두 사람 모두: 단계 보너스와 처치 보상. 선물은 한쪽에서 다른 쪽으로
+  const h = mk(0); const g0 = h.duo.ps.map(p => p.gold); h.nextWave = 0; C.step(h, 0.05); assert.deepEqual(h.duo.ps.map((p, i) => p.gold - g0[i]), [C.CFG.waveBonus, C.CFG.waveBonus]);
+  for (let i = 0; i < 6; i++) { C.exec(h, 0, ['summon']); } const k0 = h.duo.ps.map(p => p.gold); for (let i = 0; i < 600 && h.kills < 3; i++) C.step(h, 0.05);
+  assert.ok(h.kills >= 3 && h.duo.ps[1].gold > k0[1], '방장의 유닛이 잡아도 손님이 보상을 받는다'); assert.ok(h.duo.ps[1].gold - k0[1] > (h.duo.ps[0].gold - k0[0]) * 1.05, '의경은 처치 보상 +10%');
+  const gg = h.duo.ps.map(p => p.gold), gift = C.exec(h, 1, ['gift']); assert.ok(gift > 0); assert.equal(h.duo.ps[1].gold, gg[1] - gift); assert.equal(h.duo.ps[0].gold, gg[0] + gift);
+  assert.ok(Object.keys(h.duo.ps[0].dmgT).length > 0 && Object.keys(h.duo.ps[1].dmgT).length === 0, '숙련 경험치용 피해 기록은 자기 유닛 것만');
+  // 같은 걸음에 같은 명령을 넣으면 두 기기(방장 · 손님)의 계산이 끝까지 같다
+  const A = mk(0), B = mk(1); let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647, pick = xs => xs[Math.floor(rnd() * xs.length)];
+  const cmds = () => { const out = []; for (const who of [0, 1]) { const r = rnd();
+    if (r < 0.5) out.push([who, ['summon']]); else if (r < 0.6) out.push([who, ['camp']]); else if (r < 0.7) out.push([who, ['up', pick(CLASS_IDS)]]); else if (r < 0.74) out.push([who, ['hire']]); else if (r < 0.78) out.push([who, ['elite']]);
+    else if (r < 0.82) out.push([who, ['gift']]); else if (r < 0.86) out.push([who, ['gamble', Math.floor(rnd() * 25)]]); else if (r < 0.9) out.push([who, ['reroll', Math.floor(rnd() * 25)]]);
+    else { const us = A.units.filter(u => u && u.o === who); const x = pick(us), y = pick(us); if (x && y) out.push([who, [rnd() < 0.7 ? 'merge' : 'move', x.slot, rnd() < 0.3 ? Math.floor(rnd() * 25) : y.slot]]); } }
+    return out; };
+  let checks = 0;
+  for (let tick = 0; tick < 20 * 400 && !A.over; tick++) {
+    if (tick % 10 === 0) for (const [who, c] of cmds()) { C.exec(A, who, c); C.exec(B, who, c); }
+    C.step(A, 0.05); C.step(B, 0.05);
+    if (tick % 40 === 0) { assert.equal(C.duoHash(A), C.duoHash(B), `걸음 ${tick}에서 두 기기의 계산이 어긋남`); checks++; }
+  }
+  assert.ok(checks > 100 && A.wave >= 10, `단계 ${A.wave}`); assert.equal(JSON.stringify(A.over), JSON.stringify(B.over)); assert.equal(A.gold, C.act(B, 0, () => B.gold)); assert.notEqual(A.gold, B.gold);      // g.gold는 기기마다 '내 것'
+  // 어긋났을 때: 방장의 상태를 통째로 받아 맞추면 다시 같아진다
+  const X = mk(0), Y = mk(1); for (let i = 0; i < 300; i++) { if (i % 20 === 0) { C.exec(X, 0, ['summon']); C.exec(X, 1, ['summon']); C.exec(Y, 0, ['summon']); } C.step(X, 0.05); C.step(Y, 0.05); }
+  assert.notEqual(C.duoHash(X), C.duoHash(Y)); assert.equal(C.duoLoad(Y, JSON.parse(JSON.stringify(C.duoSnap(X)))), true); assert.equal(C.duoHash(X), C.duoHash(Y)); assert.equal(Y.duo.me, 1);
+  for (let i = 0; i < 400; i++) { if (i % 30 === 0) { C.exec(X, 1, ['summon']); C.exec(Y, 1, ['summon']); } C.step(X, 0.05); C.step(Y, 0.05); } assert.equal(C.duoHash(X), C.duoHash(Y));
+  // 동료가 나가면 남은 사람이 전장 전체를 맡는다
+  X.duo.solo = true; const other = X.units.find(u => u && u.o === 1); assert.ok(C.own(X, other)); assert.equal(C.mine(X, 24), true);
   assert.equal(M.rankBoard(A), 'coop'); assert.equal(M.rankBoard({ mode: 'normal', diff: 2 }), 'normal-2'); assert.equal(M.rankBoard({ mode: 'rush' }), 'rush');
-  const m = M.ensureId(M.fillMeta({})); assert.equal(m.uid.length, 20); assert.match(m.name, /^병사\d{4}$/); assert.equal(M.ensureId(m).uid, m.uid); assert.equal(M.cleanName(' <b>가나다라마바사아자차카</b> '), 'b가나다라마바사아자');
+  const mm = M.ensureId(M.fillMeta({})); assert.equal(mm.uid.length, 20); assert.match(mm.name, /^병사\d{4}$/); assert.equal(M.ensureId(mm).uid, mm.uid); assert.equal(M.cleanName(' <b>가나다라마바사아자차카</b> '), 'b가나다라마바사아자');
+  const lite = M.metaLite(M.fillMeta({ atk: 3, medals: 99, xp: { army: { inf: 500 }, navy: { inf: 9 } }, cmN: { boss: 3 } }), 'army'); assert.deepEqual(Object.keys(lite).sort(), ['atk', 'bounty', 'cm', 'gold', 'xp']); assert.deepEqual(lite.xp, { army: { inf: 500 } }); assert.equal(lite.cm.boss, 2);
 }
 console.log('규칙·데이터 검사 통과');
 
@@ -387,16 +414,19 @@ const DPR = process.env.DPR != null ? +process.env.DPR : 0.15;    // 봇이 보�
 // 4) 봇 플레이. 발판이 비면 소집하고 꽉 차면 낮은 계급부터 조합한다.
 //    smart면 쓴 돈의 일정 비율 안에서 훈련소(30%)와 병과 강화(UPR)를 산다 — 보스가 멀고 전장이 조용할 때는 소집을 멈추고 모은다. 특수 임무와 진급 심사도 쓴다.
 function play(branchId, seed, smart = true) {
-  const g = C.createGame({ branchId, seed, fx: false, diff: +process.env.DIFF || 0, mode: process.env.MODE || 'normal' });      // DIFF=1 어려움, 2 지옥 · MODE=rush|endless
+  const DUO = process.env.MODE === 'duo';      // MODE=duo: 같은 군별 둘이 한 전장을 나눠 쓰는 협동
+  const g = DUO ? C.createDuo({ players: [{ branchId }, { branchId }], seed, fx: false }) : C.createGame({ branchId, seed, fx: false, diff: +process.env.DIFF || 0, mode: process.env.MODE || 'normal' });      // DIFF=1 어려움, 2 지옥 · MODE=rush|endless
   let acc = 0, spent = 0, upSpent = 0, depSpent = 0; g.first = [];
+  const book = [0, 1].map(() => ({ spent: 0, upSpent: 0, depSpent: 0 }));      // 협동: 플레이어마다 쓴 돈을 따로 센다
   const pay = (cost, f) => { const ok = f(); if (ok) spent += cost; return ok; };
   while (!g.over && g.time < (g.mode === 'endless' ? 9000 : 4000)) {
     C.step(g, 0.05); acc += 0.05;
     if (acc < 0.5) continue; acc = 0;
+    for (const who of DUO ? [0, 1] : [0]) { if (DUO) { g.duo.cur = who; ({ spent, upSpent, depSpent } = book[who]); }
     for (let n = 0; n < 40; n++) {
       let saving = false;
       if (smart) {
-        const nUnits = g.units.filter(Boolean).length, w10 = g.wave % 10;
+        const nUnits = g.units.filter(u => u && C.own(g, u)).length * (DUO ? 2 : 1), w10 = g.wave % 10;
         const calm = nUnits >= 8 && g.enemies.length < 12 && w10 >= 1 && w10 <= 6 && !g.enemies.some(e => e.kind === 'boss');
         const cc = C.campCost(g.branch, g.camp);
         if (g.camp < C.maxCamp(g.branch) && nUnits >= 12 && cc <= 0.3 * (spent + cc)) { if (g.gold >= cc) { pay(cc, () => C.upgradeCamp(g)); continue; } saving = calm; }
@@ -405,12 +435,12 @@ function play(branchId, seed, smart = true) {
         const c = CLASS_IDS.reduce((a, b) => (g.up[b] < g.up[a] ? b : a)), uc = C.classUpCost(g, c);
         if (!saving && nUnits >= 20 && upSpent + uc <= UPR * (spent + uc)) { if (g.gold >= uc) { if (pay(uc, () => C.upgradeClass(g, c))) upSpent += uc; continue; } saving = calm; }
         C.callElite(g);
-        const top = g.units.filter(u => u && !u.hidden && C.canGamble(g, u.slot)).sort((a, b) => b.level - a.level)[0];
+        const top = g.units.filter(u => u && !u.hidden && C.own(g, u) && C.canGamble(g, u.slot)).sort((a, b) => b.level - a.level)[0];
         if (top) { C.gamble(g, top.slot); continue; }
       }
       if (saving) break;
-      if (g.units.includes(null)) { const sc = C.summonCost(g.branch, g.camp); if (!pay(sc, () => C.summon(g))) break; continue; }
-      const us = g.units.filter(Boolean).sort((a, b) => a.level - b.level);
+      if (C.hasFree(g)) { const sc = C.summonCost(g.branch, g.camp); if (!pay(sc, () => C.summon(g))) break; continue; }
+      const us = g.units.filter(u => u && C.own(g, u)).sort((a, b) => a.level - b.level);
       let done = false;
       if (smart) {      // 용사 조합식이 맞는 짝이 있으면 먼저 조합한다. 용사는 각성(전설 유닛과 조합)에만 쓴다
         const pure = us.filter(u => u.level === 4 && !u.hidden && u.type[0] === u.type[1]);
@@ -421,9 +451,13 @@ function play(branchId, seed, smart = true) {
       if (!done) break;
     }
     if (smart) for (const i of Object.keys(g.tiles)) {      // 특수 발판에는 가장 높은 등급의 유닛을 세운다
-      const best = g.units.filter(u => u && !g.tiles[u.slot]).sort((x, y) => y.level - x.level)[0], cur = g.units[i];
+      if (!C.mine(g, +i)) continue;
+      const best = g.units.filter(u => u && C.own(g, u) && !g.tiles[u.slot]).sort((x, y) => y.level - x.level)[0], cur = g.units[i];
       if (best && (!cur || best.level > cur.level)) C.moveUnit(g, best.slot, +i);
     }
+    if (DUO) book[who] = { spent, upSpent, depSpent };
+    }
+    if (DUO) g.duo.cur = 0;
     const mx = Math.max(-1, ...g.units.filter(Boolean).map(u => u.level)); for (let l = 0; l <= mx; l++) if (!g.first[l]) g.first[l] = g.wave || 1;      // 계급별 첫 등장 단계
   }
   g.earned = spent + g.gold; return g;

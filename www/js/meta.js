@@ -117,9 +117,11 @@ export function ensureId(meta, rand = Math.random) {
 }
 export const cleanName = s => String(s || '').replace(/[\u0000-\u001f<>&"'`\\]/g, '').trim().slice(0, 10);
 // 랭킹 판 이름: 기본 작전은 난이도별, 그 밖은 모드별
-export const rankBoard = g => (g.coop ? 'coop' : g.mode === 'normal' ? 'normal-' + (g.diff || 0) : g.mode);
+export const rankBoard = g => (g.duo ? 'coop' : g.mode === 'normal' ? 'normal-' + (g.diff || 0) : g.mode);
 export const RANK_BOARDS = [['normal-0', '보통'], ['normal-1', '어려움'], ['normal-2', '지옥'], ['endless', '무한'], ['rush', '보스 러시'], ['coop', '2인 협동']];
 export const COOP_MEDAL = 1.2;      // 협동 판의 훈장 배수
+// 협동을 시작할 때 동료 기기에 넘기는 값: 전투 계산에 쓰이는 것만 (영구 강화 · 표창 단계 · 그 군별의 숙련도). 두 기기가 같은 값으로 계산해야 한다
+export const metaLite = (meta, branchId) => ({ atk: meta.atk || 0, gold: meta.gold || 0, bounty: meta.bounty || 0, cm: { ...(meta.cm || {}) }, xp: { [branchId]: { ...((meta.xp || {})[branchId] || {}) } } });
 
 // ── 병과 숙련도 ─────────────────────────────────────────
 // 한 판의 경험치 = 도달 단계 × 10 × 난이도 훈장 배수 (보스 러시는 보스 하나에 100). 그 판에서 준 피해 비율대로 병과에 나눈다

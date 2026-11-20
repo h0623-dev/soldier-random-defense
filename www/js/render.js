@@ -1,6 +1,6 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
-import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig, mergePreview, heroOf } from './core.js';
+import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig, mergePreview, heroOf, branchOf, mine, own } from './core.js';
 import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
@@ -203,6 +203,8 @@ export function draw(ctx, g, ui, quality = 2) {
   const b = g.branch, k = ctx.getTransform().a, now = performance.now() / 1000, SLOTS = g.map.slots;
   ctx.drawImage(background(k, g.area, g.map), 0, 0, FIELD.w, FIELD.h);
   const sel = ui.sel != null ? g.units[ui.sel] : null;
+  // 협동: 동료의 구역은 어둡게 덮어 내 구역과 구분한다
+  if (g.duo && !g.duo.solo) { ctx.fillStyle = 'rgba(24,30,66,.46)'; SLOTS.forEach((s, i) => { if (!mine(g, i)) ctx.fillRect(s.x - CELL.w / 2, s.y - CELL.h / 2 - 8, CELL.w, CELL.h); }); }
   // 특수 발판: 종류 색으로 빛나는 테두리와 왼쪽 위 표식 (유닛이 올라가도 보이게 모서리에 둔다)
   for (const i in g.tiles) tile(ctx, SLOTS[i], g.tiles[i], k, now, quality);
   // 발판 강조: 조합할 수 있는 칸(노랑), 선택한 칸(흰색)
@@ -232,7 +234,7 @@ export function draw(ctx, g, ui, quality = 2) {
   for (const e of es) enemy(ctx, e, k, quality);
   // 아군 (칸 번호 순서 = 위쪽 줄부터)
   const T = THEMES[AREAS[g.area].theme];
-  for (const u of g.units) if (u) unit(ctx, b, u, SLOTS[u.slot], k, now, quality, T);
+  for (const u of g.units) if (u) unit(ctx, branchOf(g, u), u, SLOTS[u.slot], k, now, quality, T, own(g, u));
   // 사격 효과
   const fxList = quality > 0 ? g.effects : g.effects.slice(-12);   // 최저 품질에서는 사격 효과 수를 줄인다
   for (const f of fxList) {
@@ -383,7 +385,7 @@ function shot(ctx, f, quality) {
   ctx.restore(); ctx.globalAlpha = 1;
 }
 
-function unit(ctx, b, u, p, k, now, quality, T) {
+function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내 유닛이면 내 스킨을 입힌다(협동에서 동료 유닛은 기본 모습)
   const tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u);
   const lv = Math.min(u.level, GRADES.length - 1), gcol = GRADES[lv].color;
   const o = { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u), gcol }, tk = u.type.join('+');
@@ -450,9 +452,9 @@ function unit(ctx, b, u, p, k, now, quality, T) {
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
   const atk = u.atkT > 0 && !stunned ? unitAtkImage(b.id, u.type, grp) : null;
-  if (atk) put(ctx, fit(atk, size * 2, k, u.faceL, true), p.x - size, p.y + FEET + dy - size * 2);
-  else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, true), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
-  else { const f = fit(im, size, k, false, true); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다
+  if (atk) put(ctx, fit(atk, size * 2, k, u.faceL, skin), p.x - size, p.y + FEET + dy - size * 2);
+  else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, skin), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
+  else { const f = fit(im, size, k, false, skin); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다
   ctx.globalAlpha = 1;
   if (T.tuft && grp === 0) ctx.drawImage(spriteBox('ft:' + T.tuft + T.pad[4], k, FT_BOX, c => {      // 발 앞 풀·눈·모래 (받침대가 없는 병 계급만)
     c.lineCap = 'round';

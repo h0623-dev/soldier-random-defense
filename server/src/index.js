@@ -4,7 +4,7 @@
 //  POST /rank                  기록 올리기 { board, id, name, score, time, branch }
 //  POST /room                  협동 방 만들기 → { code }
 //  GET  /match                 빠른 매칭 → { code, host }  (기다리는 방이 있으면 그 방, 없으면 새 방)
-//  GET  /room/<code>/ws        방에 웹소켓으로 들어가기 (두 명까지). 한쪽이 보낸 글을 다른 쪽에 그대로 넘긴다
+//  GET  /room/<code>/ws        방에 웹소켓으로 들어가기 (두 명까지). 한쪽이 보낸 글을 다른 쪽에 그대로 넘긴다 (걸음 번호·명령·견줄 값)
 // 서버는 게임 규칙을 모른다(기록을 검증하지 못한다). 말이 안 되는 값만 걸러 낸다.
 import { DurableObject } from 'cloudflare:workers';
 
@@ -108,7 +108,7 @@ export class Room extends DurableObject {
     return new Response(null, { status: 101, webSocket: client });
   }
   webSocketMessage(ws, msg) {
-    if (typeof msg !== 'string' || msg.length > 4000) return;      // 큰 글·이진 자료는 버린다
+    if (typeof msg !== 'string' || msg.length > 200000) return;      // 지나치게 큰 글·이진 자료는 버린다 (어긋났을 때 넘기는 전장 상태가 수만 자다)
     for (const o of this.ctx.getWebSockets()) if (o !== ws) { try { o.send(msg); } catch { /* 닫히는 중 */ } }
   }
   webSocketClose(ws) { this.left(ws); }
