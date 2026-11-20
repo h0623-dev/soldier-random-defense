@@ -261,6 +261,9 @@ export function sell(g, a) {
   g.units[a] = null; g.gold += v; g.auraDirty = true; return v;
 }
 export const rankInsig = (branch, u) => (hiddenDef(branch, u.hidden) || {}).insig || branch.insig[u.level];
+// 계급대: 계급장 모양으로 나눈 5단계 (0 병 · 1 부사관 · 2 위관 · 3 영관 · 4 장성). 겉모습과 그림이 이 단계에 따라 달라진다
+export const RANK_GROUP = { bar: 0, chev: 1, dia: 2, flower: 3, star: 4 };
+export const rankGroup = (branch, u) => RANK_GROUP[rankInsig(branch, u)[0]] || 0;
 export const rankName = (branch, u) => (hiddenDef(branch, u.hidden) || {}).name || branch.ranks[u.level];
 export const unitName = (branch, u) => `${rankName(branch, u)} ${branch.types[typeKey(u.type)][0]}`;
 export const unitWeapon = (branch, u) =>

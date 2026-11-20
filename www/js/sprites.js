@@ -113,7 +113,7 @@ export function drawSoldier(c, branchId, type, tier) {
 // 유닛은 네모 카드 없이 발판 위에 서 있는 모습으로 그린다. 여기서는 캐릭터에 붙는 표시(이름표·계급장)만 만든다.
 // 좌표: 발판 중심 (0,0), 발은 y=+34 근처, 머리 위는 y=-50 근처.
 // 그림 파일이 있으면 그 Image, 없으면 null (그때는 drawSoldierFallback을 캐시에 그려 쓴다)
-export const unitImage = (branchId, type) => unitArt(branchId, type);
+export const unitImage = (branchId, type, grp) => unitArt(branchId, type, grp);
 export function drawSoldierFallback(c, o) { c.save(); c.translate(0, 4); c.scale(1.25, 1.25); drawSoldier(c, o.branchId, o.type, o.tier); c.restore(); }
 
 const INSIG_COL = { bar: GOLD, chev: GOLD, dia: '#eef3f7', flower: '#eef3f7', star: GOLD };
@@ -213,7 +213,7 @@ const fullBranch = new Set();
 export function loadArt() {
   fetch('img/manifest.json').then(r => (r.ok ? r.json() : [])).then(list => {
     const byBranch = {};
-    for (const name of list) { const m = /^units\/([a-z]+)_/.exec(name); if (m) byBranch[m[1]] = (byBranch[m[1]] || 0) + 1; }
+    for (const name of list) { const m = /^units\/([a-z]+)_[a-z-]+$/.exec(name); if (m) byBranch[m[1]] = (byBranch[m[1]] || 0) + 1; }   // 계급대 그림(_t1 …)은 세지 않는다
     for (const name of list) {
       const im = new Image();
       im.onload = () => { art[name] = im; artState.version++; };
@@ -222,8 +222,16 @@ export function loadArt() {
     for (const b in byBranch) if (byBranch[b] >= 10) fullBranch.add(b);
   }).catch(() => { /* 그림 파일이 없으면 코드 그림 사용 */ });
 }
-const unitArt = (branchId, type) => (fullBranch.has(branchId)
-  ? art[`units/${branchId}_${type[0] === type[1] ? type[0] : type.join('-')}`] : null) || null;
+// 유닛 그림 이름: 계급대(grp 0 병 ~ 4 장성)에 맞는 그림(_t1 ~ _t4)이 있으면 그것을, 없으면 아래 계급대 그림, 끝으로 기본 그림을 쓴다
+const unitArtKey = (branchId, type) => `units/${branchId}_${type[0] === type[1] ? type[0] : type.join('-')}`;
+export function unitArtName(branchId, type, grp = 0) {
+  const base = unitArtKey(branchId, type);
+  for (let t = grp; t > 0; t--) if (art[`${base}_t${t}`]) return `${base}_t${t}`;
+  return base;
+}
+// 지금 쓰이는 그림이 몇 번째 계급대용인지 (0이면 기본 그림)
+export const unitArtTier = (branchId, type, grp = 0) => { const m = /_t(\d)$/.exec(unitArtName(branchId, type, grp)); return m ? +m[1] : 0; };
+const unitArt = (branchId, type, grp = 0) => (fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp)] : null) || null;
 export const enemyArt = kind => art['enemy_' + kind] || null;
 export const hasArt = name => !!art[name];     // 그림 파일이 준비됐는지 (도감에서 <img> 주소를 고를 때 쓴다)
 

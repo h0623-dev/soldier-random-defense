@@ -120,6 +120,7 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 /* ── 조합 도감 ── */
 .ui { width: 6.4rem; height: 6.4rem; object-fit: contain; flex: none; } .ui.s { width: 4.8rem; height: 4.8rem; }
 .cx4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+.cx5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
 .ucard { background: var(--paper); border: 0.2rem solid var(--ink); border-radius: 1.2rem; padding: 0.6rem 0.3rem 0.8rem; text-align: center; min-width: 0; }
 .ucard .ui { width: 100%; max-width: 7.2rem; height: auto; aspect-ratio: 1; }
 .ucard b { display: block; font-size: 1.3rem; font-weight: 900; } .ucard small { display: block; font-size: 1.05rem; color: var(--mute); line-height: 1.35; margin-top: 0.2rem; }

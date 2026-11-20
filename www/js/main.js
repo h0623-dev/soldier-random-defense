@@ -2,7 +2,7 @@
 import { BRANCHES, CLASS_IDS, CLASS_INFO } from './data.js';
 import * as C from './core.js';
 import { draw } from './render.js';
-import { insigUrl, hasArt } from './sprites.js';
+import { insigUrl, hasArt, unitArtName } from './sprites.js';
 import { Monetize } from './monetize.js';
 import { initLayout } from './layout.js';
 import { Sound } from './sound.js';
@@ -39,7 +39,7 @@ function show(html, sheet = false) {
   overlay.classList.add('on'); overlay.classList.toggle('sheet', sheet); overlay.scrollTop = 0; if (!sheet) paused = true;
 }
 const sheetHead = (title, sub) => `<div class="sh"><div><b>${title}</b><small>${sub}</small></div><button class="hbtn" data-act="resume" aria-label="닫기">${ic('x')}</button></div>`;
-const unitSrc = (b, type) => `img/units/${b.id}_${C.typeKey(type).replace('+', '-')}.webp`;
+const unitSrc = (b, type, grp = 0) => `img/${unitArtName(b.id, C.sortType(type), grp)}.webp`;     // 계급대에 맞는 그림이 있으면 그 그림
 function hide() { overlay.classList.remove('on', 'sheet'); paused = false; last = performance.now(); }
 overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) ACT[b.dataset.act](b.dataset.arg);
   else if (e.target === overlay && overlay.classList.contains('sheet')) hide(); });   // 시트 바깥(어두운 부분)을 누르면 닫힌다
@@ -153,6 +153,9 @@ const ACT = {
       ${Object.entries(b.types).map(([k, [n, w]]) => `<div class="wcard">${uimg(k)}<div><b>${n}</b> ${chips(k)}
         <p><em>${b.ranks[0]}~</em> ${w[0]}</p><p><em>${b.ranks[b.tiers[0]]}~</em> ${w[1]}</p><p><em>${b.ranks[b.tiers[1]]}~</em> ${w[2]}</p></div></div>`).join('')}
       <h2>계급 · 계급장</h2>
+      <h3>계급대가 오르면 모습이 달라집니다</h3>
+      <div class="cx5">${[0, 1, 2, 3, 4].map(t => { const i = b.insig.findIndex(x => C.RANK_GROUP[x[0]] === t); return i < 0 ? '' : `<div class="ucard"><img class="ui" src="${unitSrc(b, ['inf', 'inf'], t)}" alt=""><b>${b.ranks[i]}~</b></div>`; }).join('')}</div>
+      <h3>계급장</h3>
       <div class="ranks">${b.ranks.map((r, i) => `<div class="rk t${i >= b.tiers[1] ? 2 : i >= b.tiers[0] ? 1 : 0}"><img src="${insigUrl(b.insig[i])}" alt=""><b>${r}</b><small>Lv${i + 1}</small></div>`).join('')}</div>
       ${b.hidden.length ? `<h2>히든 계급</h2>${b.hidden.map(h => meta.found[h.id]
         ? `<div class="wcard hid"><div class="hbadge"><img src="${insigUrl(h.insig)}" alt=""><b>${h.name}</b></div><div><b>${h.name}</b> <small>${b.ranks[h.level]}급</small><p>${h.text}</p><p><em>얻는 법</em> ${h.how}</p></div></div>`
@@ -232,7 +235,7 @@ function statChips(st, prev) {
 function renderInfo() {
   const b = g.branch, A = ui.sel != null ? g.units[ui.sel] : null, B = ui.target != null ? g.units[ui.target] : null;
   const key = [A && A.id, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join('')].join('|'); if (key === infoKey) return; infoKey = key;
-  const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitSrc(b, u.type)}" alt=""><b>${C.unitName(b, u)}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
+  const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitSrc(b, u.type, C.rankGroup(b, u))}" alt=""><b>${C.unitName(b, u)}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
   $('app').classList.toggle('sel', !!A);       // 유닛을 고른 동안에는 하단 버튼 자리까지 카드가 쓴다
   if (A && B) {
     const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type, hidden: p.hidden }, h = C.hiddenDef(b, p.hidden);
@@ -243,7 +246,7 @@ function renderInfo() {
       <div class="acts"><button class="btn" data-do="cancel">취소</button><button class="btn primary" data-do="merge">조합하기</button></div></div>`;
   } else if (A) {
     const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean);
-    el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitSrc(b, A.type)}" alt="">
+    el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitSrc(b, A.type, C.rankGroup(b, A))}" alt="">
       <div><h3>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? '<span class="tag hid">히든</span>' : ''}</h3>
         <small>${h ? `${b.ranks[A.level]}급` : `Lv${A.level + 1}`} · ${C.unitWeapon(b, A)}</small></div></div>
       ${statChips(A.stats)}

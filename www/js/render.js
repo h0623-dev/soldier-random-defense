@@ -1,13 +1,12 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO } from './data.js';
-import { FIELD, CELL, CFG, AREAS, canMerge, rankName, rankInsig } from './core.js';
-import { drawTag, drawSoldierFallback, unitImage, ENEMY_DRAW, ENEMY_R, sprite, enemyArt, loadArt } from './sprites.js';
+import { FIELD, CELL, CFG, AREAS, RANK_GROUP, canMerge, rankName, rankInsig } from './core.js';
+import { drawTag, drawSoldierFallback, unitImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, enemyArt, loadArt } from './sprites.js';
 loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
 const FEET = 34, CHAR = 84;                            // 발판 중심에서 캐릭터 발까지, 캐릭터 그림 크기
 // 계급대(계급장 모양으로 구분): 병 · 부사관 · 위관 · 영관 · 장성. 계급대가 오를수록 몸집과 장식이 달라진다
-const RANK_GROUP = { bar: 0, chev: 1, dia: 2, flower: 3, star: 4 };
 const RANK_SIZE = [0.9, 0.97, 1.04, 1.11, 1.2];
 const PEDESTAL = [null, ['#c98a4b', '#7a4a22'], ['#dfe5ea', '#7f8a94'], ['#ffd45e', '#a8780f'], ['#ffe27a', '#b07c08']];
 const rr = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
@@ -226,18 +225,19 @@ function unit(ctx, b, u, p, k, now, quality) {
   // 캐릭터: 가만히 있을 때는 숨쉬듯 조금 움직이고, 사격할 때는 반동으로 튄다. 발을 기준으로 커졌다 작아진다
   const fire = u.fireT > 0 ? Math.sin((1 - u.fireT / 0.16) * Math.PI) : 0;
   const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.2 : 0) - fire * 6, sc = 1 + fire * 0.07;
-  const im = unitImage(b.id, u.type) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
+  const im = unitImage(b.id, u.type, grp) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
   const w = size * sc;
   const stunned = u.stunT > 0;
   // 등 뒤 장식 (캐릭터보다 먼저 그려 뒤에 놓는다): 위관 깃발 하나, 영관 깃발 둘, 장성 망토와 후광
-  if (grp === 2 || grp === 3) for (const sd of grp === 3 ? [-1, 1] : [1]) {
+  const own = unitArtTier(b.id, u.type, grp) === grp;      // 이 계급대 전용 그림이 있으면 깃발·망토·후광은 그리지 않는다(그림에 이미 차림이 있다)
+  if (!own && (grp === 2 || grp === 3)) for (const sd of grp === 3 ? [-1, 1] : [1]) {
     const x0 = p.x + sd * size * 0.12, y0 = fy - 6, x1 = p.x + sd * size * 0.46, y1 = top + size * 0.1;
     ctx.strokeStyle = '#3a2f20'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
     ctx.fillStyle = grp === 3 ? b.color : '#f4f6f8'; ctx.strokeStyle = grp === 3 ? '#ffd45e' : '#1b1f17'; ctx.lineWidth = grp === 3 ? 2 : 1.5;
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + sd * 20, y1 + 5); ctx.lineTo(x1 + sd * 17, y1 + 19); ctx.lineTo(x1 - sd * 3, y1 + 13); ctx.closePath(); ctx.fill(); ctx.stroke();
     if (grp === 3) { ctx.fillStyle = '#ffd45e'; ctx.beginPath(); ctx.arc(x1 + sd * 8, y1 + 10, 3, 0, 7); ctx.fill(); }
   }
-  if (grp === 4) {
+  if (grp === 4 && !own) {
     ctx.fillStyle = '#b3262e'; ctx.strokeStyle = '#1b1f17'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(p.x - size * 0.2, top + size * 0.5); ctx.lineTo(p.x + size * 0.2, top + size * 0.5); ctx.lineTo(p.x + size * 0.42, fy); ctx.quadraticCurveTo(p.x, fy + 7, p.x - size * 0.42, fy); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.x + size * 0.4, fy - 3); ctx.quadraticCurveTo(p.x, fy + 4, p.x - size * 0.4, fy - 3); ctx.stroke();
