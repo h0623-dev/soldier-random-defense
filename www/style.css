@@ -264,3 +264,48 @@ img.u { filter: var(--skin, none); }
 #info.c2 .mix .op { flex: none; }
 #b-coop[hidden] { display: none; }
 .wcard.hero .hrc img.hpic { width: 5.6rem; height: 5.6rem; }
+
+/* ── 대기실(작전 본부) — 한 화면에 다 들어온다. 위: 프로필·재화 / 양옆: 기능 버튼 / 가운데: 무대(일러스트) / 아래: 출격 ── */
+.panel.title { height: 100%; min-height: 0; overflow: hidden; background: #55b9fd; }
+.lstage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; background: linear-gradient(rgba(64, 168, 245, .95), rgba(85, 185, 253, .55) 22%, rgba(85, 185, 253, 0) 46%), url(img/title.webp) center bottom / cover no-repeat;
+  padding: calc(0.8rem + env(safe-area-inset-top)) calc(0.9rem + env(safe-area-inset-right)) 3rem calc(0.9rem + env(safe-area-inset-left)); }
+.ltop { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; } .ltop .hbtn { border: var(--ln); box-shadow: 0 0.3rem 0 var(--ink); width: 4rem; height: 4rem; } .ltop .hbtn.off { background: var(--soft); color: var(--mute); }
+.lprof { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.7rem; height: 4.6rem; padding: 0.3rem 1.2rem 0.3rem 0.3rem; margin-right: auto; max-width: 24rem; text-align: left;
+  border-radius: 9.9rem; background: rgba(43, 33, 24, .86); color: #fff; border: 0.2rem solid var(--ink); }
+.lprof img { width: 3.8rem; height: 3.8rem; border-radius: 50%; border: 0.2rem solid #fff; flex: none; } .lprof span { min-width: 0; }
+.lprof b { display: block; font-size: 1.45rem; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .lprof small { display: block; font-size: 1.1rem; color: var(--yellow); font-weight: 800; }
+.lstage .res { margin: 0; flex: none; } .lstage .res .pill { border: var(--ln); padding-top: 0.25rem; padding-bottom: 0.25rem; font-size: 1.35rem; }
+.lmid { flex: 1 1 auto; min-height: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 0.4rem; margin-top: 0.9rem; }
+.lcol { flex: none; display: flex; flex-direction: column; gap: 0.7rem; width: 7.4rem; align-items: center; }
+.lcen { flex: 1; min-width: 0; padding-top: 0.4rem; } .lcen .tlogo h1 { font-size: 3.3rem; -webkit-text-stroke: 0.75rem var(--ink); } .lcen .tlogo p { margin-top: 0.8rem; font-size: 1.1rem; padding: 0.4rem 0.9rem; line-height: 1.35; word-break: keep-all; }
+.lt { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; width: 100%; padding: 0; background: none; color: #fff; }
+.lt span { position: relative; display: flex; align-items: center; justify-content: center; width: 5.2rem; height: 5.2rem; border-radius: 1.5rem; border: var(--ln); box-shadow: 0 0.35rem 0 var(--ink); color: var(--ink); }
+.lt span .ic { font-size: 3rem; } .lt b { font-size: 1.15rem; font-weight: 900; white-space: nowrap; -webkit-text-stroke: 0.45rem var(--ink); paint-order: stroke fill; }
+.lt .dot { position: absolute; top: -0.5rem; right: -0.5rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--red); border: 0.22rem solid var(--ink); }
+.lt:active span, .lplay:active, .lcoop:active { transform: translateY(0.2rem); box-shadow: 0 0.1rem 0 var(--ink); }
+.lbot { flex: none; position: relative; margin-top: -2.2rem; background: var(--cream); border-top: 0.3rem solid var(--ink); border-radius: 2.4rem 2.4rem 0 0;
+  padding: 1.2rem calc(1.4rem + env(safe-area-inset-right)) calc(0.9rem + env(safe-area-inset-bottom)) calc(1.4rem + env(safe-area-inset-left)); }
+.lbot .wide.cont { margin: 0 0 1rem; height: 5rem; font-size: 1.7rem; }
+.lgo { display: flex; gap: 1rem; align-items: stretch; }
+.lplay { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; height: 8.6rem; border-radius: 2rem; background: var(--green); color: #12300f; border: var(--ln); box-shadow: 0 0.55rem 0 var(--ink); }
+.lplay b { display: flex; align-items: center; gap: 0.5rem; font-size: 2.9rem; font-weight: 900; letter-spacing: -1px; } .lplay b .ic { font-size: 2.6rem; }
+.lplay small { display: flex; align-items: center; gap: 0.2rem; padding: 0.15rem 1.4rem 0.15rem 1rem; border-radius: 9.9rem; background: var(--ink); color: #fff; font-size: 1.5rem; font-weight: 900; } .lplay small .ic { color: var(--yellow); font-size: 1.7rem; }
+.lplay.sec { background: var(--paper); color: var(--ink); } .lplay.sec b { font-size: 2.3rem; }
+.lcoop { flex: none; width: 9.6rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; border-radius: 2rem; background: #7fd0ff; color: var(--ink); border: var(--ln); box-shadow: 0 0.55rem 0 var(--ink); }
+.lcoop .ic { font-size: 3.2rem; } .lcoop b { font-size: 1.35rem; font-weight: 900; }
+.lbot .sub.ver { margin: 0.9rem 0 0; font-size: 1rem; }
+@media (max-height: 640px) and (orientation: portrait) {      /* 세로가 짧은 화면: 버튼을 줄여 한 화면에 넣는다 */
+  .lt span { width: 4.3rem; height: 4.3rem; border-radius: 1.3rem; } .lt span .ic { font-size: 2.5rem; } .lt b { font-size: 1.05rem; } .lcol { gap: 0.45rem; width: 6.6rem; }
+  .lcen .tlogo h1 { font-size: 2.8rem; } .lplay { height: 7rem; } .lplay b { font-size: 2.5rem; } .lbot .wide.cont { height: 4.4rem; margin-bottom: 0.8rem; } .lbot { padding-top: 1rem; } .lstage { padding-bottom: 2.8rem; }
+}
+@media (orientation: landscape) {      /* 가로 화면: 무대는 왼쪽, 출격은 오른쪽 */
+  .panel.title { flex-direction: row; }
+  .lstage { padding-bottom: 0.8rem; background-size: auto, cover; background-position: center, center 70%; }
+  .lbot { width: 34rem; margin: 0; border-top: 0; border-left: 0.3rem solid var(--ink); border-radius: 0; display: flex; flex-direction: column; justify-content: center; }
+  .lcol { flex-direction: row; flex-wrap: wrap; width: 15rem; justify-content: center; } .lcol .lt { width: 6.8rem; }
+}
+@media (orientation: landscape) and (max-height: 480px) {
+  .lt span { width: 4.2rem; height: 4.2rem; } .lt span .ic { font-size: 2.4rem; } .lt b { font-size: 1.05rem; } .lcol { gap: 0.4rem; width: 13.6rem; } .lcol .lt { width: 6.2rem; }
+  .lcen .tlogo h1 { font-size: 2.8rem; } .lcen .tlogo p { display: none; } .lplay { height: 7rem; } .ltop { margin-bottom: 0.4rem; } .lmid { margin-top: 0.5rem; }
+}
+

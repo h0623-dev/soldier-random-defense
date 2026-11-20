@@ -202,32 +202,39 @@ function enter() { loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui 
 
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {
-  title() {      // 처음 화면: 일러스트(img/title.webp) 위에 제목, 아래에 메뉴
-    // 작전 본부: 출격 · 오늘의 임무(출석, 일일 임무 3개) · 전투 밖 성장(표창·숙련도·뽑기판·영구 강화) · 기록
-    const run = peekRun(), day = today(), can = M.canAttend(meta, day), ar = M.ATTEND[M.attendDay(meta)], ds = M.dailyState(meta, day), dr = M.DAILY_REWARD;
-    const dot = on => (on ? '<i class="dot"></i>' : '');
-    show(`<div class="tart"><div class="tlogo"><h1>털뭉치수비대</h1><p>계급을 올리고 병과를 조합해 고철 군단을 막아라</p></div></div>
-      <div class="tmenu">
+  title() {      // 대기실(작전 본부). 한 화면에 다 들어온다: 위 = 프로필·재화, 양옆 = 기능 버튼, 가운데 = 무대, 아래 = 출격
+    M.ensureId(meta);
+    const run = peekRun(), day = today(), top = M.topWave(meta), ds = M.dailyState(meta, day);
+    const todo = M.canAttend(meta, day) || ds.some(m => m.done && !m.got);      // 받을 보상이 있으면 빨간 점
+    const tile = (act, icon, label, col, on) => `<button class="lt" data-act="${act}"><span style="background:${col}">${ic(icon)}${on ? '<i class="dot"></i>' : ''}</span><b>${label}</b></button>`;
+    show(`<div class="lstage">
+        <div class="ltop">
+          <button class="lprof" data-act="rank"><img src="img/icon-192.png" alt=""><span><b>${esc(meta.name)}</b><small>${top ? `최고 ${top}단계` : '첫 출격 전'}</small></span></button>
+          <button class="hbtn" data-act="help" aria-label="게임 방법">${ic('help')}</button>
+          <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="title" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${ic('sound')}</button>
+        </div>
         ${resBar()}
+        <div class="lmid">
+          <div class="lcol">${tile('daily', 'list', '임무', '#ffd45e', todo)}${tile('board', 'ticket', '뽑기판', '#ffb347', meta.tickets > 0)}${tile('shop', 'shop', '상점', '#7fd0ff', M.adLeft(meta, day, 'gem') > 0)}${tile('rank', 'ring', '랭킹', '#c9a6ff', false)}</div>
+          <div class="lcen"><div class="tlogo"><h1>털뭉치수비대</h1><p>계급을 올리고 병과를 조합해 고철 군단을 막아라</p></div></div>
+          <div class="lcol">${tile('commend', 'star', '부대 표창', '#ff9d8a', meta.medals >= M.CM_BOX)}${tile('mastery', 'up', '숙련도', '#8fe08a', false)}${tile('upgrades', 'medal', '영구 강화', '#ffd45e', false)}${tile('records', 'flag', '기록', '#f0deb0', false)}</div>
+        </div>
+      </div>
+      <div class="lbot">
         ${run ? `<button class="wide cont" data-act="cont">${ic('play')}이어하기 <small>${runLabel(run)}</small></button>` : ''}
-        <button class="wide${run ? ' sec' : ''}" data-act="branches">${ic('play')}${run ? '새로 출격' : '출격'}</button>
-        <div class="tgrid two"><button class="wide sec" data-act="coop">${ic('hand')}2인 협동</button><button class="wide sec" data-act="rank">${ic('medal')}랭킹</button></div>
-        <div class="hq">
-          <div class="hqr${can ? ' can' : ' got'}"><span><b>출석 ${can ? `${meta.att.n % M.ATTEND.length + 1}일차` : '완료'}</b>${can ? M.rewardText(ar) : `다음 보상 · ${M.rewardText(ar)}`}</span><button class="btn gold" data-act="attend" ${can ? '' : 'disabled'}>${can ? '받기' : '내일'}</button></div>
-          ${ds.map(m => `<div class="hqr${m.got ? ' got' : m.done ? ' can' : ''}"><span><b>일일</b>${m.text} <em>${m.cur}/${m.need}</em></span><button class="btn gold" data-act="dclaim" data-arg="${m.id}" ${m.done && !m.got ? '' : 'disabled'}>${m.got ? '완료' : `${ic('ticket')}${dr.t} ${ic('medal')}${dr.m}`}</button></div>`).join('')}
-        </div>
-        <div class="tgrid">
-          <button class="wide sec" data-act="commend">${ic('star')}부대 표창${dot(meta.medals >= M.CM_BOX)}</button>
-          <button class="wide sec" data-act="mastery">${ic('up')}병과 숙련도</button>
-          <button class="wide sec" data-act="board">${ic('ticket')}보급 뽑기판${dot(meta.tickets > 0)}</button>
-          <button class="wide sec" data-act="upgrades">${ic('medal')}영구 강화</button>
-          <button class="wide sec" data-act="records">${ic('flag')}기록</button>
-          <button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
-          <button class="wide sec" data-act="shop">${ic('shop')}보급 상점${dot(M.adLeft(meta, day, 'gem') > 0)}</button>
-          <button class="wide sec" data-act="mute" data-arg="title">${ic('sound')}소리 ${meta.mute ? '꺼짐' : '켜짐'}</button>
-        </div>
+        <div class="lgo"><button class="lplay${run ? ' sec' : ''}" data-act="branches"><b>${ic('play')}${run ? '새로 출격' : '출격'}</b><small>${ic('bolt')}1</small></button>
+          <button class="lcoop" data-act="coop">${ic('hand')}<b>2인 협동</b></button></div>
         <p class="sub ver">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · ${buildLabel(buildInfo.live || buildInfo.bundled)}` : ''}</p>
       </div>`, false, 'title');
+  },
+  daily() {      // 오늘의 임무: 출석 + 일일 임무 3개
+    const day = today(), can = M.canAttend(meta, day), ar = M.ATTEND[M.attendDay(meta)], ds = M.dailyState(meta, day), dr = M.DAILY_REWARD;
+    show(`<h2>오늘의 임무</h2><p class="sub">출석과 일일 임무로 훈장·뽑기 티켓을 받습니다</p>
+      <div class="hq">
+        <div class="hqr${can ? ' can' : ' got'}"><span><b>출석 ${can ? `${meta.att.n % M.ATTEND.length + 1}일차` : '완료'}</b>${can ? M.rewardText(ar) : `다음 보상 · ${M.rewardText(ar)}`}</span><button class="btn gold" data-act="attend" ${can ? '' : 'disabled'}>${can ? '받기' : '내일'}</button></div>
+        ${ds.map(m => `<div class="hqr${m.got ? ' got' : m.done ? ' can' : ''}"><span><b>일일</b>${m.text} <em>${m.cur}/${m.need}</em></span><button class="btn gold" data-act="dclaim" data-arg="${m.id}" ${m.done && !m.got ? '' : 'disabled'}>${m.got ? '완료' : `${ic('ticket')}${dr.t} ${ic('medal')}${dr.m}`}</button></div>`).join('')}
+      </div>
+      <button class="wide sec" data-act="title">뒤로</button>`);
   },
   branches() {
     if (!diffOpen(meta.diff)) meta.diff = 0;
@@ -322,8 +329,8 @@ const ACT = {
     } catch { if (req === rankReq) page('<p class="note cmmsg">랭킹을 불러오지 못했습니다 — 연결을 확인하세요</p>'); }
   },
   // ── 작전 본부의 화면들 ──
-  attend() { const r = M.attend(meta, today(), rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.title(); toast(`출석 보상 — ${M.rewardText(r.reward)}${r.cms.length ? ` (${r.cms.map(c => c.name).join(', ')})` : ''}`, 2600); } },
-  dclaim(id) { const r = M.dailyClaim(meta, today(), id, rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.title(); toast(`일일 임무 보상 — ${M.rewardText(r)}`, 2200); } },
+  attend() { const r = M.attend(meta, today(), rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.daily(); toast(`출석 보상 — ${M.rewardText(r.reward)}${r.cms.length ? ` (${r.cms.map(c => c.name).join(', ')})` : ''}`, 2600); } },
+  dclaim(id) { const r = M.dailyClaim(meta, today(), id, rnd); if (r) { saveMeta(); Sound.play('camp'); ACT.daily(); toast(`일일 임무 보상 — ${M.rewardText(r)}`, 2200); } },
   // 병과 숙련도: 군별마다 10개 병과. 판이 끝나면 그 판에서 준 피해 비율대로 경험치가 쌓인다
   mastery(id) {
     const b = BRANCHES.find(x => x.id === id) || BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0], mine = meta.xp[b.id] || {}, pct = Math.round(C.MASTERY.step * 100);
