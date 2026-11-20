@@ -1,5 +1,11 @@
 [
  {
+  "file": "art/icons/raw/sheet_ui.png",
+  "w": 1536,
+  "h": 1024,
+  "prompt": "A game icon sprite sheet with exactly twelve separate item illustrations arranged in a clean grid of 4 columns and 3 rows with wide empty gaps between them, on a plain solid pure white background. No borders, no panels, no frames, no labels, no text, no letters, no numbers. Art style for every item: polished casual mobile game icon style, smooth vector shapes with glossy gradient shading, strong shiny highlights, vivid colors, thin dark outlines. Each item is centered in its own cell, all items about the same visual size, nothing overlapping, nothing touching the image edges or crossing into another cell. These are menu button icons for a cute animal army game. Row 1, left to right: (1) a round sky-blue help button with one big white question mark symbol on it (this single question mark is the only symbol allowed); (2) two cute animal paws, one tan and one gray, giving each other a high-five with a small yellow spark between them; (3) a shopping cart filled with blue diamond gems and a small gift box; (4) a round olive-brown camouflage army helmet with a golden paw print on the front. Row 2, left to right: (5) two crossed silver swords with golden hilts in front of a small red shield; (6) a big golden five-pointed star framed by a green laurel wreath; (7) three face-down cards fanned out, with olive-green backs and a gold star on each back; (8) an orange megaphone speaker with three blue sound waves coming out. Row 3, left to right: (9) a small camouflage uniform jacket hanging on a wooden clothes hanger; (10) an open training manual book with a big green upward arrow rising from it; (11) a dark iron blacksmith anvil with a golden hammer above it and orange sparks; (12) an orange megaphone speaker with a red diagonal cross over it, no sound waves."
+ },
+ {
   "file": "art/icons/raw/sheet_cm.png",
   "w": 1536,
   "h": 1024,

@@ -193,19 +193,20 @@ function show(html, sheet = false, cls = '') {
 }
 // 하단 탭 5개(대기실과 그 옆 화면들): 상점 · 부대 · 전투 · 표창 · 뽑기. 탭 화면은 위(프로필·재화) · 가운데(내용 — 여기만 스크롤) · 아래(탭)로 짜인다
 let tabNow = 'title', mBranch = '', cmSel = '';      // 지금 떠 있는 탭 화면(ACT 이름) · 부대 탭에서 보던 군별 · 표창 탭에서 고른 표창
-const TABS = [['shop', 'cart', '상점'], ['mastery', 'paw', '부대'], ['title', 'swords', '전투'], ['commend', 'star', '표창'], ['board', 'tkt', '뽑기']];
+const TABS = [['shop', 'cart', '상점', 'nav_shop'], ['mastery', 'paw', '부대', 'nav_unit'], ['title', 'swords', '전투', 'nav_battle'], ['commend', 'star', '표창', 'nav_cm'], ['board', 'tkt', '뽑기', 'nav_draw']];
+const pic = (name, icon) => `<span class="pic"><img src="img/ic/${name}.webp" alt="" onerror="this.remove()">${ic(icon)}</span>`;      // 그림 아이콘(없으면 기호)
 const navBar = cur => { const day = today(), dots = { shop: M.adLeft(meta, day, 'gem') > 0, commend: meta.medals >= M.CM_BOX, board: meta.tickets > 0 };
-  return `<nav class="nav5">${TABS.map(([act, icon, label]) => `<button class="${act === cur ? 'on' : ''}" data-act="${act}">${ic(icon)}<b>${label}</b>${dots[act] && act !== cur ? '<i class="dot"></i>' : ''}</button>`).join('')}</nav>`; };
+  return `<nav class="nav5">${TABS.map(([act, icon, label, img]) => `<button class="${act === cur ? 'on' : ''}" data-act="${act}">${pic(img, icon)}<b>${label}</b>${dots[act] && act !== cur ? '<i class="dot"></i>' : ''}</button>`).join('')}</nav>`; };
 const topBar = self => { M.ensureId(meta); const top = M.topWave(meta);
   return `<div class="ltop"><button class="lprof" data-act="rank"><img src="img/icon-192.png" alt=""><span><b>${esc(meta.name)}</b><small>${top ? `최고 ${top}단계` : '첫 출격 전'}</small></span></button>
-    <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="${self}" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${ic('sound')}</button></div>${resBar()}`; };
+    <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="${self}" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${pic(meta.mute ? 'mute' : 'sound', 'sound')}</button></div>${resBar()}`; };
 // tab: 아래 탭에서 불이 켜질 자리, self: 이 화면을 다시 그리는 ACT 이름, sub: 내용과 탭 사이에 붙는 줄(하위 메뉴·실행 버튼), keep: 스크롤 자리 유지
 function tabPage(tab, self, html, sub = '', keep = false) {
   const old = overlay.querySelector('.tbody'), y = keep && old && tabNow === self ? old.scrollTop : 0;
   show(`<div class="thead">${topBar(self)}</div><div class="tbody">${html}</div>${sub ? `<div class="subbar">${sub}</div>` : ''}${navBar(tab)}`, false, 'tabp'); tabNow = self;
   if (y) overlay.querySelector('.tbody').scrollTop = y;
 }
-const unitSub = cur => [['mastery', '숙련도'], ['skins', '스킨'], ['upgrades', '영구 강화']].map(([a, t]) => `<button class="${a === cur ? 'on' : ''}" data-act="${a}">${t}</button>`).join('');
+const unitSub = cur => [['mastery', '숙련도', 'mastery'], ['skins', '스킨', 'skin'], ['upgrades', '영구 강화', 'upgrade']].map(([a, t, img]) => `<button class="${a === cur ? 'on' : ''}" data-act="${a}">${pic(img, 'up')}${t}</button>`).join('');
 const c2 = (c, lv) => c.text(cmVal(c, lv));      // 표창의 그 단계 효과 문구
 const CM_ICON = { summon: 'plus', luck: 'ring', tile: 'target', depot: 'box', supply: 'box', elite: 'skull', boss: 'sword', crit: 'target', gamble: 'up', time: 'flag', sell: 'exit', medal: 'medal' };
 const BOARD_LABEL = { big: ['특등', '표창 3장'], cm: ['표창', '1장'], m3: ['훈장', '3개'], m1: ['훈장', '1개'], xp: ['교본', '경험치'] };
@@ -229,13 +230,13 @@ const ACT = {
         <div class="lmid">
           <div class="lcol">${tile('daily', 'list', '임무', '#ffe9a8', todo, 'mission')}${tile('rank', 'ring', '랭킹', '#d9c2ff', false, 'trophy')}</div>
           <div class="lcen"><div class="tlogo"><h1>털뭉치수비대</h1><p>계급을 올리고 병과를 조합해 고철 군단을 막아라</p></div></div>
-          <div class="lcol">${tile('records', 'flag', '기록', '#f0deb0', false, 'record')}${tile('help', 'help', '게임 방법', '#8fe08a', false)}</div>
+          <div class="lcol">${tile('records', 'flag', '기록', '#f0deb0', false, 'record')}${tile('help', 'help', '게임 방법', '#bfe9ff', false, 'help')}</div>
         </div>
       </div>
       <div class="lbot">
         ${run ? `<button class="wide cont" data-act="cont">${ic('play')}이어하기 <small>${runLabel(run)}</small></button>` : ''}
         <div class="lgo"><button class="lplay${run ? ' sec' : ''}" data-act="branches"><b>${ic('play')}${run ? '새로 출격' : '출격'}</b><small>${ic('bolt')}1</small></button>
-          <button class="lcoop" data-act="coop">${ic('hand')}<b>2인 협동</b></button></div>
+          <button class="lcoop" data-act="coop">${pic('coop', 'hand')}<b>2인 협동</b></button></div>
         <p class="sub ver">v${buildInfo.version || '0.1.0'} · 시제품${buildInfo.live || buildInfo.bundled ? ` · ${buildLabel(buildInfo.live || buildInfo.bundled)}` : ''}</p>
       </div></div>${navBar('title')}`, false, 'title tabp');
   },

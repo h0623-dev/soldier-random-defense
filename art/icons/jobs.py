@@ -1,5 +1,5 @@
 """표창 아이콘 18종 · 재화 기호 · 대기실 버튼 그림 (E 광택 캐주얼풍, 상점 그림과 같은 그림체). 한 장에 12개(4칸 × 3줄).
-사용: python3 art/icons/jobs.py && python3 tools/codex_art.py 2 99 art/icons/jobs.json  →  art/icons/raw/sheet_<cm|misc>.png
+사용: python3 art/icons/jobs.py && python3 tools/codex_art.py 2 99 art/icons/jobs.json  →  art/icons/raw/sheet_<cm|misc|ui>.png
 게임에 넣기: python3 art/icons/apply.py"""
 import json, os
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -21,6 +21,14 @@ MISC = ("Row 1, left to right: (1) " + BADGE.format(a='a tan-and-cream puppy wea
         + "; (7) one single large bright blue faceted diamond gem, front view; (8) one thick shiny gold coin with a star embossed on it, front view. "
         "Row 3, left to right: (9) a small sky-blue metal supply box with a yellow latch and a white star on the front; (10) a wooden clipboard with a paper sheet showing three green check marks; "
         "(11) a golden trophy cup with two handles and a star; (12) an open brown record book with a red ribbon bookmark and a quill pen. Original designs, no insignia, no emblems, no flags.")
-jobs = [{'file': 'art/icons/raw/sheet_cm.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + CM},
+UI = ("These are menu button icons for a cute animal army game. Row 1, left to right: (1) a round sky-blue help button with one big white question mark symbol on it (this single question mark is the only symbol allowed); "
+      "(2) two cute animal paws, one tan and one gray, giving each other a high-five with a small yellow spark between them; (3) a shopping cart filled with blue diamond gems and a small gift box; "
+      "(4) a round olive-brown camouflage army helmet with a golden paw print on the front. "
+      "Row 2, left to right: (5) two crossed silver swords with golden hilts in front of a small red shield; (6) a big golden five-pointed star framed by a green laurel wreath; "
+      "(7) three face-down cards fanned out, with olive-green backs and a gold star on each back; (8) an orange megaphone speaker with three blue sound waves coming out. "
+      "Row 3, left to right: (9) a small camouflage uniform jacket hanging on a wooden clothes hanger; (10) an open training manual book with a big green upward arrow rising from it; "
+      "(11) a dark iron blacksmith anvil with a golden hammer above it and orange sparks; (12) an orange megaphone speaker with a red diagonal cross over it, no sound waves.")
+jobs = [{'file': 'art/icons/raw/sheet_ui.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + UI},
+        {'file': 'art/icons/raw/sheet_cm.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + CM},
         {'file': 'art/icons/raw/sheet_misc.png', 'w': 1536, 'h': 1024, 'prompt': HEAD + MISC}]
 json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장')
