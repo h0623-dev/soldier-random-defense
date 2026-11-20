@@ -16,7 +16,20 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // 시험 빌드(debug)는 저장소에 둔 고정 키로 서명한다 — 어디서 빌드하든 서명이 같아야 기존 앱 위에 덮어 깔린다.
+    // 이 키는 시험용일 뿐이다(Android 표준 디버그 키 형식, 비밀번호도 표준값). 출시용 서명 키는 여기에 두지 않는다.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
