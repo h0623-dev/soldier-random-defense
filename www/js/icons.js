@@ -32,5 +32,9 @@ export const ICON = {
   tkt: '<svg viewBox="0 0 24 24"><path d="M3 7h18v3.5a1.5 1.5 0 000 3V17H3v-3.5a1.5 1.5 0 000-3z" fill="currentColor"/><path d="M14.5 8v8" stroke="#3b2e23" stroke-width="1.6" stroke-dasharray="2 2"/></svg>',
   shop: '<svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M5 9v11h14V9M4 9h16" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"/><path d="M10 20v-6h4v6" fill="none" stroke="currentColor" stroke-width="2.3"/></svg>',
 };
-export const ic = (name, cls = '') => `<span class="ic ${cls}">${ICON[name] || ''}</span>`;
-export function fillIcons(root = document) { root.querySelectorAll('[data-ic]').forEach(e => { e.classList.add('ic'); e.innerHTML = ICON[e.dataset.ic] || ''; }); }
+// 재화 기호는 그림 파일(img/ic/<이름>.webp, 상점과 같은 그림체)로 보여 준다. 그림을 못 읽으면 위의 SVG로 돌아간다
+const PIC = ['gem', 'coin', 'box', 'ticket', 'bolt', 'medal'];
+const body = name => (PIC.includes(name) ? `<img src="img/ic/${name}.webp" alt="" onerror="this.outerHTML=window.__icSvg('${name}')">` : ICON[name] || '');
+if (typeof window !== 'undefined') window.__icSvg = n => ICON[n] || '';
+export const ic = (name, cls = '') => `<span class="ic ${cls}">${body(name)}</span>`;
+export function fillIcons(root = document) { root.querySelectorAll('[data-ic]').forEach(e => { e.classList.add('ic'); e.innerHTML = body(e.dataset.ic); }); }

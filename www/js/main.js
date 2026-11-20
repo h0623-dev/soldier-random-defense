@@ -223,13 +223,13 @@ const ACT = {
   title() {      // 대기실(전투 탭). 한 화면에 다 들어온다: 위 = 프로필·재화, 양옆 = 그림 버튼, 가운데 = 무대, 아래 = 출격 + 탭 5개
     const run = peekRun(), day = today(), ds = M.dailyState(meta, day);
     const todo = M.canAttend(meta, day) || ds.some(m => m.done && !m.got);      // 받을 보상이 있으면 빨간 점
-    const tile = (act, icon, label, col, on) => `<button class="lt" data-act="${act}"><span style="background:${col}">${ic(icon)}${on ? '<i class="dot"></i>' : ''}</span><b>${label}</b></button>`;
+    const tile = (act, icon, label, col, on, pic) => `<button class="lt" data-act="${act}"><span style="background:${col}">${pic ? `<img src="img/ic/${pic}.webp" alt="" onerror="this.remove()">` : ''}${ic(icon)}${on ? '<i class="dot"></i>' : ''}</span><b>${label}</b></button>`;
     show(`<div class="lwrap"><div class="lstage">
         ${topBar('title')}
         <div class="lmid">
-          <div class="lcol">${tile('daily', 'list', '임무', '#ffd45e', todo)}${tile('rank', 'ring', '랭킹', '#c9a6ff', false)}</div>
+          <div class="lcol">${tile('daily', 'list', '임무', '#ffe9a8', todo, 'mission')}${tile('rank', 'ring', '랭킹', '#d9c2ff', false, 'trophy')}</div>
           <div class="lcen"><div class="tlogo"><h1>털뭉치수비대</h1><p>계급을 올리고 병과를 조합해 고철 군단을 막아라</p></div></div>
-          <div class="lcol">${tile('records', 'flag', '기록', '#f0deb0', false)}${tile('help', 'help', '게임 방법', '#8fe08a', false)}</div>
+          <div class="lcol">${tile('records', 'flag', '기록', '#f0deb0', false, 'record')}${tile('help', 'help', '게임 방법', '#8fe08a', false)}</div>
         </div>
       </div>
       <div class="lbot">
@@ -366,12 +366,12 @@ const ACT = {
   commend(msg) {      // 표창 탭 — 표창 카드(단계 · 모은 장수). 카드를 누르면 위에 효과가 나온다
     const sum = Object.values(meta.cmN).reduce((a, n) => a + n, 0), sel = COMMENDS.find(c => c.id === cmSel) || COMMENDS[0];
     const sn = meta.cmN[sel.id] || 0, slv = M.cmLevel(sn), snx = M.cmNext(sn);
-    tabPage('commend', 'commend', `<div class="cinfo"><b>${sel.name} <em>${slv ? `${slv}단계` : '없음'}</em></b>
+    tabPage('commend', 'commend', `<div class="cinfo"><img src="img/cm/${sel.id}.webp" alt="" onerror="this.remove()"><b>${sel.name} <em>${slv ? `${slv}단계` : '없음'}</em></b>
         <span>${slv ? c2(sel, slv) : `${c2(sel, 1)} (1단계부터)`}</span>
         <small>${snx ? `${sn}/${snx}장${slv && slv < CM_NEED.length ? ` · 다음 단계: ${c2(sel, slv + 1)}` : ''}` : '최고 단계'}</small></div>
       <p class="note cmmsg">${typeof msg === 'string' && msg ? msg : `모은 표창 ${sum}장 · 보유 훈장 ${meta.medals}개`}</p>
       <div class="cgrid">${COMMENDS.map(c => { const n = meta.cmN[c.id] || 0, lv = M.cmLevel(n), nx = M.cmNext(n);
-        return `<div class="ci"><button class="cc cm${lv ? ' has' : ''}${c.id === sel.id ? ' sel' : ''}" data-act="cmsel" data-arg="${c.id}">${c.branch ? `<img src="img/units/${c.branch}_inf.webp" alt="">` : `<span class="cic">${ic(CM_ICON[c.id] || 'star')}</span>`}<b>Lv.${lv}</b>
+        return `<div class="ci"><button class="cc cm${lv ? ' has' : ''}${c.id === sel.id ? ' sel' : ''}" data-act="cmsel" data-arg="${c.id}"><span class="cic"><img src="img/cm/${c.id}.webp" alt="" onerror="this.remove()">${ic(CM_ICON[c.id] || 'star')}</span><b>Lv.${lv}</b>
           <span class="cbar"><u style="width:${nx ? Math.round(n / nx * 100) : 100}%"></u><em>${nx ? `${n}/${nx}` : '최고'}</em></span></button>
           <small>${c.name.replace(/ 표창$/, '')}</small></div>`; }).join('')}</div>
       <p class="sub">모든 판에 적용되는 영구 효과입니다. 같은 표창을 모으면 단계가 오릅니다(${CM_NEED.join('·')}장). 표창 상자 · 뽑기 · 출석으로 얻습니다</p>`,

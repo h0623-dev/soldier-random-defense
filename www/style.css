@@ -361,3 +361,10 @@ img.u { filter: var(--skin, none); }
 .sban .note.cmmsg { flex: 1; margin: 0; padding: 0.8rem 1rem; text-align: left; background: var(--paper); border: var(--ln); border-radius: 1.4rem 1.4rem 1.4rem 0.3rem; color: var(--ink); min-height: 0; }
 @media (max-width: 380px) { .sc > b { font-size: 1.25rem; } .spic { height: 7.4rem; } .sbtn { font-size: 1.3rem; height: 3.7rem; } }
 
+/* ── 그림 아이콘 (상점과 같은 그림체): 재화 기호 · 표창 · 대기실 버튼 ── */
+.ic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cc .cic img { width: 100%; height: 100%; object-fit: contain; } .cc .cic img + .ic { display: none; } .cc.cm:not(.has) .cic { opacity: 0.55; filter: grayscale(0.85); }
+.cinfo { display: grid; grid-template-columns: auto 1fr; column-gap: 1rem; align-items: center; } .cinfo > img { grid-row: 1 / span 3; width: 6.4rem; height: 6.4rem; object-fit: contain; } .cinfo > :not(img) { grid-column: 2; }
+.lt span img { width: 82%; height: 82%; object-fit: contain; } .lt span img + .ic { display: none; }
+.pill .ic, .sbtn .ic, .subbar .ic { font-size: 2rem; } .lplay small .ic { font-size: 2rem; }
+
