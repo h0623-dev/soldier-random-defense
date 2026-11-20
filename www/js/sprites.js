@@ -147,21 +147,21 @@ export function drawTag(c, o, part) {
   // 계급장 (머리 오른쪽 위): 계급마다 모양·개수가 달라 같은 계급을 찾기 쉽다
   if (insig && part !== 'label') {
     const [shape, n] = insig, step = shape === 'bar' ? 5.2 : 8.6, w = (n - 1) * step + 13;
-    c.fillStyle = 'rgba(12,16,10,.85)'; rr(c, 48 - w, -52, w, 15, 7.5); c.fill();
+    c.fillStyle = 'rgba(62,40,22,.86)'; rr(c, 48 - w, -52, w, 15, 7.5); c.fill();
     for (let i = 0; i < n; i++) insigShape(c, shape, 48 - w + 6.5 + i * step, -44.5);
   }
-  // 이름표 (발 아래): 병과 글자 + 계급 이름. 글자 길이에 맞춰 폭이 정해진다
+  // 이름표 (발 아래, 제 칸 안쪽): 병과 글자 + 계급 이름. 글자 길이에 맞춰 폭이 정해진다
   if (part === 'badge') return;
-  const cls = pure ? [type[0]] : type, cw = cls.length * 14.5, fs = rank.length > 3 ? 12 : 14;
+  const cls = pure ? [type[0]] : type, cw = cls.length * 14.5, fs = rank.length > 3 ? 11.5 : 13;
   c.font = `800 ${fs}px sans-serif`;
   const tw = Math.ceil(c.measureText(rank).width), w = Math.min(96, cw + tw + 14), x0 = -w / 2;
-  c.fillStyle = 'rgba(12,16,10,.9)'; rr(c, x0, 32, w, 16, 8); c.fill();
-  c.strokeStyle = hidden ? GOLD : ['#4a5a3e', '#cfd6dc', GOLD][tier]; c.lineWidth = 1.8; c.stroke();
-  c.fillStyle = hidden ? GOLD : '#fff'; c.fillText(rank, x0 + cw + 5 + tw / 2, 40.5);
+  c.fillStyle = 'rgba(62,40,22,.9)'; rr(c, x0, 26, w, 15, 7.5); c.fill();      // 캐릭터 그림의 갈색 선과 맞춘 짙은 갈색 바탕
+  c.strokeStyle = hidden ? GOLD : ['#a98a5e', '#e6dcc6', GOLD][tier]; c.lineWidth = 1.8; c.stroke();
+  c.fillStyle = hidden ? GOLD : '#fff6e0'; c.fillText(rank, x0 + cw + 5 + tw / 2, 34);
   c.font = '800 11px sans-serif';
   cls.forEach((k, i) => {
-    c.fillStyle = CLASS_INFO[k].color; c.beginPath(); c.arc(x0 + 9 + i * 14.5, 40, 6.4, 0, 7); c.fill();
-    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[k].short, x0 + 9 + i * 14.5, 40.7);
+    c.fillStyle = CLASS_INFO[k].color; c.beginPath(); c.arc(x0 + 8.5 + i * 14.5, 33.5, 6, 0, 7); c.fill();
+    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[k].short, x0 + 8.5 + i * 14.5, 34.2);
   });
 }
 
