@@ -243,9 +243,9 @@ const ACT = {
         <b>${m.name}</b><small>${open ? m.text : `${m.need}단계 도달 시 열림`}</small></button>`; }).join('')}</div>
       <h2>난이도</h2><div class="diffs">${C.DIFFS.map((d, i) => `<button class="${i === meta.diff ? 'on' : ''}" data-act="diff" data-arg="${i}" ${diffOpen(i) ? '' : 'disabled'}>
         <b>${d.name}</b><small>${diffOpen(i) ? d.text : `${C.DIFFS[i - 1].name} ${d.need}단계 도달 시 열림`}</small></button>`).join('')}</div>
-      <h2>부대 선택</h2><div class="cards">${BRANCHES.map(b => `
+      <h2>군별 선택</h2><div class="cards">${BRANCHES.map(b => `
       <button class="bcard" style="background:${b.color}" data-act="start" data-arg="${b.id}">
-        <img src="img/units/${b.id}_inf.webp" alt=""><span><b>${b.short}<em> 부대</em></b><small>${b.trait.text.split(' (')[0]}</small>
+        <img src="img/units/${b.id}_inf.webp" alt=""><span><b>${b.name}</b><small>${b.trait.text.split(' (')[0]}</small>
         <i>${b.ranks[0]} → ${b.ranks.at(-1)} · ${recText(mode, best[b.id] || 0)}</i></span></button>`).join('')}</div>
       ${run ? `<p class="sub" style="margin-top:1.4rem">새로 출격하면 이어하던 게임(${runLabel(run)})은 사라집니다</p>` : ''}
       <button class="wide sec" data-act="title">뒤로</button>`);
@@ -275,9 +275,9 @@ const ACT = {
     const b = myBranch(), on = await Net.on(), busy = msg === '연결하는 중…';
     show(`<h2>2인 협동</h2><p class="sub">한 전장을 둘이 나눠 맡아 100단계를 함께 막습니다 · 행동력 1</p>
       <div class="list"><p>· <b>발판을 위아래로 나눕니다</b> — 방장은 위쪽 ${C.CFG.duoSplit}칸, 손님은 아래쪽 ${C.SLOT_COUNT - C.CFG.duoSplit}칸. 자기 구역에만 소집·배치하고 자기 유닛만 조합합니다.</p>
-        <p>· 적과 단계, 임무는 함께 씁니다. <b>누가 잡든 두 사람 모두 보상</b>을 받고, 부대·군자금·훈련소·병과 강화는 각자입니다. 용사의 전체 효과와 주변 지원은 동료에게도 미칩니다.</p>
+        <p>· 적과 단계, 임무는 함께 씁니다. <b>누가 잡든 두 사람 모두 보상</b>을 받고, 군별·군자금·훈련소·병과 강화는 각자입니다. 용사의 전체 효과와 주변 지원은 동료에게도 미칩니다.</p>
         <p>· 군자금을 보내거나 한마디를 건넬 수 있습니다. 배속은 방장이 정합니다(기본 ×2). 훈장 ${M.COOP_MEDAL}배. 중간 저장은 되지 않습니다.</p></div>
-      <h3>내 부대</h3><div class="tabs">${BRANCHES.map(x => `<button class="${x.id === b.id ? 'on' : ''}" data-act="cobranch" data-arg="${x.id}">${x.short}</button>`).join('')}</div>
+      <h3>내 군별</h3><div class="tabs">${BRANCHES.map(x => `<button class="${x.id === b.id ? 'on' : ''}" data-act="cobranch" data-arg="${x.id}">${x.name}</button>`).join('')}</div>
       <h3>별명 (동료와 랭킹에 보입니다)</h3><div class="namerow"><input id="nm" maxlength="10" value="${esc(meta.name)}" autocomplete="off"><button class="btn" data-act="setname" data-arg="coop">저장</button></div>
       <p class="note cmmsg">${on ? msg || '빠른 매칭은 기다리는 사람과 바로 이어 줍니다' : '서버가 아직 연결되지 않아 협동을 할 수 없습니다 (서버 배포 대기)'}</p>
       <button class="wide" data-act="comatch" ${on && !busy ? '' : 'disabled'}>빠른 매칭</button>
@@ -377,9 +377,9 @@ const ACT = {
   // 기록: 군별 × (난이도 3 + 무한 작전 + 보스 러시)
   records() {
     const cols = [...C.DIFFS.map((d, i) => [d.name, M.bestMap(meta, 'normal', i), 100]), ['무한', meta.bestE, 0], ['보스', meta.bestR, C.AREAS.length]];
-    show(`<h2>기록</h2><p class="sub">부대별 최고 기록 · 마친 작전 ${meta.runs}회</p>
+    show(`<h2>기록</h2><p class="sub">군별 최고 기록 · 마친 작전 ${meta.runs}회</p>
       <div class="rec"><div class="rh"><span></span>${cols.map(c => `<b>${c[0]}</b>`).join('')}</div>
-      ${BRANCHES.map(b => `<div class="rr"><span style="background:${b.color}">${b.short}</span>${cols.map(c => { const v = c[1][b.id] || 0; return `<b class="${c[2] && v >= c[2] ? 'top' : v ? '' : 'none'}">${v || '-'}</b>`; }).join('')}</div>`).join('')}</div>
+      ${BRANCHES.map(b => `<div class="rr"><span style="background:${b.color}">${b.name}</span>${cols.map(c => { const v = c[1][b.id] || 0; return `<b class="${c[2] && v >= c[2] ? 'top' : v ? '' : 'none'}">${v || '-'}</b>`; }).join('')}</div>`).join('')}</div>
       <p class="sub" style="margin-top:1rem">보통 · 어려움 · 지옥 · 무한은 막아 낸 단계, 보스는 보스 러시에서 잡은 보스 수(10이 끝)</p>
       <div class="list"><p>조합 도감 발견: 히든 계급 ${['wonsa', 'junwi'].filter(k => meta.found[k]).length}/2 · 전설의 용사 ${HEROES.filter(h => meta.found[h.id]).length}/${HEROES.length} · 히든 임무 ${Object.keys(meta.foundM).length}/${C.MISSIONS.filter(m => m.hidden).length}</p></div>
       <button class="wide sec" data-act="title">뒤로</button>`);
@@ -421,7 +421,7 @@ const ACT = {
       <div class="skins">${M.SKINS.map(k => { const own = M.skinOwned(meta, k.id), on = meta.skins.on === k.id;
         return `<div class="skin${on ? ' on' : ''}"><img src="img/units/${k.art || b0.id}_inf.webp" onerror="this.onerror=null;this.src='img/units/${b0.id}_inf.webp'" alt=""><b>${k.name}</b>
           <button class="btn${own ? '' : ' gold'}" data-act="${own ? 'skinuse' : 'skinbuy'}" data-arg="${k.id}" ${on || (!own && meta.gems < k.cost) ? 'disabled' : ''}>${on ? '사용 중' : own ? '사용' : `${ic('gem')}${k.cost}`}</button></div>`; }).join('')}</div>
-      <p class="sub" style="margin:.6rem 0 0">스킨을 쓰면 내 유닛이 부대·계급에 상관없이 그 복장으로 보입니다(능력은 같음, 용사는 제 모습 그대로). 고급 보급 상자에서도 나옵니다</p>
+      <p class="sub" style="margin:.6rem 0 0">스킨을 쓰면 내 유닛이 군별·계급에 상관없이 그 복장으로 보입니다(능력은 같음, 용사는 제 모습 그대로). 고급 보급 상자에서도 나옵니다</p>
       <button class="wide sec" data-act="title">뒤로</button>`);
     if (keep === true) overlay.scrollTop = y;
   },
