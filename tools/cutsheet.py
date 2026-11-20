@@ -43,7 +43,7 @@ def pair(ii, mi, ia, ma):
 def main(src_dir, img_dir, prev_dir=None, only=None):
     os.makedirs(os.path.join(img_dir, 'units'), exist_ok=True)
     for f in sorted(os.listdir(src_dir)):
-        mu = re.fullmatch(r'sheet_([a-z]+)_(?:(t\d)_)?([a-z-]+)__([a-z-]+)\.png', f); me = re.fullmatch(r'enemies_([a-z0-9_]+)\.png', f)
+        mu = re.fullmatch(r'sheet_([a-z]+)_(?:(t\d)_)?([a-z-]+)__([a-z-]+)\.(?:png|jpe?g|webp)', f); me = re.fullmatch(r'enemies_([a-z0-9_]+)\.(?:png|jpe?g|webp)', f)
         if (not mu and not me) or (only is not None and f not in only): continue
         img, bg = matte(Image.open(os.path.join(src_dir, f))); mask = np.asarray(img.getchannel('A')) > 24
         notes = []

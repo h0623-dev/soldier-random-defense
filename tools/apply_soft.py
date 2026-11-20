@@ -14,7 +14,7 @@ args = [a for a in sys.argv[1:] if a != '--all']; prev = args[0] if args else No
 applied = set() if '--all' in sys.argv or not os.path.exists(LOG) else set(json.load(open(LOG)))
 groups, enemies = {}, []                      # (군별, 계급대) → [(시트, 병과A, 병과B)]
 for f in sorted(os.listdir(RAW)):
-    m = re.fullmatch(r'sheet_([a-z]+)_(?:(t\d)_)?([a-z-]+)__([a-z-]+)\.png', f)
+    m = re.fullmatch(r'sheet_([a-z]+)_(?:(t\d)_)?([a-z-]+)__([a-z-]+)\.(?:png|jpe?g|webp)', f)
     if m: groups.setdefault((m.group(1), m.group(2) or ''), []).append((f, m.group(3), m.group(4)))
     elif f.startswith('enemies_'): enemies.append(f)
 todo, done, wait = [], [], []
