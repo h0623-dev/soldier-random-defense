@@ -5,14 +5,32 @@
 
 ## 켜는 순서 (사용자가 할 일)
 
-1. **서버 배포** — 아래 둘 중 하나.
+1. **서버 배포** — 아래 둘 중 하나. (A를 권한다. 2026-11-20에 Cloudflare 공식 문서 "Workers Builds"로 확인한 절차다. 화면의 낱말은 바뀔 수 있다)
    - **A. Cloudflare 화면에서 저장소 연결** (자동 업데이트용 Pages를 연결했던 것과 같은 방식, 토큰 불필요)
-     Cloudflare 대시보드 → Workers & Pages → Create → **Workers** → Import a repository → `soldier-random-defense` 선택 →
-     Project name `soldier-rd-server`, **Root directory `server`**, Deploy command `npx wrangler deploy` → 저장.
-     이후 main에 push할 때마다 자동으로 다시 배포된다.
+     1. https://dash.cloudflare.com 에 로그인 → 왼쪽 메뉴 **Workers & Pages**.
+     2. **Create application**(애플리케이션 만들기) → **GitHub** 선택. GitHub 로그인·권한 창이 뜨면 허용한다(Pages를 연결할 때 이미 허용했으면 뜨지 않는다).
+     3. 저장소 목록에서 **`soldier-random-defense`** 를 고른다. 목록에 없으면 GitHub 쪽에서 Cloudflare 앱에 이 저장소 접근을 허용해야 한다.
+     4. 설정 화면에서 아래 값을 넣는다.
+        | 항목 | 값 |
+        |---|---|
+        | Project name (Worker 이름) | `soldier-rd-server` — **반드시 이 이름**. `server/wrangler.toml`의 `name`과 다르면 빌드가 실패한다 |
+        | Git branch (Production branch) | `main` |
+        | Root directory | `server` |
+        | Build command | 비워 둔다 |
+        | Deploy command | `npx wrangler deploy` (기본값 그대로) |
+        | API token | 기본값(자동으로 만들어 줌) 그대로 |
+     5. **Save and Deploy**. 1~2분 뒤 빌드 기록에 성공이 뜨면 끝.
+     6. 주소 확인: 그 Worker 화면 위쪽(또는 Settings → Domains & Routes)에 `https://soldier-rd-server.<계정 이름>.workers.dev` 가 보인다. 브라우저로 열어 `{"ok":true,"name":"soldier-rd-server","v":1}` 이 나오면 정상이다.
+     7. (권장) 그 Worker의 **Settings → Build** 에서 ① main이 아닌 가지의 빌드(preview builds)를 끈다 — 이 저장소는 작업용 가지에도 자주 올리는데, 서버는 main만 배포하면 된다. ② Build watch paths의 포함 경로를 `server/*` 로 두면 게임만 바뀐 커밋에서는 서버를 다시 배포하지 않는다.
+     이후 main에 `server/`가 바뀐 커밋이 올라오면 자동으로 다시 배포된다.
    - **B. GitHub Actions** — 저장소 Settings → Secrets and variables → Actions 에 `CLOUDFLARE_API_TOKEN`(Workers 편집 권한)과 `CLOUDFLARE_ACCOUNT_ID`를 넣는다. `.github/workflows/server.yml`이 `server/`가 바뀔 때마다 배포한다. (값은 채팅에 적지 말고 GitHub 화면에 직접 넣는다)
-2. **서버 주소 적기** — 배포가 끝나면 Cloudflare가 `https://soldier-rd-server.<계정 이름>.workers.dev` 같은 주소를 준다. 이 주소를 `www/server.json`의 `"url"`에 적고 main에 올린다(주소는 비밀이 아니다 — Claude에게 알려 주면 대신 적는다).
+2. **서버 주소 적기** — 위 6번의 주소를 `www/server.json`의 `"url"`에 적고 main에 올린다(주소는 비밀이 아니다 — Claude에게 알려 주면 대신 적는다).
 3. 게임에서 "랭킹"과 "2인 협동"이 열리는지 확인한다.
+
+**잘 안 될 때**
+- 빌드 실패, 기록에 "name … does not match" 비슷한 말 → 4번의 Project name이 `soldier-rd-server`가 아니다. Worker를 지우고 다시 만들거나 이름을 맞춘다.
+- 빌드 실패, `wrangler.toml`을 못 찾는다 → Root directory가 `server`가 아니다.
+- 주소를 열면 오류 1042/1101 등 → 빌드 기록의 마지막 줄을 Claude에게 보여 주면 된다(비밀 값은 들어 있지 않다).
 
 같은 Cloudflare 계정의 다른 프로젝트(`road-haven-meeting` 등)는 건드리지 않는다. 이 서버는 `soldier-rd-server`라는 이름의 Worker 하나만 만든다.
 
