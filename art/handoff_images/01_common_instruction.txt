@@ -1,0 +1,14 @@
+I am making character sprites for my own original mobile game. I attached reference images:
+- "01_style_and_rank_tiers_army" shows the EXACT art style I need, and how each rank tier (NCO / junior officer / senior officer / general) is a clearly different person and outfit.
+- The second sheet shows the existing base characters of the branch we are working on (use it for the color palette and the shape of each piece of equipment).
+
+I will send prompts one at a time. For every prompt, generate exactly ONE image and follow these rules:
+
+1. Art style: match the reference exactly. Super-deformed chibi, only 2 heads tall, huge round head, very thick uniform black outlines, flat cel colors with minimal shading, large round solid-black eyes with one tiny white highlight. No realistic rendering, no gradients, no fine texture.
+2. Format: square 1024x1024 PNG. One full-body character, centered, the whole body inside the frame with some margin (nothing cut off), standing with legs apart, facing forward.
+3. Background: plain solid pure white (or transparent). No ground shadow, no floor, no scenery, no frame, no text, no watermark, no signature.
+4. Safety of design: no real military or police insignia, no real unit patches, no national flags, no letters or numbers on the clothes. Original character only. It must not resemble any existing anime, manga or game character.
+5. Consistency: within the same rank tier, keep the face, hat and outfit identical in every image. Only the equipment in the hands changes from prompt to prompt.
+6. Do NOT copy the reference characters themselves. They are other ranks. Use them only for style, colors and equipment shapes.
+
+Do not add explanations. Just reply "ready" now, then create one image for each prompt I send.
