@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><title>UI 시안</title>
+<link rel="stylesheet" href="style.css">
+<style>
+html, body { height: auto; background: #1d1711; user-select: auto; }
+body { padding: 24px; font-size: 15px; }
+.row { display: flex; gap: 28px; margin-bottom: 40px; }
+.col { width: 390px; }
+.cap { color: #fff6e0; margin: 0 0 10px; } .cap b { font-size: 22px; display: block; } .cap small { color: #d8c8a6; font-size: 14px; }
+.cap2 { color: #d8c8a6; font-size: 13px; margin: 8px 0 0; text-align: center; }
+.phone { position: relative; width: 390px; height: 844px; overflow: hidden; border-radius: 26px; border: 3px solid #000; background: #3c5a31; font-size: 15px; }
+.bleed { position: absolute; inset: -30px; background: url(field.png) center / cover; filter: blur(14px) brightness(.62) saturate(.9); }
+.field { position: absolute; left: 0; width: 390px; height: 487px; background: url(field.png) top left / 390px 487px; }
+.field.round { left: 6px; width: 378px; height: 472px; background-size: 378px 472px; border-radius: 22px; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.ic { display: inline-flex; width: 1em; height: 1em; vertical-align: -0.14em; } .ic svg { width: 100%; height: 100%; }
+/* 한 줄 상단바 */
+.hud { position: absolute; left: 0; right: 0; top: 0; height: 48px; background: rgba(43,33,24,.94); color: #fffaf0; display: flex; align-items: center; gap: 8px; padding: 0 8px; z-index: 3; }
+.hud .wv { font-weight: 900; font-size: 19px; line-height: 1; } .hud .wv small { display: block; font-size: 10px; color: #d8c8a6; font-weight: 600; margin-top: 3px; }
+.hud .bar { flex: 1; min-width: 0; } .hud .bar i { display: block; height: 7px; border-radius: 4px; background: #4a3c2c; overflow: hidden; margin-bottom: 4px; } .hud .bar u { display: block; height: 100%; background: #ff8a3c; } .hud .bar i.red u { background: #ff6b5e; }
+.hud .bar small { font-size: 10px; color: #d8c8a6; display: block; line-height: 1; margin-bottom: 3px; }
+.pill { background: #fffaf0; color: #2b2118; border-radius: 20px; padding: 4px 9px; font-weight: 900; font-size: 14px; display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; } .pill.g { color: #b8770a; } .pill.s { color: #2f8fe0; }
+.sq { width: 34px; height: 34px; border-radius: 10px; background: #fffaf0; color: #2b2118; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; flex: none; }
+.hud.float { top: 8px; left: 8px; right: 8px; border-radius: 16px; height: 44px; background: rgba(43,33,24,.82); }
+/* 공통 조각 */
+.btn3 { border: 3px solid #2b2118; box-shadow: 0 4px 0 #2b2118; border-radius: 16px; background: #fffaf0; color: #2b2118; font-weight: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.15; text-align: center; }
+.btn3 small { font-size: 11px; font-weight: 700; opacity: .75; } .btn3 .ic { font-size: 22px; }
+.green { background: #5fd35a; } .purple { background: #b15bf0; color: #fff; } .red { background: #ff6b5e; } .yellow { background: #ffd45e; } .lav { background: #d6b4f7; }
+.abs { position: absolute; }
+.selring { position: absolute; width: 50px; height: 50px; border: 3px solid #fff; border-radius: 12px; transform: translate(-50%, -62%); box-shadow: 0 0 0 2px rgba(0,0,0,.25); }
+.mg { position: absolute; width: 50px; height: 50px; border-radius: 12px; transform: translate(-50%, -62%); }
+.mg.keep { background: rgba(255,212,94,.45); border: 3px solid #ffd45e; } .mg.rnd { background: rgba(190,150,255,.35); border: 3px dashed #c9a3ff; }
+.chip { display: inline-flex; align-items: center; gap: 4px; background: #f0deb0; color: #7b6a55; border-radius: 9px; padding: 3px 7px; font-size: 11px; font-weight: 700; white-space: nowrap; } .chip b { color: #2b2118; }
+.gdot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid #2b2118; display: inline-block; margin-right: 4px; }
+.note { position: absolute; background: #ffe98a; color: #2b2118; border: 2px solid #2b2118; border-radius: 10px; padding: 4px 8px; font-size: 11px; font-weight: 800; z-index: 6; box-shadow: 0 2px 0 #2b2118; white-space: nowrap; }
+.note::after { content: ''; position: absolute; width: 0; height: 0; border: 6px solid transparent; }
+.note.dn::after { top: 100%; left: 20px; border-top-color: #2b2118; } .note.up::after { bottom: 100%; left: 20px; border-bottom-color: #2b2118; } .note.rt::after { left: 100%; top: 6px; border-left-color: #2b2118; }
+/* A 원버튼 */
+.a-up { position: absolute; left: 10px; right: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.a-up div { border-radius: 12px; border: 2.5px solid #2b2118; background: #fffaf0; padding: 5px 0; text-align: center; font-weight: 900; font-size: 12px; line-height: 1.2; box-shadow: 0 3px 0 #2b2118; } .a-up small { display: block; font-size: 10px; color: #7b6a55; }
+.tick { position: absolute; left: 10px; right: 10px; background: rgba(43,33,24,.78); color: #fffaf0; border-radius: 12px; padding: 6px 10px; font-size: 12px; font-weight: 700; display: flex; justify-content: space-between; }
+.ubar { position: absolute; left: 8px; right: 8px; background: #fffaf0; border: 3px solid #2b2118; border-radius: 18px; box-shadow: 0 4px 0 #2b2118; padding: 8px 10px; }
+.ubar .top { display: flex; gap: 8px; align-items: center; } .ubar img { width: 54px; height: 54px; object-fit: contain; } .ubar h4 { margin: 0; font-size: 16px; font-weight: 900; } .ubar .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.ubar .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; } .ubar .acts .btn3 { height: 42px; flex-direction: row; gap: 6px; font-size: 14px; }
+/* B 휠 */
+.fab { position: absolute; width: 84px; height: 84px; border-radius: 50%; border: 3px solid #2b2118; box-shadow: 0 5px 0 #2b2118; background: #5fd35a; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; line-height: 1.1; color: #12300f; }
+.fab .ic { font-size: 26px; } .bub { position: absolute; width: 58px; height: 58px; border-radius: 50%; border: 3px solid #2b2118; box-shadow: 0 4px 0 #2b2118; background: #fffaf0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; line-height: 1.1; text-align: center; }
+.bub .ic { font-size: 19px; } .bub.purple { background: #b15bf0; color: #fff; } .bub.lav { background: #d6b4f7; } .bub.red { background: #ff6b5e; } .arcbg { position: absolute; border-radius: 50%; background: rgba(43,33,24,.5); }
+/* C 지휘 카드 */
+.cpanel { position: absolute; left: 0; right: 0; bottom: 0; height: 178px; background: #f7e7c2; border-top: 3px solid #2b2118; display: flex; gap: 8px; padding: 9px 9px 12px; }
+.cinfo { flex: 1; min-width: 0; background: #fffaf0; border: 3px solid #2b2118; border-radius: 14px; padding: 7px 9px; font-size: 12px; line-height: 1.35; } .cinfo b.t { font-size: 14px; font-weight: 900; display: block; margin-bottom: 2px; } .cinfo img { width: 48px; height: 48px; object-fit: contain; float: left; margin-right: 6px; }
+.cgrid { width: 218px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 7px; } .cgrid .btn3 { font-size: 11px; border-width: 2.5px; border-radius: 13px; } .cgrid .w2 { grid-column: span 2; font-size: 15px; } .cgrid .dim { opacity: .4; }
+/* D 작전 카드 */
+.mana { position: absolute; left: 12px; right: 12px; height: 18px; border: 2.5px solid #2b2118; border-radius: 10px; background: #4a3c2c; overflow: hidden; } .mana u { display: block; height: 100%; background: linear-gradient(#ffe07a, #f5b62e); } .mana span { position: absolute; inset: 0; text-align: center; font-size: 11px; font-weight: 900; color: #fff; line-height: 14px; text-shadow: 0 1px 0 #2b2118; }
+.card { position: absolute; width: 84px; height: 116px; border-radius: 13px; border: 3px solid #2b2118; background: #fffaf0; box-shadow: 0 5px 0 #2b2118; display: flex; flex-direction: column; align-items: center; padding: 6px 4px; text-align: center; font-weight: 900; font-size: 12px; line-height: 1.15; transform-origin: 50% 140%; }
+.card .ic { font-size: 30px; margin: 4px 0 4px; } .card small { font-size: 10px; color: #7b6a55; font-weight: 700; } .card .cost { margin-top: auto; background: #2b2118; color: #ffd45e; border-radius: 9px; padding: 2px 8px; font-size: 11px; }
+.card.big { width: 98px; height: 132px; background: #5fd35a; z-index: 2; } .card.new::before { content: 'NEW'; position: absolute; top: -9px; right: -7px; background: #ff5a4a; color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 8px; border: 2px solid #2b2118; }
+/* E 주둔지 */
+.camp { position: absolute; left: 0; right: 0; bottom: 0; height: 190px; background: linear-gradient(#587a45, #45633a); border-top: 4px solid rgba(43,33,24,.55); }
+.camp::before { content: ''; position: absolute; left: 0; right: 0; top: 10px; height: 30px; background: repeating-linear-gradient(90deg, #b9a67a 0 22px, #a89468 22px 44px); border-top: 2px solid #5b4a31; border-bottom: 2px solid #5b4a31; opacity: .9; }
+.bld { position: absolute; bottom: 30px; display: flex; flex-direction: column; align-items: center; }
+.bld .roof { width: 0; height: 0; border-left: 34px solid transparent; border-right: 34px solid transparent; border-bottom: 26px solid #8a5a3c; }
+.bld .body { width: 60px; height: 38px; background: #e9d6a5; border: 3px solid #4a2f1b; border-radius: 4px 4px 8px 8px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #4a2f1b; }
+.bld.tent .roof { border-bottom-color: #6f8a52; } .bld.tent .body { background: #8fa86a; }
+.bld.big .roof { border-left-width: 46px; border-right-width: 46px; border-bottom-width: 34px; border-bottom-color: #c9473a; } .bld.big .body { width: 84px; height: 50px; font-size: 30px; background: #fff3c9; }
+.bld .sign { margin-top: 5px; background: #6b4a2a; color: #fff6e0; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 6px; border: 2px solid #3a2616; white-space: nowrap; line-height: 1.2; text-align: center; } .bld .sign small { display: block; color: #ffd45e; font-size: 9px; }
+.bld.glow .body { box-shadow: 0 0 0 4px rgba(255,212,94,.7), 0 0 18px 6px rgba(255,212,94,.6); }
+.bubble { position: absolute; background: #fffaf0; border: 3px solid #2b2118; border-radius: 16px; box-shadow: 0 4px 0 #2b2118; padding: 8px; z-index: 5; }
+.bubble::after { content: ''; position: absolute; top: 100%; left: var(--tail, 40px); border: 9px solid transparent; border-top-color: #2b2118; }
+</style></head>
+<body><div id="root"></div>
+<script type="module">
+import { ic } from './js/icons.js';
+const U = await (await fetch('units.json')).json();
+const sel = U.units.filter(u => u.name === '이등병 보병').sort((a, b) => a.x - b.x)[0], same = U.units.filter(u => u !== sel && u.lv === sel.lv && u.key === sel.key), diff = U.units.filter(u => u !== sel && u.lv === sel.lv && u.key !== sel.key);
+const hud = (cls = '') => `<div class="hud ${cls}"><span style="color:#ff8a3c;font-size:22px">${ic('flag')}</span><div class="wv">12<small>/ 100 단계</small></div>
+  <div class="bar"><small>다음 14초</small><i><u style="width:42%"></u></i><i class="red"><u style="width:36%"></u></i></div>
+  <span style="font-size:10px;color:#d8c8a6;white-space:nowrap">적 18/50</span><span class="pill g">${ic('coin')}875</span><span class="pill s">${ic('box')}3</span><span class="sq">×1</span><span class="sq">${ic('menu')}</span></div>`;
+// 전장: top = 전장 윗변 위치, marks = 선택·조합 표시
+const field = (top, selected, round = false) => { const W = round ? 378 : 390, H = round ? 472 : 487, L = round ? 6 : 0, at = u => `left:${L + u.x * W}px;top:${top + u.y * H}px`;
+  return `<div class="field ${round ? 'round' : ''}" style="top:${top}px"></div>` + (selected ? `<div class="selring" style="${at(sel)}"></div>${same.map(u => `<div class="mg keep" style="${at(u)}"></div>`).join('')}${diff.map(u => `<div class="mg rnd" style="${at(u)}"></div>`).join('')}` : ''); };
+const unitHead = `<div class="top"><img src="img/units/army_inf.webp"><div><h4><i class="gdot" style="background:#5fd35a"></i>이등병 보병</h4><div class="chips"><span class="chip">공격 <b>19</b></span><span class="chip">초당 <b>1.8회</b></span><span class="chip">사거리 <b>190</b></span><span class="chip">누적 <b>1,204</b></span></div></div></div>`;
+const P = { cur1: '<img src="cur1.png" style="width:390px;height:844px">', cur2: '<img src="cur2.png" style="width:390px;height:844px">' };
+// ── A. 원버튼 ──
+P.a1 = `<div class="bleed"></div>${hud()}${field(48)}
+  <div class="tick" style="top:545px"><span>임무 · 적 50명 처치</span><b>34 / 50</b></div>
+  <div class="a-up" style="top:586px">${[['보', '#58b368', 2, 68], ['포', '#f0803c', 1, 50], ['의', '#ee6c9a', 0, 50], ['통', '#4aa3e8', 3, 91]].map(([n, c, lv, cost]) => `<div><span style="color:${c}">●</span> ${n} Lv${lv}<small>${ic('coin')} ${cost}</small></div>`).join('')}</div>
+  <div class="btn3 abs" style="left:14px;top:668px;width:78px;height:78px;border-radius:50%">${ic('tent')}<small>훈련소 Lv2</small></div>
+  <div class="btn3 green abs" style="left:104px;top:660px;width:182px;height:96px;border-radius:26px;font-size:22px">${ic('plus')}신병 소집<small style="font-size:13px">매직~ · 32</small></div>
+  <div class="btn3 purple abs" style="right:14px;top:668px;width:78px;height:78px;border-radius:50%">${ic('target')}<small>특수 임무</small></div>
+  <div class="note up" style="left:12px;top:644px;display:none"></div>
+  <div class="abs" style="left:0;right:0;top:776px;text-align:center;color:#fffaf0;font-size:11px;opacity:.85">선택 소집 · 임무 · 도감은 ≡ 안으로</div>`;
+P.a2 = `<div class="bleed"></div>${hud()}${field(48, true)}
+  <div class="ubar" style="top:548px">${unitHead}<div class="acts"><div class="btn3 lav">진급 심사 45% ${ic('box')}1</div><div class="btn3 red">전역 ${ic('coin')}+12</div></div></div>
+  <div class="a-up" style="top:694px;opacity:.5">${['보', '포', '의', '통'].map(n => `<div>${n}<small>강화</small></div>`).join('')}</div>
+  <div class="btn3 green abs" style="left:104px;top:756px;width:182px;height:60px;border-radius:22px;font-size:17px;opacity:.5">신병 소집</div>
+  <div class="note dn" style="left:150px;top:96px">노랑 = 같은 병과 · 보라 = 무작위</div>`;
+// ── B. 엄지 휠 ──
+const fabX = 286, fabY = 716;
+P.b1 = `<div class="bleed"></div>${hud('float')}${field(92, false, true)}
+  <div class="arcbg" style="left:${fabX - 150}px;top:${fabY - 150}px;width:384px;height:384px"></div>
+  ${[['tent', '훈련소', 'Lv2 · 214', 188], ['up', '병과 강화', '합계 6', 222], ['hand', '선택 소집', '보급 2', 256], ['target', '특수 임무', '출동 가능', 290]].map(([i, n, s, deg], k) => { const r = 122, a = (183 + k * 29) * Math.PI / 180; return `<div class="bub ${k === 3 ? 'purple' : ''}" style="left:${fabX + 42 + Math.cos(a) * r - 29}px;top:${fabY + 42 + Math.sin(a) * r - 29}px">${ic(i)}${n}</div>`; }).join('')}
+  <div class="fab" style="left:${fabX}px;top:${fabY}px">${ic('plus')}소집<small>32</small></div>
+  <div class="note dn" style="left:136px;top:${fabY - 186}px">누르면 소집 · 위로 밀면 펼침</div>
+  <div class="tick" style="top:578px;left:14px;right:auto;gap:10px;font-size:11px"><span>임무 34/50</span></div>`;
+P.b2 = (() => { const W = 378, H = 472, top = 92, x = 6 + sel.x * W, y = top + sel.y * H - 12, r = 62;
+  return `<div class="bleed"></div>${hud('float')}${field(92, true, true)}
+  <div class="arcbg" style="left:${x - 96}px;top:${y - 96}px;width:192px;height:192px;background:rgba(43,33,24,.42)"></div>
+  ${[['box', '심사 45%', 'lav', 150], ['coin', '전역 +12', 'red', 210], ['book', '정보', '', 270]].map(([i, n, c, deg]) => { const a = deg * Math.PI / 180; return `<div class="bub ${c}" style="left:${x + Math.cos(a) * r - 29}px;top:${y + Math.sin(a) * r - 29}px">${ic(i)}${n}</div>`; }).join('')}
+  <div class="fab" style="left:${fabX}px;top:${fabY}px;opacity:.55">${ic('plus')}소집<small>32</small></div>
+  <div class="ubar" style="left:14px;right:120px;top:${fabY + 4}px;padding:6px 8px"><div style="font-weight:900;font-size:14px"><i class="gdot" style="background:#5fd35a"></i>이등병 보병</div><div class="chips" style="display:flex;gap:4px;margin-top:4px"><span class="chip">공격 <b>19</b></span><span class="chip">사거리 <b>190</b></span></div></div>`; })();
+// ── C. 지휘 카드 ──
+const cgrid = cells => `<div class="cgrid">${cells.map(([i, n, s, cls]) => `<div class="btn3 ${cls || ''}">${i ? ic(i) : ''}${n}${s ? `<small>${s}</small>` : ''}</div>`).join('')}</div>`;
+P.c1 = `<div class="bleed"></div>${hud()}${field(88)}
+  <div class="cpanel"><div class="cinfo"><b class="t">13단계 · 적 보병 20기</b>20단계 보스 <b>상륙 공기부양정</b><br>고속 기동 — 받는 피해 50% 감소<br><span style="color:#7b6a55">임무 34/50 · 훈련소 Lv2</span></div>
+  ${cgrid([['plus', '신병 소집', '매직~ · 32', 'green w2'], ['tent', '훈련소', '214'], ['up', '병과 강화', '합계 6'], ['hand', '선택 소집', '보급 2'], ['target', '특수 임무', '출동', 'purple']])}</div>
+  <div class="note dn" style="right:14px;top:612px">선택에 따라 버튼 6칸이 바뀜</div>`;
+P.c2 = `<div class="bleed"></div>${hud()}${field(88, true)}
+  <div class="cpanel"><div class="cinfo"><img src="img/units/army_inf.webp"><b class="t"><i class="gdot" style="background:#5fd35a"></i>이등병 보병</b><span style="color:#5fd35a;font-weight:900">매직</span> · K2 소총<br style="clear:both"><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px"><span class="chip">공격 <b>19</b></span><span class="chip">초당 <b>1.8</b></span><span class="chip">사거리 <b>190</b></span></div></div>
+  ${cgrid([['arrow', '조합', '노란·보라 칸 누르기', 'yellow w2'], ['box', '진급 심사', '45% · 보급 1', 'lav'], ['coin', '전역', '+12', 'red'], ['ring', '이동', '빈 칸 누르기'], ['x', '선택 해제', '']])}</div>`;
+// ── D. 작전 카드 ──
+const hand = cards => { const n = cards.length, mid = (n - 1) / 2; return cards.map(([i, n1, s, cost, cls], k) => { const d = k - mid, w = /big/.test(cls || '') ? 98 : 84; return `<div class="card ${cls || ''}" style="left:${195 + d * 66 - w / 2}px;top:${/big/.test(cls || '') ? 676 : 694 + Math.abs(d) * 9}px;transform:rotate(${d * 7}deg)">${ic(i)}${n1}<small>${s}</small><span class="cost">${cost}</span></div>`; }).join(''); };
+P.d1 = `<div class="bleed"></div>${hud()}${field(48)}
+  <div class="tick" style="top:548px"><span>지금 쓸 수 있는 작전 카드 4장</span><b>임무 34/50</b></div>
+  <div class="mana" style="top:590px"><u style="width:68%"></u><span>군자금 875 · 다음 카드까지 91</span></div>
+  ${hand([['tent', '훈련소', 'Lv2 → 3', '214'], ['up', '보병 강화', 'Lv2 → 3', '68', 'new'], ['plus', '신병 소집', '매직~', '32', 'big'], ['target', '특수 임무', '정예 표적', '출동', 'new'], ['hand', '선택 소집', '병과 고르기', '보급 2']])}
+  <div class="note dn" style="left:12px;top:630px">살 수 있을 때만 카드가 들어옴</div>`;
+P.d2 = `<div class="bleed"></div>${hud()}${field(48, true)}
+  <div class="ubar" style="top:548px;padding:6px 10px">${unitHead}</div>
+  ${hand([['box', '진급 심사', '성공 45%', '보급 1'], ['arrow', '조합', '칸을 누르세요', '무료', 'big'], ['coin', '전역', '돌려받음', '+12']])}`;
+// ── E. 주둔지 ──
+const bld = (x, icn, name, sub, cls = '') => `<div class="bld ${cls}" style="left:${x}px"><div class="roof"></div><div class="body">${ic(icn)}</div><div class="sign">${name}<small>${sub}</small></div></div>`;
+const camp = `<div class="camp">${bld(8, 'tent', '훈련소', 'Lv2 · 214', 'tent')}${bld(82, 'up', '병기창', '병과 강화')}${bld(149, 'plus', '연병장', '소집 32', 'big')}${bld(246, 'hand', '보급창', '선택 소집')}${bld(318, 'target', '통신탑', '특수 임무', 'glow')}</div>`;
+P.e1 = `<div class="bleed"></div>${hud()}${field(104)}${camp}
+  <div class="note dn" style="left:92px;top:612px">버튼 대신 주둔지 건물을 누른다</div>
+  <div class="note up" style="left:232px;top:74px;display:none"></div>`;
+P.e2 = `<div class="bleed"></div>${hud()}${field(104)}${camp}
+  <div class="bubble" style="left:14px;top:560px;width:226px;--tail:92px"><b style="font-size:13px">병기창 — 병과 강화</b><div class="a-up" style="position:static;margin-top:6px;gap:5px">${[['보', '#58b368', 2, 68], ['포', '#f0803c', 1, 50], ['의', '#ee6c9a', 0, 50], ['통', '#4aa3e8', 3, 91]].map(([n, c, lv, cost]) => `<div style="box-shadow:0 2px 0 #2b2118"><span style="color:${c}">●</span>${n} ${lv}<small>${cost}</small></div>`).join('')}</div></div>`;
+const INFO = [
+  ['cur', '현재 화면', '비교용', '상단 2줄 + 정보창 + 버튼 7개', '유닛을 고르면 정보 카드가 아래를 덮음'],
+  ['a', 'A. 원버튼', '랜덤다이스 · 운빨존많겜', '큰 소집 버튼 하나 + 병과 강화 4칸', '유닛을 고르면 아래가 유닛 조작으로 바뀜'],
+  ['b', 'B. 엄지 휠', '모바일 액션 게임의 스킬 휠', '소집 버튼 하나, 위로 밀면 부채꼴 메뉴', '유닛을 누르면 유닛 둘레에 고리 메뉴'],
+  ['c', 'C. 지휘 카드', '워크래프트 랜덤 디펜스 유즈맵', '아래 6칸이 상황에 따라 바뀌는 지휘 카드', '유닛을 고르면 6칸이 유닛 명령으로 바뀜'],
+  ['d', 'D. 작전 카드', '러시 로얄 · 카드 손패', '지금 살 수 있는 것만 카드로 들어옴', '유닛을 고르면 유닛용 카드로 바뀜'],
+  ['e', 'E. 주둔지', '협타디의 맵 오브젝트 · 건물을 누르는 디펜스', '버튼이 전장 아래 주둔지의 건물이 됨', '건물을 누르면 말풍선으로 선택지'],
+];
+const root = document.getElementById('root');
+for (const st of [1, 2]) { const row = document.createElement('div'); row.className = 'row'; row.id = 'row' + st;
+  for (const [k, name, ref, c1, c2] of INFO) row.innerHTML += `<div class="col" id="${k}${st}">${st === 1 ? `<p class="cap"><b>${name}</b><small>참고: ${ref}</small></p>` : ''}<div class="phone">${P[k + st]}</div><p class="cap2">${st === 1 ? c1 : c2}</p></div>`;
+  root.append(row); }
+document.title = 'ready';
+</script></body></html>
