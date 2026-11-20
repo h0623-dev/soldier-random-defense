@@ -20,6 +20,11 @@ LASER = 'aiming the designator to the right, a thin straight red laser beam shoo
 EOD = ('a bulky dark green padded bomb disposal suit with a big round helmet and a clear face visor', 'holding small wire cutters', 'tossing a small round black cartoon bomb with a sparking fuse to the right')
 BR = {
  'army': ('young army soldier boy', 'a round helmet with an olive-brown woodland camouflage cover and chin strap, a matching olive-brown camouflage uniform with chest pockets, and dark brown boots', {
+  # inf · med · sig · inf-art의 기본 그림은 시험 때 만든 2장(sheet_army_inf__inf-art, sheet_army_med__sig)을 쓴다. 아래 4줄은 계급대 그림용
+  'inf': (None, 'holding a black rifle at rest across the body', RIFLE),
+  'med': (None, 'a white armband with a red cross, holding a white first-aid bag with a red cross', BAND),
+  'sig': (None, 'wearing a headset, carrying an olive radio backpack with a long antenna, holding a radio handset', RADIO),
+  'inf-art': (None, 'holding one olive mortar shell in both hands next to a short dark mortar tube on a bipod', MORTAR),
   'art': (None, 'hugging one big olive artillery shell with both arms', CANNON),
   'inf-med': (None, 'a rifle slung on the back, a white armband with a red cross, holding a small white first-aid bag', KNEEL),
   'inf-sig': (None, 'green face paint stripes on the cheeks, holding big black binoculars near the face', 'crouching low and firing a short black carbine to the right with a small orange muzzle flash, binoculars hanging on the chest, green face paint stripes'),
@@ -92,6 +97,59 @@ ROLE = {'inf': 'rifleman', 'art': 'gunner', 'med': 'medic', 'sig': 'signaller'}
 PAIRS = {'army': [('art', 'inf-med'), ('inf-sig', 'art-med'), ('art-sig', 'med-sig')]}
 DEFAULT_PAIRS = [('inf', 'art'), ('med', 'sig'), ('inf-art', 'inf-med'), ('inf-sig', 'art-med'), ('art-sig', 'med-sig')]
 
+# ── 계급대별 그림 (부사관 t1 · 위관 t2 · 영관 t3 · 장성 t4). 의경은 위관급이 없어 t1·t3·t4만.
+# 같은 계급대의 10병과는 얼굴·모자·옷이 같고 장비와 동작만 다르다. 전용 복장 병과(잠수·조종 등)는 TIER_GEAR의 문구를 쓴다.
+T_FACE = {
+ 1: 'a tough veteran sergeant in his thirties with thick dark eyebrows, a little stubble on the chin and a small scar on one cheek',
+ 2: 'a neat young officer with tidy short black hair and a calm determined look',
+ 3: 'a dignified middle-aged commander with thick dark eyebrows and a small neat dark mustache',
+ 4: 'a grand old general with white hair, bushy white eyebrows and a big white mustache',
+}
+T_OUT = {
+ 'army': {1: 'an olive-brown camouflage field cap with dark sunglasses pushed up on it, an olive-brown camouflage uniform with rolled-up sleeves, a tan tactical vest with pouches, and dark brown boots',
+          2: 'a dark green beret, an olive-brown camouflage uniform, a brown leather officer belt with a shoulder strap, and dark brown boots',
+          3: 'an olive peaked cap with a gold band and a black visor, an olive dress jacket with brass buttons and two rows of small colorful ribbon bars on the chest, white gloves, and black shoes',
+          4: 'an olive peaked cap with gold leaf trim on the visor, a long olive greatcoat draped over the shoulders like a cape with red lining and gold trim, gold shoulder boards, round gold medals on the chest, and black boots'},
+ 'navy': {1: 'a navy blue ball cap with dark sunglasses pushed up on it, a navy blue working uniform with rolled-up sleeves, a gray life vest, and black boots',
+          2: 'a white peaked officer cap with a black visor, a white short-sleeved officer shirt with black shoulder boards with one gold stripe, white trousers, and white shoes',
+          3: 'a white peaked cap with a gold band and a black visor, a navy blue double-breasted dress jacket with gold buttons and gold sleeve stripes, small colorful ribbon bars on the chest, white gloves, and black shoes',
+          4: 'a white peaked cap with gold leaf trim on the visor, a long navy blue greatcoat draped over the shoulders like a cape with gold trim, gold shoulder boards, round gold medals on the chest, and black shoes'},
+ 'marine': {1: 'a brown-green camouflage field cap with dark sunglasses pushed up on it, a brown-green camouflage uniform with rolled-up sleeves, a tan tactical vest with pouches, a bright red neck scarf, and dark brown boots',
+            2: 'a plain red beret tilted to one side, a brown-green camouflage uniform, a brown leather officer belt with a shoulder strap, a bright red neck scarf, and dark brown boots',
+            3: 'a dark green peaked cap with a red band and a black visor, a dark green dress jacket with red collar tabs, brass buttons and small colorful ribbon bars on the chest, white gloves, and black shoes',
+            4: 'a dark green peaked cap with a red band and gold leaf trim on the visor, a long dark green greatcoat draped over the shoulders like a cape with red lining and gold trim, gold shoulder boards, round gold medals on the chest, and black boots'},
+ 'sf': {1: 'a plain black beret, a black tactical uniform with rolled-up sleeves, a dark gray armored vest with pouches, a black face scarf pulled down around the neck, fingerless gloves, and black boots',
+        2: 'a black tactical helmet with night-vision goggles flipped up on top, a black tactical uniform, a dark gray neck scarf, a black belt with a pistol holster, and black boots',
+        3: 'a black peaked cap with a silver band and a black visor, a black dress jacket with silver buttons and small colorful ribbon bars on the chest, black gloves, and black shoes',
+        4: 'a black peaked cap with silver leaf trim on the visor, a black eye patch over one eye, a long black greatcoat draped over the shoulders like a cape with dark red lining and silver trim, silver shoulder boards, round silver medals on the chest, and black boots'},
+ 'air': {1: 'a dark blue ball cap with aviator sunglasses pushed up on it, a sky-blue uniform shirt with rolled-up sleeves, dark blue trousers, an olive green utility vest with pouches, and black boots',
+         2: 'a blue garrison side cap, a brown leather flight jacket with a white fur collar over a sky-blue shirt, a white scarf, dark blue trousers, and black shoes',
+         3: 'a blue peaked cap with a silver band and a black visor, a blue dress jacket with silver buttons and small colorful ribbon bars on the chest, white gloves, and black shoes',
+         4: 'a blue peaked cap with silver leaf trim on the visor, a long dark blue greatcoat draped over the shoulders like a cape with light blue lining and silver trim, silver shoulder boards, round silver medals on the chest, and black shoes'},
+ 'police': {1: 'a plain navy blue police cap with a black brim, a neon yellow reflective vest over a light blue police shirt with rolled-up sleeves, navy blue trousers, a silver whistle around the neck, and black shoes',
+            3: 'a navy blue peaked police cap with a gold band and a black brim, a navy blue dress jacket with gold buttons and small colorful ribbon bars on the chest, white gloves, and black shoes',
+            4: 'a navy blue peaked cap with gold leaf trim on the brim, a long navy blue greatcoat draped over the shoulders like a cape with gold trim, gold shoulder boards, round gold medals on the chest, and black shoes'},
+}
+EOD_T = ('holding small wire cutters in one hand and a round green bomb-disposal helmet under the other arm', 'tossing a small round black cartoon bomb with a sparking fuse to the right')
+TIER_GEAR = {      # 전용 복장 대신 계급대 복장을 입을 때의 (대기, 공격) 문구
+ ('navy', 'inf-med'): ('blue diving goggles pushed up on the forehead, holding an orange and white life ring', BR['navy'][2]['inf-med'][2]),
+ ('navy', 'med-sig'): ('holding a white flight helmet with a dark visor under one arm, giving a thumbs up', BR['navy'][2]['med-sig'][2]),
+ ('sf', 'inf-sig'): ('a strip of green leafy camouflage netting over one shoulder, holding a long black sniper rifle with a scope upright', BR['sf'][2]['inf-sig'][2] + ', a strip of green leafy camouflage netting over one shoulder'),
+ ('sf', 'art-med'): EOD_T, ('police', 'art-med'): EOD_T,
+ ('air', 'inf-art'): ('holding a white pilot helmet with a dark visor under one arm, confident grin', 'launching a small toy-like gray fighter jet from one hand to the right with an orange flame trail, the white pilot helmet held under the other arm'),
+ ('air', 'inf-med'): ('an orange rescue vest over the outfit, holding a coiled rope', BR['air'][2]['inf-med'][2]),
+ ('air', 'inf-sig'): ('white pilot goggles pushed up on the forehead, holding a big black camera with a long lens', BR['air'][2]['inf-sig'][2]),
+ ('police', 'inf-sig'): ('holding up a glowing red traffic baton', 'blowing a silver whistle and thrusting the glowing red traffic baton to the right with a red light streak'),
+}
+T_HEAD = ("A game sprite sheet with exactly four separate chibi character illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. "
+          "No borders, no panels, no labels, no text, no arrows, no ground. " + STYLE + ", round rosy pink blush on the cheeks, small oval dark brown eyes with a white highlight, tiny mouth. "
+          "All four figures are the same person: {face}, drawn as a very cute chibi. All four wear exactly the same outfit: {outfit}. ")
+def tier_sheet(b, t, k1, k2):
+    def row(pos, k):
+        idle, atk = TIER_GEAR.get((b, k)) or BR[b][2][k][1:]
+        return f"{pos}-left: standing idle, {idle}. {pos}-right: the same character in action, {atk}. "
+    return T_HEAD.format(face=T_FACE[t], outfit=T_OUT[b][t]) + row('Top', k1) + row('Bottom', k2) + TAIL
+
 def sheet(b, k1, k2):
     who, base, cls = BR[b]
     def row(pos, k):
@@ -141,6 +199,12 @@ for i, names in enumerate(EN_SHEETS):
     else: grid, parts = 'side by side, one in the left half and one in the right half', f'Left: {EN[names[0]]}. Right: {EN[names[1]]}.'
     jobs.append({'file': f"art/raw_soft/enemies_{'__'.join(names)}.png", 'w': 1024, 'h': 1024, 'prompt': EN_HEAD.format(n=len(names), grid=grid) + parts + ' ' + EN_TAIL})
 jobs.append({'file': 'art/raw_soft/title_keyart.png', 'w': 1024, 'h': 1536, 'prompt': TITLE})
+# 계급대 그림: 군별 → 계급대 순서. 기본 그림 33장 뒤에 붙는다(번호 33부터)
+for b in BR:
+    for t in sorted(T_OUT[b]):
+        for k1, k2 in DEFAULT_PAIRS:
+            jobs.append({'file': f'art/raw_soft/sheet_{b}_t{t}_{k1}__{k2}.png', 'w': 1024, 'h': 1024, 'prompt': tier_sheet(b, t, k1, k2)})
 json.dump(jobs, open('art/jobs_soft.json', 'w'), ensure_ascii=False, indent=1)
 print(len(jobs), 'jobs'); print(max(len(j['prompt']) for j in jobs), 'max chars')
-for i, j in enumerate(jobs): print(i, j['file'])
+for i, j in enumerate(jobs):
+    if i < 33 or j['file'].endswith('inf__art.png'): print(i, j['file'])

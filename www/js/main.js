@@ -2,7 +2,7 @@
 import { BRANCHES, CLASS_IDS, CLASS_INFO } from './data.js';
 import * as C from './core.js';
 import { draw } from './render.js';
-import { insigUrl, hasArt, unitArtName } from './sprites.js';
+import { insigUrl, hasArt, unitArtName, loadBranchArt } from './sprites.js';
 import { Monetize } from './monetize.js';
 import { initLayout } from './layout.js';
 import { Sound } from './sound.js';
@@ -67,6 +67,7 @@ const ACT = {
       <button class="wide sec" data-act="title">뒤로</button>`);
   },
   start(id) {
+    loadBranchArt(id);
     g = C.createGame({ branchId: id, meta }); logAt = 0; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: 0 } }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1';
     hide(); toast(`${g.branch.name} 출격! 신병을 소집하세요`);
   },

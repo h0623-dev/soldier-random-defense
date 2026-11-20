@@ -36,18 +36,30 @@ export async function checkUpdate(onReady) {
   if (remote.build <= Math.max(buildInfo.bundled, live)) return 'latest';
   if (String(remote.build) === localStorage.getItem('srd_live_bad')) return 'skipped';
   const name = PREFIX + remote.build, cache = await caches.open(name);
+  // 지금 가진 파일 중 내용이 같은 것은 서버에서 받지 않고 그대로 옮긴다 (그림이 많아 매번 전부 받으면 느리다).
+  //  · 내려받은 버전을 쓰는 중이면 그 버전의 지문 목록(/__manifest), 아니면 앱에 든 version.json의 지문과 비교한다.
+  //  · 내려받은 버전이 있는데 서비스 워커가 이 화면을 맡고 있지 않으면 어느 파일이 나올지 알 수 없으므로 전부 받는다.
+  const meta = await caches.open(META), mf = live ? await meta.match('/__manifest') : null;
+  const have = live ? (mf && navigator.serviceWorker.controller ? await mf.json().catch(() => ({})) : {}) : (bundled.hashes || {});
+  const want = remote.hashes || {};
+  const wrap = async r => new Response(await r.blob(), { headers: { 'Content-Type': r.headers.get('Content-Type') || 'application/octet-stream' } });
   try {
     const queue = [...remote.files];
     await Promise.all(Array.from({ length: 6 }, async () => {
       for (let f; (f = queue.shift());) {
+        if (want[f] && have[f] === want[f]) {
+          const local = await fetch(f, { cache: 'no-store' }).catch(() => null);
+          if (local && local.ok) { await cache.put('/' + f, await wrap(local)); continue; }
+        }
         const r = await fetch(`${base}/${f}?b=${remote.build}`, { cache: 'no-store' });
         if (!r.ok) throw new Error(f);
         // 받은 내용만 새 응답으로 감싸 저장한다. 서버 응답을 그대로 넣으면 그 파일의 주소가 서버 주소로 기억돼,
         // 그 안에서 부르는 다른 파일(import)을 인터넷이 없을 때도 서버에서 찾으려 한다.
-        await cache.put('/' + f, new Response(await r.blob(), { headers: { 'Content-Type': r.headers.get('Content-Type') || 'application/octet-stream' } }));
+        await cache.put('/' + f, await wrap(r));
       }
     }));
   } catch { await caches.delete(name); return 'failed'; }
+  await meta.put('/__manifest', new Response(JSON.stringify(want)));
   await (await caches.open(META)).put('/__active', new Response(name));
   localStorage.setItem('srd_live_build', remote.build);
   await dropLive(name);

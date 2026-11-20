@@ -210,18 +210,25 @@ export const ENEMY_DRAW = {
 const art = {};                 // 이름 → 불러온 Image
 export const artState = { version: 0 };   // 그림이 새로 준비될 때마다 올라간다 (캐시 키에 넣어 다시 그리게 함)
 const fullBranch = new Set();
+let artList = [];
+function loadOne(name) {
+  if (art[name] || loading.has(name)) return; loading.add(name);
+  const im = new Image(); im.onload = () => { art[name] = im; artState.version++; }; im.src = `img/${name}.webp`;
+}
+const loading = new Set();
+// 시작할 때는 메뉴와 전장에 바로 필요한 것(군별 기본 대기 그림, 적)만 읽는다
 export function loadArt() {
   fetch('img/manifest.json').then(r => (r.ok ? r.json() : [])).then(list => {
-    const byBranch = {};
-    for (const name of list) { const m = /^units\/([a-z]+)_[a-z-]+$/.exec(name); if (m) byBranch[m[1]] = (byBranch[m[1]] || 0) + 1; }   // 계급대 그림(_t1 …)은 세지 않는다
-    for (const name of list) {
-      const im = new Image();
-      im.onload = () => { art[name] = im; artState.version++; };
-      im.src = `img/${name}.webp`;
-    }
+    artList = list; const byBranch = {};
+    for (const name of list) { const m = /^units\/([a-z]+)_[a-z-]+$/.exec(name); if (m) byBranch[m[1]] = (byBranch[m[1]] || 0) + 1; }   // 공격(_atk)·계급대(_t1 …) 그림은 세지 않는다
+    for (const name of list) if (!name.startsWith('units/') || /^units\/[a-z]+_[a-z-]+$/.test(name)) loadOne(name);
     for (const b in byBranch) if (byBranch[b] >= 10) fullBranch.add(b);
+    for (const b of wanted) loadBranchArt(b);
   }).catch(() => { /* 그림 파일이 없으면 코드 그림 사용 */ });
 }
+// 군별을 골라 출격할 때 그 군별의 공격 자세·계급대 그림을 마저 읽는다 (다 읽기 전에는 기본 그림이 나온다)
+const wanted = new Set();
+export function loadBranchArt(branchId) { wanted.add(branchId); for (const name of artList) if (name.startsWith(`units/${branchId}_`)) loadOne(name); }
 // 유닛 그림 이름: 계급대(grp 0 병 ~ 4 장성)에 맞는 그림(_t1 ~ _t4)이 있으면 그것을, 없으면 아래 계급대 그림, 끝으로 기본 그림을 쓴다
 const unitArtKey = (branchId, type) => `units/${branchId}_${type[0] === type[1] ? type[0] : type.join('-')}`;
 export function unitArtName(branchId, type, grp = 0) {

@@ -1,7 +1,7 @@
 """여러 그림이 한 장에 든 시트를 잘라 게임용 그림으로 만든다.
 사용: python3 -I tools/cutsheet.py <시트 폴더> <www/img 폴더> [미리보기 폴더]
-  sheet_<군별>_<병과A>__<병과B>.png : 2×2 = [A 대기, A 공격 / B 대기, B 공격]
-      → units/<군별>_<병과>.webp (256px, 대기)  +  units/<군별>_<병과>_atk.webp (512px, 공격)
+  sheet_<군별>_<병과A>__<병과B>.png (계급대 그림은 sheet_<군별>_t<n>_<병과A>__<병과B>.png) : 2×2 = [A 대기, A 공격 / B 대기, B 공격]
+      → units/<군별>_<병과>[_t<n>].webp (256px, 대기)  +  units/<군별>_<병과>[_t<n>]_atk.webp (512px, 공격)
       공격 그림은 대기 그림과 같은 배율이고, 대기 그림 자리가 아래 가운데(가로 128~384, 세로 256~512)에 오게 놓는다.
   enemies_<이름>__<이름>….png : 4종(2×2) 또는 2종(좌우) → enemy_<이름>.webp (256px)
 자르는 선은 한가운데 근처에서 그림이 가장 적게 걸리는 줄을 찾아 정한다."""
@@ -40,11 +40,11 @@ def pair(ii, mi, ia, ma):
     clip = ox + ba[0] < 0 or ox + ba[2] > cw or oy + ba[1] < 0
     return idle, tmp.crop((cw, cw, cw * 2, cw * 2)).resize((ATK, ATK), Image.LANCZOS), ('공격 그림이 캔버스를 넘음' if clip else '')
 
-def main(src_dir, img_dir, prev_dir=None):
+def main(src_dir, img_dir, prev_dir=None, only=None):
     os.makedirs(os.path.join(img_dir, 'units'), exist_ok=True)
     for f in sorted(os.listdir(src_dir)):
-        mu = re.fullmatch(r'sheet_([a-z]+)_([a-z-]+)__([a-z-]+)\.png', f); me = re.fullmatch(r'enemies_([a-z0-9_]+)\.png', f)
-        if not mu and not me: continue
+        mu = re.fullmatch(r'sheet_([a-z]+)_(?:(t\d)_)?([a-z-]+)__([a-z-]+)\.png', f); me = re.fullmatch(r'enemies_([a-z0-9_]+)\.png', f)
+        if (not mu and not me) or (only is not None and f not in only): continue
         img, bg = matte(Image.open(os.path.join(src_dir, f))); mask = np.asarray(img.getchannel('A')) > 24
         notes = []
         if me and len(me.group(1).split('__')) == 2:
@@ -64,13 +64,13 @@ def main(src_dir, img_dir, prev_dir=None):
             parts.append((sub, m))
         outs = []
         if mu:
-            b = mu.group(1)
-            for i, k in enumerate((mu.group(2), mu.group(3))):
+            b, tier = mu.group(1), ('_' + mu.group(2)) if mu.group(2) else ''
+            for i, k in enumerate((mu.group(3), mu.group(4))):
                 (ii, mi), (ia, ma) = parts[i * 2], parts[i * 2 + 1]
                 idle, atk, warn = pair(ii, mi, ia, ma)
                 if warn: notes.append(f'{k}: {warn}')
-                idle.save(os.path.join(img_dir, 'units', f'{b}_{k}.webp'), 'WEBP', quality=88, method=4)
-                atk.save(os.path.join(img_dir, 'units', f'{b}_{k}_atk.webp'), 'WEBP', quality=86, method=4)
+                idle.save(os.path.join(img_dir, 'units', f'{b}_{k}{tier}.webp'), 'WEBP', quality=88, method=4)
+                atk.save(os.path.join(img_dir, 'units', f'{b}_{k}{tier}_atk.webp'), 'WEBP', quality=86, method=4)
                 outs += [idle, atk]
         else:
             for (sub, m), name in zip(parts, me.group(1).split('__')):
