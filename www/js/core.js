@@ -1,5 +1,5 @@
 // 군인 랜덤 디펜스 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
-import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL, HEROES, TYPE_SKILLS } from './data.js';
+import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL, HEROES, TYPE_SKILLS, cmOf } from './data.js';
 
 // ── 전장 ─────────────────────────────────────────────────
 // 가로 7칸 × 세로 9칸(칸 100×100)의 세로로 긴 전장. 적은 발판 덩어리 사이로 꺾이며 도는 닫힌 길을 계속 돈다.
@@ -28,7 +28,7 @@ export const AREAS = [
   { name: '전방 비행장', theme: 'airfield', layout: flipV(L_S), boss: { name: '전략 폭격기', hpMul: 0.77, speed: 56, fly: true, skill: { id: 'bomb', label: '융단 폭격', cd: 9, r: 150, dur: 3 }, text: '융단 폭격 — 9초마다 한 구역의 유닛을 3초간 기절시킨다' } },
   { name: '적 사령부', theme: 'hq', layout: flipV(L_SIDE), boss: { name: '강철 거인', hpMul: 0.69, speed: 40, skill: { id: 'stun', label: '충격파', cd: 12, n: 5, dur: 2.5, regen: 0.004, rage: 0.3 }, text: '재생 장갑 · 충격파 — 체력을 조금씩 회복하고, 12초마다 유닛 5명을 기절시키며, 체력 30% 아래에서 빨라진다' } },
 ];
-export const areaOfWave = wave => Math.min(AREAS.length - 1, Math.max(0, Math.floor((wave - 1) / 10)));
+export const areaOfWave = wave => Math.max(0, Math.floor((wave - 1) / 10)) % AREAS.length;      // 100단계를 넘으면(무한 작전) 첫 지역부터 다시 돈다
 
 function buildMap(rows, name) {
   const road = new Set(), slots = [], decor = [], key = (r, c) => r * 10 + c;
@@ -73,6 +73,8 @@ export const CFG = {
   // 보급품(두 번째 재화): 보스·특수 임무·임무 완수로 얻고 선택 소집·진급 심사에 쓴다
   bossSupply: 3, pickSupply: 2, gambleSupply: 1, rerollSupply: 1, gambleUp: [0.55, 0.45, 0.35, 0.22, 0.12], gambleDown: 0.15,      // 진급 심사 성공률은 지금 계급이 높을수록 낮다. 대장(전설)부터는 심사를 받을 수 없다 — 원수는 조합으로만
   // 특수 임무(정예 표적): 직접 불러내는 추가 보스. 제한 시간 안에 잡으면 군자금·보급품
+  endlessGrowth: 1.03,  // 무한 작전: 100단계를 넘으면 적 체력이 단계마다 이만큼 더 는다(끝이 나게)
+  rushPrep: 20, rushGap: 15, rushSupply: 3, rushBonus: 1.3,      // 보스 러시: 첫 준비 시간 · 보스를 잡은 뒤 다음 보스까지 · 판마다 주는 보급품 · 군자금 배수(특수 임무·임무 보상이 없는 만큼 더 준다)
   eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
   tileCount: 3,         // 지역마다 특수 발판 칸 수 (종류마다 한 칸씩)
   // 보급 기지: 군자금으로 보급병을 고용하면 단계가 시작될 때마다 군자금이 들어오고, 5단계마다 보급품도 들어온다
@@ -86,6 +88,14 @@ export const TILES = {
   crit: { name: '급소 발판', short: '급소', text: '치명타 확률 +15%', color: '#ff8f7a', crit: 0.15 },
 };
 export const CRIT_MUL = 2.5;
+export const critMul = g => CRIT_MUL + cmOf(g.meta, 'crit') / 100;      // 명사수 휘장
+
+// 병과 숙련도: 판이 끝나면 그 판에서 싸운 병과에 경험치가 쌓인다(군별 × 병과 60칸, 기기에 저장). 숙련 단계마다 그 병과 공격력 +step
+// meta.xp = { 군별 id: { 병과 키: 경험치 } }. 다음 단계까지 필요한 경험치는 need(지금 단계)
+export const MASTERY = { max: 10, step: 0.02, need: l => 100 + 60 * l };
+export function masteryInfo(xp = 0) { let level = 0; while (level < MASTERY.max && xp >= MASTERY.need(level)) { xp -= MASTERY.need(level); level++; }
+  return { level, cur: level < MASTERY.max ? xp : 0, need: level < MASTERY.max ? MASTERY.need(level) : 0 }; }
+export const masteryOf = (meta, branchId, key) => masteryInfo(((meta && meta.xp && meta.xp[branchId]) || {})[key] || 0).level;
 
 // 난이도: 적 체력과 훈장 보상이 달라진다. need = 바로 아래 난이도에서 이 단계까지 가면 열린다
 // (7계급 경제에서는 화력과 적 체력이 거의 나란히 자라서 배수가 조금만 커도 훨씬 일찍 막힌다. 용사를 쓰는 봇 기준 어려움은 승률 40%쯤, 지옥은 대부분 20~60단계에서 막히고 가끔 이긴다)
@@ -118,7 +128,7 @@ export const sameType = (t1, t2) => typeKey(t1) === typeKey(t2);
 const expo = (branch, level) => level;       // 계급 한 단계 = 전투력 CFG.growth배. (18계급 시절에는 계급 수가 달라도 최종 전투력이 같게 늘려 썼다)
 export const maxLevel = branch => branch.grades.length - 1;
 export const maxCamp = branch => branch.grades.length - 4;     // 훈련소 최고 단계의 기본 소집 등급 = 영웅. 그 위 3등급(유니크·전설·초월)은 조합으로만 올린다
-export const summonCost = (branch, camp) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, camp));
+export const summonCost = (branch, camp, meta) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, camp) * (1 - cmOf(meta, 'summon') / 100));      // meta: 모병 유공 표창 할인
 export const campCost = (branch, camp) => Math.round(CFG.campBase * CFG.campGrowth ** expo(branch, camp));
 export const unitValue = (branch, level) => Math.round(CFG.summonBase * CFG.summonGrowth ** expo(branch, level));
 
@@ -126,7 +136,8 @@ export function unitStats(branch, level, type, meta = {}, up = null) {
   const w = { inf: 0, art: 0, med: 0, sig: 0 }; w[type[0]] += 0.5; w[type[1]] += 0.5;
   const k = branch.trait.key;
   const D = CFG.baseDmg * CFG.growth ** expo(branch, level) * (1 + 0.03 * (meta.atk || 0))
-    * (1 + CFG.upStep * (up ? (up[type[0]] + up[type[1]]) / 2 : 0));
+    * (1 + CFG.upStep * (up ? (up[type[0]] + up[type[1]]) / 2 : 0))
+    * (1 + MASTERY.step * masteryOf(meta, branch.id, typeKey(type))) * (1 + cmOf(meta, 'b_' + branch.id) / 100);      // 병과 숙련도 · 군별 부대 표창
   let dmg = D * (w.inf * 1.0 + w.art * 2.6 + w.med * 0.5 + w.sig * 0.6);
   let cd = w.inf * 0.55 + w.art * 1.5 + w.med * 0.9 + w.sig * 0.8;
   let range = w.inf * 190 + w.art * 290 + w.med * 170 + w.sig * 240;
@@ -145,8 +156,24 @@ export function unitStats(branch, level, type, meta = {}, up = null) {
 let SKILL_ON = true; export const setSkills = on => { SKILL_ON = on; };      // 봇 비교용
 export const typeSkill = type => TYPE_SKILLS[typeKey(type)] || null;
 
+// 모드: 기본 작전(100단계) · 무한 작전(100단계를 넘어 끝없이) · 보스 러시(보스 10종만 연달아). need = 어느 모드·난이도에서든 이 단계까지 가 본 적이 있어야 열린다
+export const MODES = [
+  { id: 'normal', name: '기본 작전', text: '100단계를 막아 내면 승리' },
+  { id: 'endless', name: '무한 작전', need: 50, text: '100단계를 넘어 끝없이 — 최고 기록 도전' },
+  { id: 'rush', name: '보스 러시', need: 30, text: '보스 10종을 연달아 격파' },
+];
+export const maxWaveOf = g => (g.mode === 'endless' ? Infinity : g.mode === 'rush' ? AREAS.length : CFG.maxWave);
+// 모드에 맞는 단계 정보 · 지역. 보스 러시의 n번째 판 = 기본 작전 10n단계의 보스
+export const waveOf = (g, wave) => (g.mode === 'rush' ? waveInfo(wave * 10) : waveInfo(wave));
+export const areaOf = (g, wave) => (g.mode === 'rush' ? Math.min(AREAS.length - 1, Math.max(0, wave - 1)) : areaOfWave(wave));
+// 보스 러시에서 n번째 보스 앞에 주는 군자금 = 기본 작전에서 그 앞 아홉 단계 동안 버는 돈(단계 보너스 + 처치 보상)
+export function rushStipend(n) {
+  let sum = CFG.waveBonus;
+  for (let w = n * 10 - 9; w < n * 10; w++) { const i = waveInfo(w); sum += CFG.waveBonus + i.count * i.bounty; }
+  return Math.round(sum * CFG.rushBonus);
+}
 export function waveInfo(wave) {
-  const hp = CFG.hpBase * CFG.hpGrowth ** (wave - 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (wave - 1);
+  const hp = CFG.hpBase * CFG.hpGrowth ** (wave - 1) * (wave > CFG.maxWave ? CFG.endlessGrowth ** (wave - CFG.maxWave) : 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (wave - 1);
   if (wave % 10 === 0) { const n = areaOfWave(wave), b = AREAS[n].boss;      // 지역마다 다른 보스 (체력 배수는 같고 속도·모습이 다르다)
     return { kind: 'boss', boss: n + 1, fly: !!b.fly, skill: b.skill, name: b.name, count: 1, hp: hp * CFG.bossHp * (b.hpMul || 1), speed: b.speed, bounty: bounty * 25, gap: 1 }; }
   if (wave % 5 === 0) return { kind: 'armor', name: '장갑차 부대', count: 14, hp: hp * 2.3, speed: 52, bounty: bounty * 1.5, gap: 0.85 };
@@ -155,12 +182,12 @@ export function waveInfo(wave) {
 }
 
 // ── 게임 상태 ────────────────────────────────────────────
-export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, diff = 0 }) {
-  const branch = branchById(branchId);
+export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, diff = 0, mode = 'normal' }) {
+  const branch = branchById(branchId), rush = mode === 'rush';
   const g = {
-    branch, meta, rand: rng(seed), fx, diff, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: CFG.prepTime,
-    gold: CFG.startGold + 40 * (meta.gold || 0), camp: 0, units: Array(SLOT_COUNT).fill(null), area: 0, map: MAPS[0],
-    supply: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
+    branch, meta, rand: rng(seed), fx, diff, mode, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: rush ? CFG.rushPrep : CFG.prepTime,
+    gold: CFG.startGold + 40 * (meta.gold || 0) + (rush ? rushStipend(1) : 0), camp: 0, units: Array(SLOT_COUNT).fill(null), area: 0, map: MAPS[0],
+    supply: cmOf(meta, 'supply') + (rush ? CFG.rushSupply : 0), dmgT: {}, bossKills: 0, bossT0: CFG.bossTime, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
     tiles: {}, rerolls: 0, streak: 0, fastBoss: 0, crisis: 0,      // 특수 발판 {칸 번호: 종류} · 히든 임무용 기록
     depot: 0, depotGold: 0,                                        // 보급병 수 · 보급 기지로 번 군자금 합계
@@ -170,8 +197,9 @@ export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, 
 }
 // 특수 발판을 새로 정한다 (게임을 시작할 때와 다음 지역으로 넘어갈 때)
 function rollTiles(g) {
-  const free = Array.from({ length: SLOT_COUNT }, (_, i) => i); g.tiles = {};
-  for (const kind of Object.keys(TILES).slice(0, CFG.tileCount)) g.tiles[free.splice(Math.floor(g.rand() * free.length), 1)[0]] = kind;
+  const free = Array.from({ length: SLOT_COUNT }, (_, i) => i), kinds = Object.keys(TILES); g.tiles = {};
+  for (const kind of kinds.slice(0, CFG.tileCount)) g.tiles[free.splice(Math.floor(g.rand() * free.length), 1)[0]] = kind;
+  for (let i = cmOf(g.meta, 'tile'); i > 0; i--) g.tiles[free.splice(Math.floor(g.rand() * free.length), 1)[0]] = kinds[Math.floor(g.rand() * kinds.length)];      // 공병 표창: 종류 무작위로 더
   g.auraDirty = true;
 }
 export const tileAt = (g, slot) => TILES[g.tiles[slot]] || null;
@@ -184,10 +212,10 @@ function randomEmptySlot(g) {
   return free.length ? free[Math.floor(g.rand() * free.length)] : -1;
 }
 export function summon(g) {
-  const cost = summonCost(g.branch, g.camp), slot = randomEmptySlot(g);
+  const cost = summonCost(g.branch, g.camp, g.meta), slot = randomEmptySlot(g);
   if (g.over || g.gold < cost || slot < 0) return null;
   g.gold -= cost;
-  const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.03 ? 2 : r < 0.18 ? 1 : 0));      // 3% 두 계급 위, 15% 한 계급 위
+  const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.03 ? 2 : r < 0.18 + cmOf(g.meta, 'luck') / 100 ? 1 : 0));      // 3% 두 계급 위, 15% 한 계급 위 (+행운의 군번줄)
   const c = CLASS_IDS[Math.floor(g.rand() * 4)];
   // 히든 계급 뽑기
   for (const h of g.branch.hidden) if (h.draw && g.camp >= h.drawCamp[0] && g.camp <= h.drawCamp[1] && g.rand() < h.draw)
@@ -233,14 +261,14 @@ export function upgradeClass(g, c) {
 }
 // 선택 소집: 보급품을 써서 원하는 기본 병과를 고른다 (계급 운은 일반 소집과 같고 히든 뽑기는 없다)
 export function summonPick(g, c) {
-  const cost = summonCost(g.branch, g.camp), slot = randomEmptySlot(g);
+  const cost = summonCost(g.branch, g.camp, g.meta), slot = randomEmptySlot(g);
   if (g.over || g.gold < cost || g.supply < CFG.pickSupply || slot < 0) return null;
   g.gold -= cost; g.supply -= CFG.pickSupply;
   const r = g.rand();
   return placeUnit(g, slot, Math.min(maxLevel(g.branch), g.camp + (r < 0.06 ? 2 : r < 0.28 ? 1 : 0)), [c, c]);
 }
 // 진급 심사: 보급품 1로 선택한 유닛에 도전. 성공하면 한 계급 진급, 실패하면 그대로, 낮은 확률로 강등
-export const gambleChance = u => CFG.gambleUp[u.level] || 0;
+export const gambleChance = (u, meta) => (CFG.gambleUp[u.level] ? CFG.gambleUp[u.level] + cmOf(meta, 'gamble') / 100 : 0);
 export function canGamble(g, a) {
   const u = g.units[a];
   return !!(u && !g.over && !u.hidden && g.supply >= CFG.gambleSupply && u.level < CFG.gambleUp.length);
@@ -248,7 +276,7 @@ export function canGamble(g, a) {
 export function gamble(g, a) {
   if (!canGamble(g, a)) return null;
   const u = g.units[a], r = g.rand(); g.supply -= CFG.gambleSupply;
-  const res = r < gambleChance(u) ? 'up' : r < 1 - CFG.gambleDown || u.level === 0 ? 'same' : 'down';
+  const res = r < gambleChance(u, g.meta) ? 'up' : r < 1 - CFG.gambleDown || u.level === 0 ? 'same' : 'down';
   g.streak = res === 'up' ? g.streak + 1 : 0;      // 연속 통과 횟수 (히든 임무)
   if (res !== 'same') placeUnit(g, a, u.level + (res === 'up' ? 1 : -1), u.type).dealt = u.dealt;
   return res;
@@ -269,8 +297,8 @@ export function reroll(g, a) {
 // 일찍 고용할수록 오래 받지만 그만큼 초반 전력이 준다. 5단계마다 보급병 5명당 보급품 1개
 export const depotCost = g => Math.round(CFG.depotBase * CFG.depotGrowth ** g.depot);
 export function depotIncome(g, wave = Math.max(1, g.wave + 1)) {
-  const w = waveInfo(Math.min(wave, CFG.maxWave));
-  return Math.round(g.depot * (CFG.depotFlat + CFG.depotRate * (CFG.waveBonus + w.count * w.bounty)));
+  const w = waveInfo(wave), base = g.mode === 'rush' ? rushStipend(Math.min(wave, AREAS.length)) : CFG.waveBonus + w.count * w.bounty;      // 보스 러시는 판마다 받는 군자금이 기준
+  return Math.round(g.depot * (CFG.depotFlat + CFG.depotRate * base) * (1 + cmOf(g.meta, 'depot') / 100));
 }
 export const depotSupply = g => Math.floor(g.depot / CFG.depotSupPer);
 export function hireDepot(g) {
@@ -278,11 +306,11 @@ export function hireDepot(g) {
   if (g.over || g.depot >= CFG.depotMax || g.gold < cost) return false;
   g.gold -= cost; g.depot++; return true;
 }
-export const eliteState = g => (g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');
+export const eliteState = g => (g.mode === 'rush' ? 'off' : g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');      // 보스 러시에는 특수 임무가 없다
 export function callElite(g) {
   if (g.over || eliteState(g) !== 'ready') return false;
   const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * CFG.eliteHp * CFG.eliteHpGrowth ** g.elite.n * g.hpMul;
-  g.enemies.push({ id: g.uid++, s: 0, hp, maxHp: hp, speed: 55, bounty: CFG.bountyBase * CFG.bountyGrowth ** w * CFG.eliteBounty, kind: 'elite',
+  g.enemies.push({ id: g.uid++, s: 0, hp, maxHp: hp, speed: 55, bounty: CFG.bountyBase * CFG.bountyGrowth ** w * CFG.eliteBounty * (1 + cmOf(g.meta, 'elite') / 100), kind: 'elite',
     life: CFG.eliteTime, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
   g.elite.active = true; return true;
 }
@@ -290,8 +318,8 @@ export function callElite(g) {
 const lvCount = (g, lv) => g.units.filter(u => u && u.level >= lv).length;
 export const MISSIONS = [
   { id: 'k50', sup: 1, text: () => '적 50명 처치', ok: g => g.kills >= 50 },
-  { id: 'k300', sup: 2, text: () => '적 300명 처치', ok: g => g.kills >= 300 },
-  { id: 'k1000', sup: 3, text: () => '적 1000명 처치', ok: g => g.kills >= 1000 },
+  { id: 'k300', not: 'rush', sup: 2, text: () => '적 300명 처치', ok: g => g.kills >= 300 },
+  { id: 'k1000', not: 'rush', sup: 3, text: () => '적 1000명 처치', ok: g => g.kills >= 1000 },
   { id: 'four', sup: 1, text: () => '기본 병과 4종을 모두 배치', ok: g => CLASS_IDS.every(c => g.units.some(u => u && u.type[0] === c && u.type[1] === c)) },
   { id: 'mix3', sup: 2, text: () => '혼성 병과 3종을 동시에 보유', ok: g => new Set(g.units.filter(u => u && u.type[0] !== u.type[1]).map(u => typeKey(u.type))).size >= 3 },
   { id: 'full', sup: 1, text: () => '배치 칸 25칸을 모두 채우기', ok: g => !g.units.includes(null) },
@@ -299,24 +327,24 @@ export const MISSIONS = [
   { id: 'officer', sup: 2, text: g => `${GRADES[g.branch.tiers[0]].name} 등급 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[0]) >= 1 },
   { id: 'general', sup: 3, text: g => `${GRADES[g.branch.tiers[1]].name} 등급 이상 1명 보유`, ok: g => lvCount(g, g.branch.tiers[1]) >= 1 },
   { id: 'up5', sup: 1, text: () => '병과 강화 합계 5단계', ok: g => CLASS_IDS.reduce((s, c) => s + g.up[c], 0) >= 5 },
-  { id: 'el1', sup: 1, text: () => '특수 임무 1회 완수', ok: g => g.elite.n >= 1 },
-  { id: 'el5', sup: 2, text: () => '특수 임무 5회 완수', ok: g => g.elite.n >= 5 },
+  { id: 'el1', not: 'rush', sup: 1, text: () => '특수 임무 1회 완수', ok: g => g.elite.n >= 1 },
+  { id: 'el5', not: 'rush', sup: 2, text: () => '특수 임무 5회 완수', ok: g => g.elite.n >= 5 },
   { id: 'hid', sup: 2, text: () => '히든 계급 획득', ok: g => g.hiddenGot > 0, only: g => g.branch.hidden.length > 0 },
   { id: 'hero1', sup: 3, text: () => '전설의 용사 탄생', ok: g => g.heroGot > 0 },
   { id: 'depot5', sup: 2, text: () => '보급병 5명 고용', ok: g => g.depot >= 5 },
-  { id: 'w30', sup: 2, text: () => '30단계 도달', ok: g => g.wave >= 30 },
-  { id: 'w60', sup: 3, text: () => '60단계 도달', ok: g => g.wave >= 60 },
+  { id: 'w30', not: 'rush', sup: 2, text: () => '30단계 도달', ok: g => g.wave >= 30 },
+  { id: 'w60', not: 'rush', sup: 3, text: () => '60단계 도달', ok: g => g.wave >= 60 },
   // 히든 임무: 달성하기 전에는 조건이 보이지 않는다 (한 번 달성하면 다음 판부터는 조건이 보인다 — 화면 쪽에서 기억)
   { id: 'h_mono', hidden: true, sup: 3, text: () => '같은 병과 유닛 8명을 동시에 보유', ok: g => Math.max(0, ...Object.values(typeCounts(g))) >= 8 },
   { id: 'h_all', hidden: true, sup: 4, text: () => '10개 병과를 모두 동시에 보유', ok: g => Object.keys(typeCounts(g)).length >= TYPE_KEYS.length },
   { id: 'h_streak', hidden: true, sup: 3, text: () => '진급 심사 3회 연속 통과', ok: g => g.streak >= 3 },
   { id: 'h_fast', hidden: true, sup: 3, text: () => `보스를 등장 ${FAST_BOSS}초 안에 격파`, ok: g => g.fastBoss > 0 },
-  { id: 'h_crisis', hidden: true, sup: 3, text: () => `적이 ${CRISIS_AT}명 넘게 몰린 뒤 5명 이하로 줄이기`, ok: g => g.crisis > 0 && g.enemies.length <= 5 },
-  { id: 'h_tile', hidden: true, sup: 3, text: () => `특수 발판 ${CFG.tileCount}칸 모두에 ${GRADES[3].name} 등급 이상 배치`, ok: g => Object.keys(g.tiles).every(i => g.units[i] && g.units[i].level >= 3) },
+  { id: 'h_crisis', hidden: true, not: 'rush', sup: 3, text: () => `적이 ${CRISIS_AT}명 넘게 몰린 뒤 5명 이하로 줄이기`, ok: g => g.crisis > 0 && g.enemies.length <= 5 },
+  { id: 'h_tile', hidden: true, sup: 3, text: g => `특수 발판 ${Object.keys(g.tiles).length}칸 모두에 ${GRADES[3].name} 등급 이상 배치`, ok: g => Object.keys(g.tiles).every(i => g.units[i] && g.units[i].level >= 3) },
 ];
 const FAST_BOSS = 12, CRISIS_AT = 40;
 function typeCounts(g) { const n = {}; for (const u of g.units) if (u) { const k = typeKey(u.type); n[k] = (n[k] || 0) + 1; } return n; }
-export const missionList = g => MISSIONS.filter(m => !m.only || m.only(g));
+export const missionList = g => MISSIONS.filter(m => (!m.only || m.only(g)) && m.not !== g.mode);      // not: 그 모드에서는 달성할 수 없어 빼는 임무
 
 export function upgradeCamp(g) {
   const cost = campCost(g.branch, g.camp);
@@ -350,9 +378,10 @@ export function moveUnit(g, a, b) {
   const A = g.units[a], B = g.units[b];
   g.units[b] = A; A.slot = b; g.units[a] = B; if (B) B.slot = a; g.auraDirty = true; return true;
 }
+export const sellValue = (g, u) => Math.floor(unitValue(g.branch, u.level) * (CFG.sellRate + cmOf(g.meta, 'sell') / 100));
 export function sell(g, a) {
   const u = g.units[a]; if (!u) return 0;
-  const v = Math.floor(unitValue(g.branch, u.level) * CFG.sellRate);
+  const v = sellValue(g, u);
   g.units[a] = null; g.gold += v; g.auraDirty = true; return v;
 }
 // 계급 이름·계급장은 등급과 병과로 정해진다(같은 등급이라도 병과에 따라 이름이 다르다). 히든 계급은 제 이름과 계급장을 쓴다
@@ -364,16 +393,20 @@ export const unitName = (branch, u) => `${rankName(branch, u)} ${branch.types[ty
 export const unitWeapon = (branch, u) =>
   branch.types[typeKey(u.type)][1][u.level >= branch.tiers[1] ? 2 : u.level >= branch.tiers[0] ? 1 : 0];
 
+// 다음 작전 지역으로 이동: 맵이 바뀐다. 유닛은 같은 번호의 발판으로 옮겨 서고, 남은 적은 새 길의 같은 진행 비율 지점으로 옮긴다. 특수 발판도 새로 정한다
+function enterArea(g, area) {
+  if (area === g.area) return;
+  const old = g.map; g.area = area; g.map = MAPS[area];
+  for (const e of g.enemies) e.s = (e.s % old.len) / old.len * g.map.len;
+  rollTiles(g); g.log.push({ t: 'area', area });
+}
 function startWave(g) {
-  g.wave++; const w = waveInfo(g.wave);
-  // 다음 작전 지역으로 이동: 맵이 바뀐다. 유닛은 같은 번호의 발판으로 옮겨 서고, 남은 적은 새 길의 같은 진행 비율 지점으로 옮긴다
-  const area = areaOfWave(g.wave);
-  if (area !== g.area) { const old = g.map; g.area = area; g.map = MAPS[area];
-    for (const e of g.enemies) e.s = (e.s % old.len) / old.len * g.map.len;
-    rollTiles(g); g.log.push({ t: 'area', area }); }
+  g.wave++; const w = waveOf(g, g.wave);
+  enterArea(g, areaOf(g, g.wave));
   g.spawn = { ...w, hp: w.hp * g.hpMul, left: w.count, cd: 0 }; g.nextWave = CFG.waveGap;
-  if (w.kind === 'boss') g.bossTimer = CFG.bossTime;
-  g.gold += CFG.waveBonus; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
+  if (w.kind === 'boss') g.bossTimer = g.bossT0 = CFG.bossTime + cmOf(g.meta, 'time');
+  if (g.mode !== 'rush') g.gold += CFG.waveBonus;      // 보스 러시는 보스를 잡을 때 다음 판 군자금을 한꺼번에 받는다
+  g.log.push({ t: 'wave', wave: g.wave, name: w.name });
   if (g.depot > 0) {      // 보급 도착
     const gold = depotIncome(g, g.wave), sup = g.wave % CFG.depotSupEvery === 0 ? depotSupply(g) : 0;
     g.gold += gold; g.depotGold += gold; g.supply += sup; g.log.push({ t: 'depot', gold, sup });
@@ -388,11 +421,12 @@ function hit(g, e, dmg) {
     if (k.id === 'armor' && e.hp > e.maxHp * 0.5) dmg *= 1 - k.cut;
     if (e.dashT > 0) dmg *= 1 - k.cut;
   }
+  if (e.kind === 'boss') dmg *= 1 + cmOf(g.meta, 'boss') / 100;      // 무공 표창
   const full = dmg * (1 + (e.vulnT > 0 ? e.vuln : 0)), real = Math.max(0, Math.min(full, e.hp));
   e.hp -= full;
   if (e.hp <= 0 && !e.dead) {
     e.dead = true; g.kills++;
-    if (e.kind === 'boss') { g.supply += CFG.bossSupply; if (g.bossTimer >= CFG.bossTime - FAST_BOSS) g.fastBoss++; }
+    if (e.kind === 'boss') { g.supply += CFG.bossSupply; g.bossKills++; if (g.bossTimer >= g.bossT0 - FAST_BOSS) g.fastBoss++; if (g.mode === 'rush') g.rushNext = true; }
     if (e.kind === 'elite') { g.supply += CFG.eliteSupply; g.elite.n++; g.elite.active = false; g.elite.cd = CFG.eliteCd; g.log.push({ t: 'eliteKill' }); }
     if (g.fx) { g.effects.push({ puff: true, x: e.x, y: e.y, r: e.kind === 'boss' ? 60 : 18, t: 0.3 }); if (e.kind === 'boss') g.sfx.push('bossdie'); }
     g.gold += e.bounty * (g.branch.trait.key === 'slow' ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0));
@@ -412,7 +446,7 @@ function bossSkill(g, e, dt) {
   const stun = (list, dur) => { if (immune) return; for (const u of list) { u.stunT = Math.max(u.stunT, dur * (u.guard || 1)); if (g.fx) g.effects.push({ puff: true, x: slots[u.slot].x, y: slots[u.slot].y, r: 34, t: 0.3 }); } };
   const pick = n => { const a = [...live], out = []; while (out.length < n && a.length) out.push(a.splice(Math.floor(g.rand() * a.length), 1)[0]); return out; };
   if (k.id === 'summon') {
-    const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * k.hp, bounty = CFG.bountyBase * CFG.bountyGrowth ** w * 0.3;
+    const w = (g.mode === 'rush' ? g.wave * 10 : g.wave) - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * k.hp, bounty = CFG.bountyBase * CFG.bountyGrowth ** w * 0.3;
     for (let i = 0; i < k.n; i++) g.enemies.push({ id: g.uid++, s: e.s - 26 * (i + 1), hp, maxHp: hp, speed: k.kind === 'fast' ? 105 : 70, bounty, kind: k.kind, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
   } else if (k.id === 'dash') e.dashT = k.dur;
   else if (k.id === 'stun') stun(pick(k.n), k.dur);
@@ -425,12 +459,18 @@ function bossSkill(g, e, dt) {
     if (immune && (k.id === 'stun' || k.id === 'burn' || k.id === 'bomb')) g.effects.push({ txt: '불사조가 막아냈다', x: e.x, y: e.y - 72, t: 1.3, small: true }); }
 }
 
+// 피해 기록: 유닛 누적 · 전체 · 기본 병과별(결과 화면) · 병과 키별(숙련도 경험치 배분)
+function credit(g, u, type, d) {
+  if (u) u.dealt += d; g.dealt += d; g.dmg[type[0]] += d / 2; g.dmg[type[1]] += d / 2;
+  if (!type.tk) Object.defineProperty(type, 'tk', { value: typeKey(type) });      // 병과 배열에 키를 붙여 둔다(매번 다시 만들지 않게). 열거되지 않아 저장·비교에는 끼지 않는다
+  g.dmgT[type.tk] = (g.dmgT[type.tk] || 0) + d;
+}
 // 용사의 주기 기술. 표적이 없으면 쓰지 않고 기다린다
 function heroCast(g, u, k, p, base) {
   const live = g.enemies.filter(e => !e.dead);
   if (k.id === 'barrage') {      // 강철비: 전장의 모든 적에게 포격
     if (!live.length) { u.skT = 0.3; return; }
-    for (const e of live) { const d = hit(g, e, base * sv(u, k.mul)); u.dealt += d; g.dealt += d; g.dmg[u.type[0]] += d / 2; g.dmg[u.type[1]] += d / 2; }
+    for (const e of live) credit(g, u, u.type, hit(g, e, base * sv(u, k.mul)));
     if (g.fx) { live.slice(0, 14).forEach((e, i) => g.effects.push({ x1: e.x - 30, y1: e.y - 320 - i * 9, x2: e.x, y2: e.y, r: 46, t: 0.42, T: 0.42, c: 'art', c2: 'art' }));
       g.effects.push({ txt: '강철비!', x: p.x, y: p.y - 60, t: 1.1 }); g.sfx.push('art'); }
   } else if (k.id === 'freeze') {      // 혹한: 사거리 안의 적을 얼린다
@@ -446,7 +486,10 @@ export function step(g, dt) {
   if (g.over) return;
   g.time += dt;
   // 웨이브 진행
-  if (g.wave < CFG.maxWave) { g.nextWave -= dt; if (g.nextWave <= 0) startWave(g); }
+  // 보스 러시: 보스를 잡으면 다음 지역으로 옮기고 다음 판 군자금·보급품을 받는다. 다음 보스는 rushGap초 뒤에 나오고, 보스가 살아 있는 동안에는 시간이 가지 않는다
+  if (g.rushNext) { g.rushNext = false;
+    if (g.wave < maxWaveOf(g)) { const gold = rushStipend(g.wave + 1); g.gold += gold; g.supply += CFG.rushSupply; g.nextWave = CFG.rushGap; enterArea(g, areaOf(g, g.wave + 1)); g.log.push({ t: 'rush', gold, sup: CFG.rushSupply }); } }
+  if (g.wave < maxWaveOf(g) && !(g.mode === 'rush' && g.enemies.some(e => e.kind === 'boss'))) { g.nextWave -= dt; if (g.nextWave <= 0) startWave(g); }
   if (g.spawn && g.spawn.left > 0) {
     g.spawn.cd -= dt;
     if (g.spawn.cd <= 0) {
@@ -497,7 +540,7 @@ export function step(g, dt) {
     if (e.freezeT > 0) e.freezeT -= dt;      // 빙결(동장군): 그 자리에 멈춘다
     if (e.dotT > 0 && !e.dead) { e.dotT -= dt;      // 오염: 0.5초마다 지속 피해
       if ((e.dotTk -= dt) <= 0) { e.dotTk += 0.5; const d = hit(g, e, e.dot * 0.5), o = g.units.find(u => u && u.id === e.dotBy);
-        if (o) o.dealt += d; g.dealt += d; g.dmg[e.dotC[0]] += d / 2; g.dmg[e.dotC[1]] += d / 2; } }
+        credit(g, o, e.dotC, d); } }
     const fast = e.dashT > 0 ? 2.2 : e.skill && e.skill.rage && e.hp < e.maxHp * e.skill.rage ? 1.5 : 1;
     if (!(e.freezeT > 0)) e.s += e.speed * fast * (1 - (e.slowT > 0 && !(e.dashT > 0) ? e.slow : 0)) * dt;
     const p = g.map.pathPos(e.s); e.x = p.x; e.y = p.y; e.left = p.dx < 0;
@@ -518,7 +561,7 @@ export function step(g, dt) {
     if (!target) { u.cd = 0.05; continue; }
     u.cd = st.cd;
     const big = st.burst > 0 && (u.n = (u.n || 0) + 1) % st.burst === 0, sr = st.splash * (big ? 2 : 1);      // 연속 포격: n번째 공격마다 강화탄
-    const cp = st.crit + u.padC + (snipe ? hk.crit : 0), crit = cp > 0 && g.rand() < cp, dmg = base * (crit ? (snipe ? sv(u, hk.mul) : CRIT_MUL) : 1) * (big ? st.burstMul : 1);
+    const cp = st.crit + u.padC + (snipe ? hk.crit : 0), crit = cp > 0 && g.rand() < cp, dmg = base * (crit ? (snipe ? sv(u, hk.mul) : critMul(g)) : 1) * (big ? st.burstMul : 1);
     const victims = sr > 0
       ? g.enemies.filter(e => !e.dead && (e.x - target.x) ** 2 + (e.y - target.y) ** 2 <= sr * sr)
       : [target];
@@ -526,7 +569,7 @@ export function step(g, dt) {
       if (st.slow > 0) { const s = e.kind === 'boss' || e.kind === 'elite' ? st.slow / 2 : st.slow; if (s >= e.slow || e.slowT <= 0) { e.slow = s; e.slowT = 1.5; } }
       if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = Math.max(e.vulnT, st.vulnDur); }
       if (st.dot > 0 && !(e.dotT > 0 && e.dot > base * st.dot)) { e.dot = base * st.dot; e.dotT = st.dotDur; e.dotBy = u.id; e.dotC = u.type; if (!(e.dotTk > 0)) e.dotTk = 0.5; }
-      const d = hit(g, e, dmg); u.dealt += d; g.dealt += d; g.dmg[u.type[0]] += d / 2; g.dmg[u.type[1]] += d / 2;
+      credit(g, u, u.type, hit(g, e, dmg));
     }
     if (hk && hk.id === 'fire') g.zones.push({ x: target.x, y: target.y, r: hk.r, t: hk.dur, tk: 0.5, dps: base * sv(u, hk.dps), uid: u.id, c: u.type });      // 불바다: 맞은 자리에 화염 지대
     if (g.fx) { u.fireT = 0.16; u.atkT = 0.3; u.faceL = target.x < p.x;      // atkT 동안 공격 자세 그림을 보여 준다 (faceL: 표적이 왼쪽)
@@ -537,8 +580,7 @@ export function step(g, dt) {
   if (g.zones.length) {
     for (const z of g.zones) { z.t -= dt; if ((z.tk -= dt) > 0) continue; z.tk += 0.5;
       const owner = g.units.find(u => u && u.id === z.uid);
-      for (const e of g.enemies) if (!e.dead && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r) { const d = hit(g, e, z.dps * 0.5);
-        if (owner) owner.dealt += d; g.dealt += d; g.dmg[z.c[0]] += d / 2; g.dmg[z.c[1]] += d / 2; } }
+      for (const e of g.enemies) if (!e.dead && (e.x - z.x) ** 2 + (e.y - z.y) ** 2 <= z.r * z.r) credit(g, owner, z.c, hit(g, e, z.dps * 0.5)); }
     g.zones = g.zones.filter(z => z.t > 0);
   }
   if (g.enemies.some(e => e.dead)) g.enemies = g.enemies.filter(e => !e.dead);
@@ -547,10 +589,14 @@ export function step(g, dt) {
   const boss = g.enemies.some(e => e.kind === 'boss');
   if (boss) { g.bossTimer -= dt; if (g.bossTimer <= 0) g.over = { win: false, reason: '보스를 제한 시간 안에 막지 못했습니다' }; }
   if (g.enemies.length > CFG.enemyLimit) g.over = { win: false, reason: `적이 ${CFG.enemyLimit}명을 넘어 방어선이 무너졌습니다` };
-  if (!g.over && g.wave >= CFG.maxWave && g.spawn.left === 0 && g.enemies.length === 0) g.over = { win: true, reason: '100단계 방어 성공!' };
+  if (!g.over && g.wave >= maxWaveOf(g) && g.spawn.left === 0 && g.enemies.length === 0) g.over = { win: true, reason: g.mode === 'rush' ? '보스 10종 격파!' : '100단계 방어 성공!' };
 }
 
-export const medalsFor = g => Math.floor((Math.floor(g.wave / 5) + (g.over && g.over.win ? 20 : 0)) * DIFFS[g.diff || 0].medal);
+// 훈장: 5단계마다 1개(보스 러시는 보스 하나에 2개), 승리하면 +20(보스 러시 +10). 난이도 배수와 모범 부대 표창이 곱해진다
+export const medalsFor = g => Math.floor((g.mode === 'rush' ? (g.bossKills || 0) * 2 + (g.over && g.over.win ? 10 : 0) : Math.floor(g.wave / 5) + (g.over && g.over.win ? 20 : 0))
+  * DIFFS[g.diff || 0].medal * (1 + cmOf(g.meta, 'medal') / 100));
+// 기록에 남는 도달 단계: 승리하면 끝 단계, 아니면 막아 낸 마지막 단계. 보스 러시는 잡은 보스 수
+export const reached = g => (g.mode === 'rush' ? g.bossKills || 0 : g.over && g.over.win ? maxWaveOf(g) : Math.max(0, g.wave - 1));
 
 // ── 중간 저장 · 이어하기 ─────────────────────────────────
 // 진행 중인 게임을 글자로 바꿀 수 있는 값으로 만든다. 군별·맵·난수 함수처럼 다시 만들 수 있는 것은 빼고, 능력치는 불러올 때 다시 계산한다.
@@ -565,9 +611,9 @@ export function saveGame(g) {
 export function loadGame(o, meta = {}) {
   try {
     if (!o || o.v !== SAVE_V || o.over || !branchById(o.branchId)) return null;
-    const g = createGame({ branchId: o.branchId, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0 });
+    const g = createGame({ branchId: o.branchId, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0, mode: MODES.some(m => m.id === o.mode) ? o.mode : 'normal' });
     g.rand = rng(o.seed);      // createGame이 특수 발판을 정하느라 난수를 썼으므로 저장한 상태로 되돌린다
-    for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff') g[k] = o[k];
+    for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff' && k !== 'mode') g[k] = o[k];
     if (!Array.isArray(g.units) || g.units.length !== SLOT_COUNT || !MAPS[g.area] || !(g.wave >= 0)) return null;
     g.map = MAPS[g.area]; g.hpMul = DIFFS[g.diff].hp;
     for (const u of g.units) if (u) { if (!(u.level >= 0 && u.level <= maxLevel(g.branch))) return null; u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up); u.flash = 0;

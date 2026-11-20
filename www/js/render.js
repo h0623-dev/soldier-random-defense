@@ -250,7 +250,7 @@ export function draw(ctx, g, ui, quality = 2) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = T.pad[4]; ctx.font = '800 24px sans-serif'; ctx.fillText(`작전 지역 ${ui.trans.area + 1} / ${AREAS.length}`, FIELD.w / 2 + slide, cy - 52);
     ctx.fillStyle = '#fff'; ctx.font = '900 58px sans-serif'; ctx.fillText(A.name, FIELD.w / 2 + slide, cy);
-    ctx.fillStyle = '#ffb3a8'; ctx.font = '700 22px sans-serif'; ctx.fillText(`${(ui.trans.area + 1) * 10}단계 보스 — ${A.boss.name}`, FIELD.w / 2 - slide, cy + 54);
+    ctx.fillStyle = '#ffb3a8'; ctx.font = '700 22px sans-serif'; ctx.fillText(ui.trans.label || `${(ui.trans.area + 1) * 10}단계 보스 — ${A.boss.name}`, FIELD.w / 2 - slide, cy + 54);
     ctx.globalAlpha = 1;
   }
   if (g.enemies.some(e => e.kind === 'boss')) {

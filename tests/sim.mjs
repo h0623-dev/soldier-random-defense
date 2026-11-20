@@ -2,6 +2,8 @@
 import assert from 'node:assert';
 import { BRANCHES, CLASS_IDS, GRADES, HEROES, TYPE_SKILLS, rankOf } from '../www/js/data.js';
 import * as C from '../www/js/core.js';
+import * as M from '../www/js/meta.js';
+import { COMMENDS, CM_NEED, cmOf } from '../www/js/data.js';
 
 // 1) 조합 규칙: 같은 병과끼리 → 같은 병과, 다른 병과끼리 → 10개 병과 가운데 무작위. 어느 쪽이든 한 등급 오른다
 {
@@ -233,6 +235,95 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   { const g = mk(); put(g, 0, 3, ['med', 'sig']); put(g, 2, 3, ['inf', 'med']); const a = put(g, 1, 0, ['inf', 'inf']), far = put(g, 24, 0, ['inf', 'inf']); C.step(g, 0.01);
     assert.equal(a.rangeUp, 0.1); assert.equal(a.guard, 0.5); assert.equal(far.rangeUp, 0); assert.equal(far.guard, 0); }
 }
+// 3-10) 병과 숙련도 · 부대 표창 (전투 밖 성장)
+{
+  const army = BRANCHES[0];
+  assert.deepEqual(C.masteryInfo(0), { level: 0, cur: 0, need: 100 }); assert.equal(C.masteryInfo(100).level, 1); assert.equal(C.masteryInfo(259).level, 1); assert.equal(C.masteryInfo(260).level, 2);
+  assert.equal(C.masteryInfo(1e9).level, C.MASTERY.max);
+  const m = M.fillMeta({ medals: 50, xp: { army: { inf: 260 } } });
+  const d0 = C.unitStats(army, 2, ['inf', 'inf'], {}).dmg; assert.ok(Math.abs(C.unitStats(army, 2, ['inf', 'inf'], m).dmg / d0 - 1.04) < 1e-9, '숙련 2단계 = 공격력 +4%');
+  assert.equal(C.unitStats(army, 2, ['art', 'art'], m).dmg, C.unitStats(army, 2, ['art', 'art'], {}).dmg);       // 다른 병과는 그대로
+  // 판이 끝나면 준 피해 비율대로 경험치를 나눈다
+  const g = C.createGame({ branchId: 'army', seed: 5, fx: false, meta: m }); g.gold = 1e6; for (let i = 0; i < 12; i++) C.summon(g); for (let i = 0; i < 1500; i++) C.step(g, 0.05);
+  const sumT = Object.values(g.dmgT).reduce((a, b) => a + b, 0); assert.ok(Math.abs(sumT - g.dealt) < 1e-6 * g.dealt, '병과별 피해의 합 = 전체 피해');
+  g.over = { win: false }; const total = M.runXp(g), xp0 = JSON.stringify(m.xp), gain = M.addRunXp(m, g);
+  assert.equal(total, C.reached(g) * 10); assert.ok(gain.length > 0 && Math.abs(gain.reduce((a, x) => a + x.xp, 0) - total) <= gain.length, '나눈 경험치의 합 = 판 경험치'); assert.notEqual(JSON.stringify(m.xp), xp0);
+  // 표창: 장수 → 단계, 효과 값
+  assert.equal(COMMENDS.length, 18); assert.deepEqual([0, 1, 2, 3, 6, 9, 10, 15, 99].map(M.cmLevel), [0, 1, 1, 2, 3, 3, 4, 5, 5]); assert.equal(M.cmNext(3), 6); assert.equal(M.cmNext(15), 0);
+  const c = M.fillMeta({}); assert.equal(cmOf(c, 'summon'), 0); M.grantCm(c, 'summon', 3); assert.equal(c.cm.summon, 2); assert.equal(cmOf(c, 'summon'), 4);
+  assert.equal(C.summonCost(army, 0, c), Math.round(C.CFG.summonBase * 0.96)); assert.equal(C.summonCost(army, 0), C.CFG.summonBase);
+  M.grantCm(c, 'supply', 15); M.grantCm(c, 'tile', 3); M.grantCm(c, 'time', 1); M.grantCm(c, 'sell', 1); M.grantCm(c, 'gamble', 1); M.grantCm(c, 'medal', 15); M.grantCm(c, 'b_army', 1); M.grantCm(c, 'depot', 1);
+  const cg = C.createGame({ branchId: 'army', seed: 3, fx: false, meta: c }); assert.equal(cg.supply, 5); assert.equal(Object.keys(cg.tiles).length, C.CFG.tileCount + 2);
+  assert.ok(Math.abs(C.unitStats(army, 0, ['inf', 'inf'], c).dmg / C.unitStats(army, 0, ['inf', 'inf'], {}).dmg - 1.02) < 1e-9); assert.equal(C.unitStats(BRANCHES[1], 0, ['inf', 'inf'], c).dmg, C.unitStats(BRANCHES[1], 0, ['inf', 'inf'], {}).dmg);
+  assert.equal(C.gambleChance({ level: 0 }, c), C.CFG.gambleUp[0] + 0.01); assert.equal(C.gambleChance({ level: 5 }, c), 0);
+  assert.equal(C.sellValue(cg, { level: 3 }), Math.floor(C.unitValue(army, 3) * 0.44));
+  assert.equal(C.medalsFor({ wave: 50, diff: 0, meta: c }), 12);                                                       // +25%
+  cg.depot = 4; assert.equal(C.depotIncome(cg, 1), Math.round(C.depotIncome({ depot: 4, wave: 0, meta: {} }, 1) * 1.06));
+  cg.wave = 9; cg.nextWave = 0; for (let i = 0; i < 40; i++) C.step(cg, 0.05); assert.equal(cg.bossT0, C.CFG.bossTime + 1);
+  // 표창 상자 · 무작위 표창은 최고 단계가 아닌 것에서 나온다
+  let seed = 1; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const b = M.fillMeta({ medals: M.CM_BOX * 2 + 1 }); assert.ok(M.buyCmBox(b, rand)); assert.ok(M.buyCmBox(b, rand)); assert.equal(M.buyCmBox(b, rand), null); assert.equal(b.medals, 1);
+  assert.equal(Object.values(b.cmN).reduce((x, y) => x + y, 0), 2);
+  const full = M.fillMeta({}); for (const x of COMMENDS) if (x.id !== 'luck') M.grantCm(full, x.id, CM_NEED.at(-1)); for (let i = 0; i < 15; i++) assert.equal(M.randomCm(full, rand).id, 'luck');
+}
+// 3-11) 새 모드: 무한 작전 · 보스 러시
+{
+  assert.equal(C.MODES.length, 3);
+  // 무한 작전: 100단계를 넘어도 끝나지 않고, 지역은 처음부터 다시 돌며, 적 체력이 더 빨리 는다
+  const e = C.createGame({ branchId: 'army', seed: 2, fx: false, mode: 'endless' }); assert.equal(C.maxWaveOf(e), Infinity);
+  e.wave = 100; e.nextWave = 0; e.spawn = { left: 0 }; C.step(e, 0.05); assert.equal(e.wave, 101); assert.equal(e.over, null); assert.equal(e.area, 0); assert.equal(C.areaOfWave(105), 0); assert.equal(C.areaOfWave(111), 1);
+  assert.ok(Math.abs(C.waveInfo(104).hp / C.waveInfo(103).hp - C.CFG.hpGrowth * C.CFG.endlessGrowth) < 1e-9); assert.equal(C.waveInfo(110).kind, 'boss'); assert.equal(C.waveInfo(110).name, C.AREAS[0].boss.name);
+  const n = C.createGame({ branchId: 'army', seed: 2, fx: false }); n.wave = 100; n.nextWave = 0; n.spawn = { left: 0 }; C.step(n, 0.05); assert.equal(n.over.win, true);      // 기본 작전은 100단계에서 끝
+  e.over = { win: false }; assert.equal(C.reached(e), 100); assert.equal(C.medalsFor(e), 20);
+  // 보스 러시: 판마다 보스 하나. 잡으면 다음 지역으로 옮기고 군자금·보급품을 받는다. 10번째를 잡으면 승리
+  const r = C.createGame({ branchId: 'army', seed: 2, fx: false, mode: 'rush' }); assert.equal(C.maxWaveOf(r), 10); assert.equal(r.gold, C.CFG.startGold + C.rushStipend(1)); assert.equal(r.supply, C.CFG.rushSupply);
+  assert.ok(C.rushStipend(5) > C.rushStipend(2) && C.rushStipend(2) > C.rushStipend(1)); assert.equal(C.eliteState(r), 'off'); assert.equal(C.callElite(r), false);
+  assert.ok(!C.missionList(r).some(m => m.id === 'w30' || m.id === 'k1000')); assert.ok(C.missionList(r).some(m => m.id === 'four'));
+  for (let i = 0; i < (C.CFG.rushPrep + 2) * 20; i++) C.step(r, 0.05);
+  let boss = r.enemies.find(x => x.kind === 'boss'); assert.ok(boss && r.wave === 1); assert.equal(boss.maxHp, C.waveInfo(10).hp); assert.equal(r.area, 0);
+  const t0 = r.nextWave; for (let i = 0; i < 100; i++) C.step(r, 0.05); assert.equal(r.nextWave, t0, '보스가 살아 있는 동안에는 다음 판 시간이 가지 않는다'); assert.equal(r.wave, 1);
+  const u = { id: r.uid++, slot: 0, level: 6, type: ['inf', 'inf'], hidden: null, cd: 0, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, dealt: 0, stunT: 0, burnT: 0, fireT: 0, atkT: 0, stats: { ...C.unitStats(r.branch, 6, ['inf', 'inf']), dmg: 1e30, range: 5000 }, flash: 0 };
+  r.units[0] = u; const g0 = r.gold, s0 = r.supply;
+  for (let i = 0; i < 60 && r.bossKills < 1; i++) C.step(r, 0.05);
+  C.step(r, 0.05);      // 다음 지역으로 옮기는 것은 보스를 잡은 다음 걸음에서
+  assert.equal(r.bossKills, 1); assert.equal(r.area, 1); assert.ok(r.gold >= g0 + C.rushStipend(2)); assert.equal(r.supply, s0 + C.CFG.bossSupply + C.CFG.rushSupply); assert.ok(Math.abs(r.nextWave - C.CFG.rushGap) < 0.11);
+  for (let i = 0; i < 20 * 400 && !r.over; i++) C.step(r, 0.05);
+  assert.ok(r.over && r.over.win, '보스 10종을 잡으면 승리'); assert.equal(r.bossKills, 10); assert.equal(C.reached(r), 10); assert.equal(C.medalsFor(r), 30);
+  const sv = C.loadGame(JSON.parse(JSON.stringify(C.saveGame(C.createGame({ branchId: 'navy', seed: 1, fx: false, mode: 'rush' })))), {}); assert.equal(sv.mode, 'rush');
+}
+// 3-12) 출석 · 일일 임무 · 뽑기판 · 기록
+{
+  let seed = 7; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const m = M.fillMeta({ medals: 1, best: { army: 34 } }); assert.equal(m.tickets, 0); assert.deepEqual(m.att, { last: '', n: 0 });
+  assert.equal(M.topWave(m), 34); assert.equal(M.modeOpen(m, 'normal'), true); assert.equal(M.modeOpen(m, 'rush'), true); assert.equal(M.modeOpen(m, 'endless'), false); m.bestD.hard = { navy: 51 }; assert.equal(M.modeOpen(m, 'endless'), true);
+  assert.equal(M.bestMap(m, 'normal', 1), m.bestD.hard); assert.equal(M.bestMap(m, 'rush', 2), m.bestR);
+  // 출석: 하루 한 번, 7일 주기
+  assert.equal(M.canAttend(m, '2026-11-20'), true); const a = M.attend(m, '2026-11-20', rand); assert.deepEqual(a.reward, M.ATTEND[0]); assert.equal(m.medals, 1 + M.ATTEND[0].m);
+  assert.equal(M.attend(m, '2026-11-20', rand), null); assert.equal(M.attendDay(m), 1);
+  for (let d = 21; d <= 26; d++) M.attend(m, '2026-11-' + d, rand); assert.equal(m.att.n, 7); assert.equal(M.attendDay(m), 0); assert.equal(m.tickets, 4); assert.equal(Object.values(m.cmN).reduce((x, y) => x + y, 0), 1);
+  // 일일 임무: 날마다 3개(종류가 겹치지 않음), 같은 날은 같은 목록, 진행은 판이 끝날 때 쌓이고 날이 바뀌면 처음부터
+  for (let d = 1; d <= 28; d++) { const l = M.dailyList('2026-12-' + String(d).padStart(2, '0')); assert.equal(l.length, 3); assert.equal(new Set(l.map(x => x.key)).size, 3); }
+  assert.deepEqual(M.dailyList('2026-11-20'), M.dailyList('2026-11-20')); assert.ok(new Set(Array.from({ length: 20 }, (_, i) => M.dailyList('2027-01-' + (i + 10)).map(x => x.id).join())).size > 8);
+  const day = '2026-11-22', ids = M.dailyList(day).map(x => x.id); assert.deepEqual(ids, ['w40', 'hero2', 'dep8']);
+  assert.equal(M.dailyClaim(m, day, 'w40', rand), null);
+  M.dailyRecord(m, day, { mode: 'normal', wave: 46, kills: 300, bossKills: 4, heroGot: 1, elite: { n: 2 }, depot: 8, over: { win: false } });
+  let st = M.dailyState(m, day); assert.deepEqual(st.map(x => x.done), [true, false, true]); assert.equal(st[1].cur, 1);
+  const t0 = m.tickets, md0 = m.medals; assert.deepEqual(M.dailyClaim(m, day, 'w40', rand), M.DAILY_REWARD); assert.equal(M.dailyClaim(m, day, 'w40', rand), null); assert.equal(M.dailyClaim(m, day, 'hero2', rand), null);
+  assert.equal(m.tickets, t0 + 1); assert.equal(m.medals, md0 + 2);
+  M.dailyRecord(m, day, { mode: 'normal', wave: 12, kills: 50, bossKills: 1, heroGot: 1, elite: { n: 0 }, depot: 0, over: { win: false } }); assert.equal(M.dailyState(m, day)[1].done, true); assert.equal(M.dailyState(m, day)[0].got, true);
+  assert.deepEqual(M.dailyState(m, '2026-11-23').map(x => x.cur), [0, 0, 0]);
+  // 뽑기판: 25칸, 티켓 한 장에 한 칸, 특등을 찾으면 새 판, 10번마다 표창
+  const b = M.fillMeta({ tickets: 2 }); assert.ok(M.flip(b, 0, rand)); assert.equal(b.board.cells.length, 25); assert.equal(M.flip(b, 0, rand), null); assert.ok(M.flip(b, 1, rand)); assert.equal(M.flip(b, 2, rand), null, '티켓이 없으면 못 뒤집는다');
+  assert.equal(b.board.cells.filter(x => x.r === 'big').length, 1); assert.equal(b.flips, 2);
+  b.tickets = 100; let cmBefore = Object.values(b.cmN).reduce((x, y) => x + y, 0), opened = 2, bonus = 0, big = false;
+  for (let i = 2; i < 25 && !M.boardDone(b.board); i++) { const o = M.flip(b, i, rand); if (o) { opened++; if (o.bonus) bonus++; if (o.kind === 'big') big = true; } }
+  assert.ok(M.boardDone(b.board)); assert.ok(big || opened === 25); assert.equal(bonus, Math.floor(opened / 10)); assert.equal(b.tickets, 102 - opened);
+  assert.equal(M.flip(b, 24, rand), null, '끝난 판은 더 뒤집을 수 없다'); assert.equal(M.resetBoard(b, rand), true); assert.equal(b.board.cells.filter(x => x.open).length, 0); assert.equal(M.resetBoard(b, rand), false);
+  assert.ok(Object.values(b.cmN).reduce((x, y) => x + y, 0) >= cmBefore + bonus);
+  assert.equal(M.runTickets({ mode: 'normal', wave: 67, over: { win: false } }), 3); assert.equal(M.runTickets({ mode: 'normal', wave: 100, over: { win: true } }), 5); assert.equal(M.runTickets({ mode: 'rush', bossKills: 7 }), 3);
+  assert.equal(M.runXp({ mode: 'normal', wave: 51, diff: 1, over: { win: false } }), 800); assert.equal(M.runXp({ mode: 'rush', bossKills: 4, diff: 0 }), 400);
+  const old = M.fillMeta({ medals: 9, best: { army: 12 }, found: { wonsa: 1 } }); assert.equal(old.medals, 9); assert.deepEqual(old.xp, {}); assert.deepEqual(old.daily, { date: '', prog: {}, got: {} });      // 예전 저장도 그대로 읽는다
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
@@ -243,10 +334,10 @@ const DPR = process.env.DPR != null ? +process.env.DPR : 0.15;    // 봇이 보�
 // 4) 봇 플레이. 발판이 비면 소집하고 꽉 차면 낮은 계급부터 조합한다.
 //    smart면 쓴 돈의 일정 비율 안에서 훈련소(30%)와 병과 강화(UPR)를 산다 — 보스가 멀고 전장이 조용할 때는 소집을 멈추고 모은다. 특수 임무와 진급 심사도 쓴다.
 function play(branchId, seed, smart = true) {
-  const g = C.createGame({ branchId, seed, fx: false, diff: +process.env.DIFF || 0 });      // DIFF=1 어려움, 2 지옥
+  const g = C.createGame({ branchId, seed, fx: false, diff: +process.env.DIFF || 0, mode: process.env.MODE || 'normal' });      // DIFF=1 어려움, 2 지옥 · MODE=rush|endless
   let acc = 0, spent = 0, upSpent = 0, depSpent = 0; g.first = [];
   const pay = (cost, f) => { const ok = f(); if (ok) spent += cost; return ok; };
-  while (!g.over && g.time < 4000) {
+  while (!g.over && g.time < (g.mode === 'endless' ? 9000 : 4000)) {
     C.step(g, 0.05); acc += 0.05;
     if (acc < 0.5) continue; acc = 0;
     for (let n = 0; n < 40; n++) {

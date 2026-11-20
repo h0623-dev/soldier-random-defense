@@ -197,6 +197,29 @@ export const BRANCHES = [
   },
 ];
 
+// 부대 표창: 전투 밖에서 모으는 영구 효과(모든 판에 적용). 같은 표창을 여러 장 모으면 단계가 오른다 — CM_NEED[n]장째에 n+1단계, 최고 5단계.
+//  per: 단계당 효과 값 · vals: 단계별 값을 따로 적을 때 · branch: 그 군별로 출격할 때만 적용
+export const CM_NEED = [1, 3, 6, 10, 15];
+export const COMMENDS = [
+  { id: 'summon', name: '모병 유공 표창', per: 2, text: v => `신병 소집 비용 -${v}%` },
+  { id: 'luck', name: '행운의 군번줄', per: 1, text: v => `소집 때 한 등급 위가 나올 확률 +${v}%p` },
+  { id: 'tile', name: '공병 표창', per: 1, text: v => `특수 발판 +${v}칸` },
+  { id: 'depot', name: '군수 표창', per: 6, text: v => `보급병 수입 +${v}%` },
+  { id: 'supply', name: '보급 유공 표창', per: 1, text: v => `시작 보급품 +${v}개` },
+  { id: 'elite', name: '특임 표창', per: 10, text: v => `특수 임무 군자금 보상 +${v}%` },
+  { id: 'boss', name: '무공 표창', per: 2, text: v => `보스에게 주는 피해 +${v}%` },
+  { id: 'crit', name: '명사수 휘장', per: 6, text: v => `치명타 피해 +${v}%p (기본 250%)` },
+  { id: 'gamble', name: '심사 위원 표창', per: 1, text: v => `진급 심사 성공률 +${v}%p` },
+  { id: 'time', name: '방어 유공 표창', per: 1, text: v => `보스 제한 시간 +${v}초` },
+  { id: 'sell', name: '전역 지원 표창', per: 4, text: v => `전역 환급 +${v}%p (기본 40%)` },
+  { id: 'medal', name: '모범 부대 표창', per: 5, text: v => `훈장 획득 +${v}%` },
+  ...BRANCHES.map(b => ({ id: 'b_' + b.id, name: `${b.name} 부대 표창`, per: 2, branch: b.id, text: v => `${b.name}으로 출격하면 모든 유닛 공격력 +${v}%` })),
+];
+export const cmVal = (c, lv) => (c.vals ? c.vals[lv] : c.per * lv);
+const CM_BY_ID = Object.fromEntries(COMMENDS.map(c => [c.id, c]));
+// 표창 효과 값: meta.cm = { 표창 id: 단계 }. 없는 표창은 0
+export const cmOf = (meta, id) => cmVal(CM_BY_ID[id], Math.min(CM_NEED.length, (meta && meta.cm && meta.cm[id]) || 0));
+
 // ranks: 등급마다 대표 계급(그 등급에서 가장 높은 이름) — '훈련병 → 원수'처럼 한 줄로 보여 줄 때 쓴다
 for (const b of BRANCHES) b.ranks = b.grades.map(g => g.at(-1)[0]);
 
