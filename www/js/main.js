@@ -237,7 +237,7 @@ canvas.addEventListener('pointerdown', e => {
   if (i < 0) { ui.sel = ui.target = null; return; }
   if (ui.sel == null || !g.units[ui.sel]) { ui.sel = g.units[i] ? i : null; ui.target = null; return; }
   if (i === ui.sel) { ui.sel = ui.target = null; return; }
-  if (!g.units[i]) { C.moveUnit(g, ui.sel, i); ui.sel = i; ui.target = null; return; }
+  if (!g.units[i]) { C.moveUnit(g, ui.sel, i); ui.sel = ui.target = null; return; }      // 빈 칸으로 옮기면 선택도 풀린다 (한 번 이동하면 이동 끝)
   if (C.canMerge(g, ui.sel, i)) { ui.target = i; return; }
   ui.sel = i; ui.target = null;
 });
@@ -306,7 +306,7 @@ function renderInfo() {
         <small><b style="color:${GRADES[A.level].color}">${GRADES[A.level].name}</b> · ${C.unitWeapon(b, A)}</small></div></div>
       ${statChips(A.stats, null, A)}
       ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${up.length ? `<p class="note star">히든 계급 지원: ${up.join(' · ')}</p>` : ''}
-      <p class="note">${A.level < C.maxLevel(b) ? '노란 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 이동 · 바깥을 누르면 선택 해제' : '최고 계급입니다'}</p>
+      <p class="note">${A.level < C.maxLevel(b) ? '색칠된 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 그 자리로 이동(이동하면 선택이 풀립니다)' : '최고 계급입니다'}</p>
       <div class="acts"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>진급 심사 ${Math.round(C.gambleChance(A) * 100)}% ${ic('box')}${C.CFG.gambleSupply}</button>
         <button class="btn red" data-do="sell">전역 ${ic('coin')}+${fmt(C.unitValue(b, A.level) * C.CFG.sellRate)}</button></div></div>`;
   } else el.innerHTML = '';      // 고른 유닛이 없으면 카드를 치우고 주둔지를 보여 준다
