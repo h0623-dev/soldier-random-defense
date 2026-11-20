@@ -1,9 +1,14 @@
 # 서버 — 랭킹과 2인 협동
 
-랭킹과 2인 협동은 서버가 있어야 동작한다. 서버 코드는 `server/`(Cloudflare Worker + Durable Objects)에 있고, **아직 배포되지 않았다.**
-배포 전에는 게임의 "2인 협동"과 "랭킹" 화면에 "서버가 아직 연결되지 않았습니다"라고 나오고, 나머지 기능은 그대로 동작한다.
+랭킹과 2인 협동은 서버가 있어야 동작한다. 서버 코드는 `server/`(Cloudflare Worker + Durable Objects)에 있다.
 
-## 켜는 순서 (사용자가 할 일)
+**2026-11-20 배포됨** — `https://soldier-rd-server.road-haven-h0623-dev-13c8f055.workers.dev` (주소는 `www/server.json`에 적혀 있다).
+- 주소의 `road-haven-…` 부분은 이 Cloudflare 계정 전체의 Worker 주소 꼬리표다(계정에서 처음 만든 Worker 이름에서 온 것). 로드헤이븐 프로젝트와는 코드도 데이터도 섞이지 않는다. 꼬리표를 바꾸면 `road-haven-meeting`의 주소도 바뀌므로 바꾸지 않는다.
+- 배포 방법: 대시보드에서 Worker 생성이 되지 않아(이름 칸에 오류 표시), 사용자가 만든 **7일짜리 API 토큰**(Workers 편집 권한, Zone 권한 없음)을 이 작업 환경의 Network secrets에 넣고 Claude가 `server/`에서 `npx wrangler deploy`로 올렸다. 토큰은 2026-11-27에 만료된다.
+- **서버 코드를 고치면 다시 배포해야 한다.** 지금은 자동 배포가 연결되어 있지 않다. 방법: ① 새 토큰을 같은 식으로 넣고 `cd server && CLOUDFLARE_API_TOKEN=proxy-injected CLOUDFLARE_ACCOUNT_ID=<계정 id> npx wrangler deploy` ② 또는 아래 A(대시보드에서 이미 있는 Worker에 저장소 연결: Settings → Builds → Connect) ③ 또는 아래 B(GitHub Actions 비밀 값).
+- 서버 주소가 비어 있으면 게임의 "2인 협동"과 "랭킹" 화면에 "서버가 아직 연결되지 않았습니다"라고 나오고, 나머지 기능은 그대로 동작한다.
+
+## 처음 켜는 순서 (참고 — 이미 켜져 있다)
 
 1. **서버 배포** — 아래 둘 중 하나. (A를 권한다. 2026-11-20에 Cloudflare 공식 문서 "Workers Builds"로 확인한 절차다. 화면의 낱말은 바뀔 수 있다)
    - **A. Cloudflare 화면에서 저장소 연결** (자동 업데이트용 Pages를 연결했던 것과 같은 방식, 토큰 불필요)
