@@ -84,6 +84,25 @@ assert.ok(Math.abs(top(BRANCHES[0]) - top(BRANCHES[5])) < 1e-6 * top(BRANCHES[0]
   assert.ok(g.enemies.filter(e => e.kind === 'normal').length + g.kills - k0 >= 3, '지휘 전차는 호위병을 부른다');
   for (const a of C.AREAS) assert.ok(a.boss.skill && a.boss.text, a.name + ' 보스 능력');
 }
+// 3-5) 난이도 · 누적 피해 · 중간 저장
+{
+  const mk = diff => { const g = C.createGame({ branchId: 'army', seed: 5, fx: false, diff }); g.gold = 1e6; for (let i = 0; i < 10; i++) C.summon(g); for (let i = 0; i < 400; i++) C.step(g, 0.05); return g; };
+  const n = mk(0), h = mk(2);
+  assert.ok(Math.abs(Math.max(...h.enemies.map(e => e.maxHp)) / Math.max(...n.enemies.map(e => e.maxHp)) - C.DIFFS[2].hp) < 1e-9, '지옥 난이도는 적 체력이 배수만큼 많다');
+  assert.equal(C.medalsFor({ wave: 50, diff: 0 }), 10); assert.equal(C.medalsFor({ wave: 50, diff: 2 }), 25);
+  const sum = n.units.filter(Boolean).reduce((a, u) => a + u.dealt, 0);
+  assert.ok(n.dealt > 0 && Math.abs(sum - n.dealt) < 1e-6 * n.dealt, '유닛별 누적 피해의 합 = 전체 피해');
+  assert.ok(Math.abs(Object.values(n.dmg).reduce((a, b) => a + b, 0) - n.dealt) < 1e-6 * n.dealt);
+  // 저장 → 글자로 바꿨다가 → 불러오기: 그 뒤 진행이 원본과 똑같아야 한다
+  const g = C.createGame({ branchId: 'navy', seed: 11, fx: false, diff: 1 }); g.gold = 5000; for (let i = 0; i < 14; i++) C.summon(g);
+  for (let i = 0; i < 900; i++) C.step(g, 0.05); C.upgradeClass(g, 'inf'); C.callElite(g);
+  const g2 = C.loadGame(JSON.parse(JSON.stringify(C.saveGame(g))), g.meta); assert.ok(g2, '저장한 게임을 불러온다');
+  for (const x of [g, g2]) { for (let i = 0; i < 1200; i++) { C.step(x, 0.05); if (i % 100 === 0) C.summon(x); } }
+  const sig = x => [x.wave, x.gold.toFixed(4), x.kills, x.enemies.length, x.units.map(u => (u ? u.level + u.type.join('') : '-')).join(''), x.dealt.toFixed(2), x.diff].join('|');
+  assert.equal(sig(g2), sig(g), '불러온 게임이 원본과 같은 길을 간다');
+  assert.equal(C.loadGame({ v: 999 }), null); assert.equal(C.loadGame(null), null); assert.equal(C.loadGame({ v: 1, branchId: 'nope' }), null);
+  g.over = { win: false }; assert.equal(C.saveGame(g), null, '끝난 게임은 저장하지 않는다');
+}
 console.log('규칙·데이터 검사 통과');
 
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;

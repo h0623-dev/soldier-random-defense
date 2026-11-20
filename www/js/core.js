@@ -72,10 +72,19 @@ export const CFG = {
   eliteTime: 40, eliteCd: 45, eliteHp: 16, eliteHpGrowth: 1.35, eliteBounty: 10, eliteSupply: 2,
 };
 
+// 난이도: 적 체력과 훈장 보상이 달라진다. need = 바로 아래 난이도에서 이 단계까지 가면 열린다
+export const DIFFS = [
+  { id: 'normal', name: '보통', hp: 1, medal: 1, text: '기본 난이도' },
+  { id: 'hard', name: '어려움', hp: 1.8, medal: 1.6, need: 50, text: '적 체력 1.8배 · 훈장 1.6배' },
+  { id: 'hell', name: '지옥', hp: 3, medal: 2.5, need: 50, text: '적 체력 3배 · 훈장 2.5배' },
+];
+
 function rng(seed) {
   let a = seed >>> 0;
-  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+  const f = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  f.state = () => a >>> 0;      // 저장용: 이 값으로 rng()를 다시 만들면 같은 순서가 이어진다
+  return f;
 }
 
 // ── 병과 조합 ─────────────────────────────────────────────
@@ -131,10 +140,10 @@ export function waveInfo(wave) {
 }
 
 // ── 게임 상태 ────────────────────────────────────────────
-export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true }) {
+export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, diff = 0 }) {
   const branch = branchById(branchId);
   return {
-    branch, meta, rand: rng(seed), fx, time: 0, wave: 0, nextWave: CFG.prepTime,
+    branch, meta, rand: rng(seed), fx, diff, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: CFG.prepTime,
     gold: CFG.startGold + 40 * (meta.gold || 0), camp: 0, units: Array(SLOT_COUNT).fill(null), area: 0, map: MAPS[0],
     supply: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
@@ -158,7 +167,7 @@ export function summon(g) {
   return placeUnit(g, slot, level, [c, c]);
 }
 function placeUnit(g, slot, level, type, hidden = null) {
-  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0,
+  const u = { id: g.uid++, slot, level, type, hidden, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0, dealt: 0,
     stats: unitStats(g.branch, level, type, g.meta, g.up), flash: 0.5 };
   if (hidden) { g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
   g.units[slot] = u; g.auraDirty = true; return u;
@@ -205,7 +214,7 @@ export function gamble(g, a) {
 export const eliteState = g => (g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');
 export function callElite(g) {
   if (g.over || eliteState(g) !== 'ready') return false;
-  const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * CFG.eliteHp * CFG.eliteHpGrowth ** g.elite.n;
+  const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * CFG.eliteHp * CFG.eliteHpGrowth ** g.elite.n * g.hpMul;
   g.enemies.push({ id: g.uid++, s: 0, hp, maxHp: hp, speed: 55, bounty: CFG.bountyBase * CFG.bountyGrowth ** w * CFG.eliteBounty, kind: 'elite',
     life: CFG.eliteTime, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
   g.elite.active = true; return true;
@@ -248,7 +257,8 @@ export function mergePreview(g, a, b) {
 // a = 먼저 고른 유닛(주재료), b = 결과가 놓일 자리
 export function merge(g, a, b) {
   const p = mergePreview(g, a, b); if (!p || g.over) return null;
-  g.units[a] = null; return placeUnit(g, b, p.level, p.type, p.hidden);
+  const sum = g.units[a].dealt + g.units[b].dealt;
+  g.units[a] = null; const u = placeUnit(g, b, p.level, p.type, p.hidden); u.dealt = sum; return u;      // 누적 피해는 두 유닛 것을 이어받는다
 }
 export function moveUnit(g, a, b) {
   if (!g.units[a] || a === b) return false;
@@ -276,18 +286,20 @@ function startWave(g) {
   if (area !== g.area) { const old = g.map; g.area = area; g.map = MAPS[area];
     for (const e of g.enemies) e.s = (e.s % old.len) / old.len * g.map.len;
     g.auraDirty = true; g.log.push({ t: 'area', area }); }
-  g.spawn = { ...w, left: w.count, cd: 0 }; g.nextWave = CFG.waveGap;
+  g.spawn = { ...w, hp: w.hp * g.hpMul, left: w.count, cd: 0 }; g.nextWave = CFG.waveGap;
   if (w.kind === 'boss') g.bossTimer = CFG.bossTime;
   g.gold += 10 + g.wave * 2; g.log.push({ t: 'wave', wave: g.wave, name: w.name });
 }
+// 돌려주는 값: 실제로 깎은 체력 (누적 피해 기록용)
 function hit(g, e, dmg) {
   const k = e.skill;
   if (k) {      // 보스 방어 능력
-    if (k.id === 'evade' && g.rand() < k.p) { if (g.fx) g.effects.push({ txt: '회피', x: e.x, y: e.y - 30, t: 0.6, small: true }); return; }
+    if (k.id === 'evade' && g.rand() < k.p) { if (g.fx) g.effects.push({ txt: '회피', x: e.x, y: e.y - 30, t: 0.6, small: true }); return 0; }
     if (k.id === 'armor' && e.hp > e.maxHp * 0.5) dmg *= 1 - k.cut;
     if (e.dashT > 0) dmg *= 1 - k.cut;
   }
-  e.hp -= dmg * (1 + (e.vulnT > 0 ? e.vuln : 0));
+  const full = dmg * (1 + (e.vulnT > 0 ? e.vuln : 0)), real = Math.max(0, Math.min(full, e.hp));
+  e.hp -= full;
   if (e.hp <= 0 && !e.dead) {
     e.dead = true; g.kills++;
     if (e.kind === 'boss') g.supply += CFG.bossSupply;
@@ -295,6 +307,7 @@ function hit(g, e, dmg) {
     if (g.fx) { g.effects.push({ puff: true, x: e.x, y: e.y, r: e.kind === 'boss' ? 60 : 18, t: 0.3 }); if (e.kind === 'boss') g.sfx.push('bossdie'); }
     g.gold += e.bounty * (g.branch.trait.key === 'slow' ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0));
   }
+  return real;
 }
 
 // 보스 특수 능력: 주기적으로 발동하는 것(증원·고속 기동·기절·화염·폭격)과 늘 적용되는 것(재생). 방어 능력은 hit()에서 처리
@@ -386,7 +399,7 @@ export function step(g, dt) {
     for (const e of victims) {
       if (st.slow > 0) { const s = e.kind === 'boss' || e.kind === 'elite' ? st.slow / 2 : st.slow; if (s >= e.slow || e.slowT <= 0) { e.slow = s; e.slowT = 1.5; } }
       if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = 2; }
-      hit(g, e, dmg);
+      const d = hit(g, e, dmg); u.dealt += d; g.dealt += d; g.dmg[u.type[0]] += d / 2; g.dmg[u.type[1]] += d / 2;
     }
     if (g.fx) { u.fireT = 0.16; u.atkT = 0.3; u.faceL = target.x < p.x;      // atkT 동안 공격 자세 그림을 보여 준다 (faceL: 표적이 왼쪽)
       if (g.sfx.length < 8) g.sfx.push(u.type[0]);
@@ -401,4 +414,26 @@ export function step(g, dt) {
   if (!g.over && g.wave >= CFG.maxWave && g.spawn.left === 0 && g.enemies.length === 0) g.over = { win: true, reason: '100단계 방어 성공!' };
 }
 
-export const medalsFor = g => Math.floor(g.wave / 5) + (g.over && g.over.win ? 20 : 0);
+export const medalsFor = g => Math.floor((Math.floor(g.wave / 5) + (g.over && g.over.win ? 20 : 0)) * DIFFS[g.diff || 0].medal);
+
+// ── 중간 저장 · 이어하기 ─────────────────────────────────
+// 진행 중인 게임을 글자로 바꿀 수 있는 값으로 만든다. 군별·맵·난수 함수처럼 다시 만들 수 있는 것은 빼고, 능력치는 불러올 때 다시 계산한다.
+const SAVE_V = 1, SAVE_SKIP = new Set(['branch', 'meta', 'rand', 'map', 'effects', 'sfx', 'log']);
+export function saveGame(g) {
+  if (!g || g.over) return null;
+  const o = { v: SAVE_V, branchId: g.branch.id, seed: g.rand.state() };
+  for (const k in g) if (!SAVE_SKIP.has(k)) o[k] = g[k];
+  return JSON.parse(JSON.stringify(o, (k, v) => (k === 'stats' ? undefined : v)));
+}
+// 저장한 값으로 게임을 되살린다. 형식이 다르거나 망가진 저장이면 null
+export function loadGame(o, meta = {}) {
+  try {
+    if (!o || o.v !== SAVE_V || o.over || !branchById(o.branchId)) return null;
+    const g = createGame({ branchId: o.branchId, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0 });
+    for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff') g[k] = o[k];
+    if (!Array.isArray(g.units) || g.units.length !== SLOT_COUNT || !MAPS[g.area] || !(g.wave >= 0)) return null;
+    g.map = MAPS[g.area]; g.hpMul = DIFFS[g.diff].hp;
+    for (const u of g.units) if (u) { if (!(u.level >= 0 && u.level <= maxLevel(g.branch))) return null; u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up); u.flash = 0; }
+    g.auraDirty = true; return g;
+  } catch { return null; }
+}

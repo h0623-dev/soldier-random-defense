@@ -22,9 +22,18 @@ let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 1, pa
 const view = initLayout(() => { infoKey = ''; });
 
 function loadMeta() {
-  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {}, mute: false, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
-  catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, found: {} }; }
+  try { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, diff: 0, found: {}, mute: false, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; }
+  catch { return { medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, diff: 0, found: {} }; }
 }
+// 난이도별 최고 기록: 보통은 meta.best, 그 위는 meta.bestD[난이도]. 위 난이도는 바로 아래 난이도에서 need 단계까지 가면 열린다
+const bestOf = d => (d === 0 ? meta.best : (meta.bestD[C.DIFFS[d].id] || (meta.bestD[C.DIFFS[d].id] = {})));
+const diffOpen = d => d === 0 || Math.max(0, ...Object.values(bestOf(d - 1))) >= C.DIFFS[d].need;
+// 진행 중인 게임 저장: 단계가 시작될 때, 앱이 뒤로 갈 때, 저장하고 나갈 때. 끝난 게임은 지운다
+const RUN_KEY = 'srd_run';
+function saveRun() { try { const o = C.saveGame(g); if (o) localStorage.setItem(RUN_KEY, JSON.stringify(o)); } catch { /* 저장 불가 환경 */ } }
+function clearRun() { try { localStorage.removeItem(RUN_KEY); } catch { /* 저장 불가 환경 */ } }
+function peekRun() { try { const o = JSON.parse(localStorage.getItem(RUN_KEY) || 'null'); const b = o && BRANCHES.find(x => x.id === o.branchId);
+  return b && o.wave >= 0 ? { o, name: b.name, wave: o.wave, diff: C.DIFFS[o.diff] ? o.diff : 0 } : null; } catch { return null; } }
 const saveMeta = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch { /* 저장 불가 환경 */ } };
 // 빌드 번호(커밋 시각, 초)를 '11.19 21:08 빌드'처럼 읽기 쉽게
 const buildLabel = b => { const d = new Date(b * 1000), z = n => String(n).padStart(2, '0');
@@ -36,6 +45,7 @@ function toast(msg, ms = 1400) { const t = $('toast'); t.textContent = msg; t.cl
 // 겹쳐 뜨는 화면. sheet=true면 아래에서 올라오는 시트로 뜨고 게임은 멈추지 않는다(전장이 계속 보인다)
 function show(html, sheet = false, cls = '') {
   overlay.innerHTML = `<div class="panel ${cls}">${sheet ? '<div class="grab"></div>' : ''}${html}</div>`;
+  if (!sheet) $('toast').classList.remove('on');      // 전체 화면(처음 화면·결과 등)을 띄울 때는 전투 중 알림을 치운다
   overlay.classList.add('on'); overlay.classList.toggle('sheet', sheet); overlay.scrollTop = 0; if (!sheet) paused = true;
 }
 const sheetHead = (title, sub) => `<div class="sh"><div><b>${title}</b><small>${sub}</small></div><button class="hbtn" data-act="resume" aria-label="닫기">${ic('x')}</button></div>`;
@@ -44,12 +54,17 @@ function hide() { overlay.classList.remove('on', 'sheet'); paused = false; last 
 overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) ACT[b.dataset.act](b.dataset.arg);
   else if (e.target === overlay && overlay.classList.contains('sheet')) hide(); });   // 시트 바깥(어두운 부분)을 누르면 닫힌다
 
+// 게임에 들어갈 때(새로 출격·이어하기) 화면 쪽 상태를 처음으로 돌린다
+function enter() { logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area } }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1'; $('app').classList.remove('sel'); }
+
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {
   title() {      // 처음 화면: 일러스트(img/title.webp) 위에 제목, 아래에 메뉴
+    const run = peekRun();
     show(`<div class="tart"><div class="tlogo"><h1>군인 랜덤 디펜스</h1><p>계급을 올리고 병과를 조합해 100단계를 방어하라</p></div></div>
       <div class="tmenu">
-        <button class="wide" data-act="branches">${ic('play')}출격</button>
+        ${run ? `<button class="wide cont" data-act="cont">${ic('play')}이어하기 <small>${run.name} ${run.wave}단계${run.diff ? ' · ' + C.DIFFS[run.diff].name : ''}</small></button>` : ''}
+        <button class="wide${run ? ' sec' : ''}" data-act="branches">${ic('play')}${run ? '새로 출격' : '출격'}</button>
         <div class="tgrid">
           <button class="wide sec" data-act="upgrades">${ic('medal')}영구 강화 · ${meta.medals}</button>
           <button class="wide sec" data-act="shop">${ic('shop')}보급 상점</button>
@@ -60,20 +75,34 @@ const ACT = {
       </div>`, false, 'title');
   },
   branches() {
-    show(`<h2>군별 선택</h2><div class="cards">${BRANCHES.map(b => `
+    if (!diffOpen(meta.diff)) meta.diff = 0;
+    const run = peekRun(), best = bestOf(meta.diff);
+    show(`<h2>난이도</h2><div class="diffs">${C.DIFFS.map((d, i) => `<button class="${i === meta.diff ? 'on' : ''}" data-act="diff" data-arg="${i}" ${diffOpen(i) ? '' : 'disabled'}>
+        <b>${d.name}</b><small>${diffOpen(i) ? d.text : `${C.DIFFS[i - 1].name} ${d.need}단계 도달 시 열림`}</small></button>`).join('')}</div>
+      <h2>군별 선택</h2><div class="cards">${BRANCHES.map(b => `
       <button class="bcard" style="background:${b.color}" data-act="start" data-arg="${b.id}">
         <img src="img/units/${b.id}_inf.webp" alt=""><span><b>${b.name}</b><small>${b.trait.text.split(' (')[0]}</small>
-        <i>${b.ranks[0]} → ${b.ranks.at(-1)} · 최고 ${meta.best[b.id] || 0}단계</i></span></button>`).join('')}</div>
+        <i>${b.ranks[0]} → ${b.ranks.at(-1)} · 최고 ${best[b.id] || 0}단계</i></span></button>`).join('')}</div>
+      ${run ? `<p class="sub" style="margin-top:1.4rem">새로 출격하면 이어하던 게임(${run.name} ${run.wave}단계)은 사라집니다</p>` : ''}
       <button class="wide sec" data-act="title">뒤로</button>`);
   },
+  diff(i) { if (diffOpen(+i)) { meta.diff = +i; saveMeta(); } ACT.branches(); },
   start(id) {
-    loadBranchArt(id);
-    g = C.createGame({ branchId: id, meta }); logAt = 0; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: 0 } }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1';
+    loadBranchArt(id); clearRun();
+    g = C.createGame({ branchId: id, meta, diff: diffOpen(meta.diff) ? meta.diff : 0 }); enter();
     hide(); toast(`${g.branch.name} 출격! 신병을 소집하세요`);
+  },
+  cont() {      // 저장해 둔 게임 이어하기
+    const run = peekRun(), loaded = run && C.loadGame(run.o, meta);
+    if (!loaded) { clearRun(); toast('저장된 게임을 불러오지 못했습니다'); return ACT.title(); }
+    g = loaded; loadBranchArt(g.branch.id); enter(); ui.trans = null;
+    hide(); toast(`${g.branch.name} ${g.wave}단계부터 이어서 합니다`);
   },
   resume() { hide(); },
   mute(back) { meta.mute = !meta.mute; saveMeta(); Sound.setMuted(meta.mute); if (!meta.mute) Sound.play('summon'); ACT[back](); },
   quit() { g = null; $('app').classList.remove('sel'); ACT.title(); },
+  leave() { saveRun(); ACT.quit(); },                                             // 저장하고 나가기 → 처음 화면의 '이어하기'로 돌아올 수 있다
+  giveup() { g.over = { win: false, reason: '작전을 포기했습니다' }; hide(); },   // 포기 → 지금까지의 기록으로 결과 화면
   upgrades() {
     show(`<h2>영구 강화</h2><p class="sub">보유 훈장 ${meta.medals}개 · 5단계마다 1개, 100단계 방어 시 +20개</p>
       ${UPGRADES.map(u => { const lv = meta[u.key], cost = 2 + lv * 2; return `<div class="up"><div><b>${u.name} <em>Lv${lv}/${u.max}</em></b><br>${u.desc}</div>
@@ -134,7 +163,8 @@ const ACT = {
       <button class="wide" data-act="resume">${ic('play')}계속하기</button>
       <button class="wide sec" data-act="codex">${ic('book')}조합 도감</button><button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
       <button class="wide sec" data-act="mute" data-arg="menu">${ic('sound')}소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
-      <button class="wide sec" data-act="quit">${ic('exit')}포기하고 나가기</button>`, true); paused = true;
+      <button class="wide sec" data-act="leave">${ic('exit')}저장하고 나가기</button>
+      <button class="wide sec danger" data-act="giveup">포기하고 결과 보기</button>`, true); paused = true; saveRun();
   },
   // 조합 도감: 그림으로 보는 조합 결과 · 병과와 병기 · 계급장 · 히든 계급 · 지역 보스
   codex() {
@@ -174,12 +204,21 @@ const ACT = {
       <button class="wide" data-act="resume">전장으로</button>`);
   },
   result() {
-    const medals = C.medalsFor(g), b = g.branch;
-    meta.medals += medals; meta.best[b.id] = Math.max(meta.best[b.id] || 0, g.over.win ? 100 : g.wave - 1); saveMeta();
+    const medals = C.medalsFor(g), b = g.branch, d = g.diff || 0, best = bestOf(d), nextWasOpen = d + 1 < C.DIFFS.length && diffOpen(d + 1);
+    meta.medals += medals; best[b.id] = Math.max(best[b.id] || 0, g.over.win ? 100 : g.wave - 1); saveMeta(); clearRun();
+    const opened = d + 1 < C.DIFFS.length && !nextWasOpen && diffOpen(d + 1);
     Sound.play(g.over.win ? 'win' : 'lose');
+    // 최우수 유닛(누적 피해 1위)과 병과별 피해 비율
+    const mvp = g.units.filter(Boolean).sort((x, y) => y.dealt - x.dealt)[0], tot = g.dealt || 1;
+    const shares = CLASS_IDS.map(c => [c, g.dmg[c] / tot]).filter(x => x[1] > 0.005);
     show(`<h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
-      <div class="hero"><img src="img/units/${b.id}_inf.webp" alt=""></div>
-      <div class="card" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${b.name}</b> · 도달 ${g.wave}단계 · 처치 ${g.kills}</p><p>획득 훈장 <b>+${medals}</b> (보유 ${meta.medals})</p></div></div>
+      <div class="card" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${b.name}</b>${d ? ` · ${C.DIFFS[d].name}` : ''} · 도달 ${g.wave}단계 · 처치 ${g.kills}</p>
+        <p>획득 훈장 <b>+${medals}</b>${d ? ` (${C.DIFFS[d].name} ${C.DIFFS[d].medal}배)` : ''} · 보유 ${meta.medals}</p></div></div>
+      ${opened ? `<p class="note star" style="text-align:center;font-size:1.4rem">🔓 <b>${C.DIFFS[d + 1].name}</b> 난이도가 열렸습니다</p>` : ''}
+      ${mvp && mvp.dealt > 0 ? `<div class="card mvp"><img class="u" src="${unitSrc(b, mvp.type, C.rankGroup(b, mvp))}" alt="">
+        <div><small>최우수 유닛</small><b>${C.unitName(b, mvp)}</b><span>누적 피해 ${fmt(mvp.dealt)} · 전체의 ${Math.round(mvp.dealt / tot * 100)}%</span></div></div>
+      <div class="share">${shares.map(([c, v]) => `<i style="flex:${v};background:${CLASS_INFO[c].color}">${v > 0.09 ? `${CLASS_INFO[c].short} ${Math.round(v * 100)}%` : ''}</i>`).join('')}</div>
+      <p class="sub" style="margin:.5rem 0 0">병과별 피해 비율 · 전체 피해 ${fmt(g.dealt)}</p>` : ''}
       <button class="wide" data-act="start" data-arg="${b.id}">다시 도전</button>
       <button class="wide sec" data-act="upgrades">영구 강화</button><button class="wide sec" data-act="quit">처음으로</button>`);
     g.reported = true;
@@ -225,20 +264,27 @@ $('b-mission').onclick = () => g && ACT.missions();
 $('b-elite').onclick = () => { if (g && C.callElite(g)) { toast(`특수 임무 — ${C.CFG.eliteTime}초 안에 정예 표적을 격파하라`); Sound.play('boss'); } };
 $('b-menu').onclick = () => g && ACT.menu();
 $('b-speed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; $('b-speed').textContent = '×' + speed; };
-document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over && !paused) ACT.menu(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over) { saveRun(); if (!paused) ACT.menu(); } });
+window.addEventListener('pagehide', () => { if (g && !g.over) saveRun(); });
 
 // ── 표시 갱신 ───────────────────────────────────────────
 // 능력치를 작은 칩으로. prev가 있으면 공격력이 얼마나 오르는지 함께 보여준다
-function statChips(st, prev) {
+function statChips(st, prev, unit) {
   const xs = [`${ic('sword')}공격 <b>${fmt(st.dmg)}</b>${prev && st.dmg > prev.dmg ? `<em>▲${fmt(st.dmg - prev.dmg)}</em>` : ''}`, `${ic('bolt')}초당 <b>${(1 / st.cd).toFixed(1)}회</b>`, `${ic('ring')}사거리 <b>${Math.round(st.range)}</b>`];
   if (st.splash) xs.push(`광역 <b>${Math.round(st.splash)}</b>`); if (st.slow) xs.push(`둔화 <b>${Math.round(st.slow * 100)}%</b>`);
   if (st.vuln) xs.push(`취약 <b>+${Math.round(st.vuln * 100)}%</b>`); if (st.haste) xs.push(`주변 공속 <b>+${Math.round(st.haste * 100)}%</b>`);
   if (st.crit) xs.push(`치명 <b>${Math.round(st.crit * 100)}%</b>`);
+  if (unit) xs.push(`누적 피해 <b id="u-dealt">${fmt(unit.dealt)}</b>`);
   return `<div class="stats">${xs.map(x => `<span>${x}</span>`).join('')}</div>`;
 }
 function renderInfo() {
   const b = g.branch, A = ui.sel != null ? g.units[ui.sel] : null, B = ui.target != null ? g.units[ui.target] : null;
-  const key = [A && A.id, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join('')].join('|'); if (key === infoKey) return; infoKey = key;
+  const key = [A && A.id, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join('')].join('|');
+  if (key === infoKey) {      // 카드는 그대로 두고 누적 피해 숫자만 바꾼다 (카드를 통째로 다시 만들면 누르던 버튼이 사라진다)
+    if (A && !B) { const d = $('u-dealt'), v = fmt(A.dealt); if (d && d.textContent !== v) d.textContent = v; }
+    return;
+  }
+  infoKey = key;
   const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitSrc(b, u.type, C.rankGroup(b, u))}" alt=""><b>${C.unitName(b, u)}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
   $('app').classList.toggle('sel', !!A);       // 유닛을 고른 동안에는 하단 버튼 자리까지 카드가 쓴다
   if (A && B) {
@@ -253,7 +299,7 @@ function renderInfo() {
     el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitSrc(b, A.type, C.rankGroup(b, A))}" alt="">
       <div><h3>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? '<span class="tag hid">히든</span>' : ''}</h3>
         <small>${h ? `${b.ranks[A.level]}급` : `Lv${A.level + 1}`} · ${C.unitWeapon(b, A)}</small></div></div>
-      ${statChips(A.stats)}
+      ${statChips(A.stats, null, A)}
       ${h ? `<p class="note star">★ ${h.text}</p>` : ''}${up.length ? `<p class="note star">히든 계급 지원: ${up.join(' · ')}</p>` : ''}
       <p class="note">${A.level < C.maxLevel(b) ? '노란 발판의 유닛을 누르면 조합 · 빈 발판을 누르면 이동 · 바깥을 누르면 선택 해제' : '최고 계급입니다'}</p>
       <div class="acts"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>진급 심사 ${ic('box')}${C.CFG.gambleSupply}</button>
@@ -312,7 +358,7 @@ function frame(now) {
   // 소리: 사격음은 프레임당 몇 개만, 웨이브 시작·보스 등장은 기록을 보고 낸다
   for (const s of g.sfx.splice(0)) Sound.play(s);
   for (; logAt < g.log.length; logAt++) { const l = g.log[logAt];
-    if (l.t === 'wave') { Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); if (l.wave % 10 === 0) toast(`보스 출현 — ${C.AREAS[g.area].boss.text}`, 3200); }
+    if (l.t === 'wave') { saveRun(); Sound.play(l.wave % 10 === 0 ? 'boss' : 'wave'); if (l.wave % 10 === 0) toast(`보스 출현 — ${C.AREAS[g.area].boss.text}`, 3200); }
     else if (l.t === 'area') { ui.trans = { t: 2.6, total: 2.6, area: l.area }; hold = 1.3; ui.sel = ui.target = null; infoKey = '';
       for (const u of g.units) if (u) u.flash = 0.9; Sound.play('hidden'); }
     else if (l.t === 'mission') { toast(`임무 완수: ${l.text} · 보급품 +${l.sup}`); Sound.play('camp'); }
