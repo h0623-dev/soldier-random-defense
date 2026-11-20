@@ -245,7 +245,8 @@ export function loadArt() {
   fetch('img/manifest.json').then(r => (r.ok ? r.json() : [])).then(list => {
     artList = list; const byBranch = {};
     for (const name of list) { const m = /^units\/([a-z]+)_[a-z-]+$/.exec(name); if (m) byBranch[m[1]] = (byBranch[m[1]] || 0) + 1; }   // 공격(_atk)·계급대(_t1 …) 그림은 세지 않는다
-    for (const name of list) if (!name.startsWith('units/') || /^units\/[a-z]+_[a-z-]+$/.test(name)) loadOne(name);
+    // 용사(units/hero_…)와 스킨(units/skin…) 그림은 쓸 때 읽는다 (loadBranchArt('hero') · loadBranchArt('skindesert') …)
+    for (const name of list) if (!name.startsWith('units/') || (/^units\/[a-z]+_[a-z-]+$/.test(name) && !/^units\/(hero|skin)/.test(name))) loadOne(name);
     for (const b in byBranch) if (byBranch[b] >= 10) fullBranch.add(b);
     for (const b of wanted) loadBranchArt(b);
   }).catch(() => { /* 그림 파일이 없으면 코드 그림 사용 */ });

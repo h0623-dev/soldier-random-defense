@@ -1,5 +1,5 @@
 """Codex(OpenAI)의 그림 생성으로 art/jobs_soft.json 에서 아직 없는 그림을 이어 그린다.
-사용: python3 tools/codex_art.py [동시에 몇 장=3] [최대 몇 장=전부]
+사용: python3 tools/codex_art.py [동시에 몇 장=3] [최대 몇 장=전부] [지시문 파일=art/jobs_soft.json]
  · 먼저 이 기기에 Codex CLI가 깔려 있고 로그인돼 있어야 한다:  npm i -g @openai/codex  →  codex login --device-auth
    (ChatGPT 계정의 Codex 사용 한도에서 차감된다. 그림은 일반 작업보다 한도를 3~5배 빨리 쓴다.)
  · 그림마다 빈 임시 폴더에서 `codex exec`를 돌려 out.png를 받고, 크기를 확인한 뒤 jobs의 file 자리에 옮긴다.
@@ -11,7 +11,8 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAR = int(sys.argv[1]) if len(sys.argv) > 1 else 3
 LIMIT = int(sys.argv[2]) if len(sys.argv) > 2 else 10 ** 6
-jobs = json.load(open(os.path.join(ROOT, 'art/jobs_soft.json')))
+JOBS = sys.argv[3] if len(sys.argv) > 3 else 'art/jobs_soft.json'      # 세 번째 값으로 다른 지시문 파일(예: art/jobs_extra.json)
+jobs = json.load(open(os.path.join(ROOT, JOBS)))
 todo = [(i, j) for i, j in enumerate(jobs) if not os.path.exists(os.path.join(ROOT, j['file']))][:LIMIT]
 print(f'남은 그림 {len(todo)}장 · 동시에 {PAR}장', flush=True)
 lock, fails, stop = threading.Lock(), [0], threading.Event()

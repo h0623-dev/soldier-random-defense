@@ -170,8 +170,9 @@ function contentBox(im) {      // 내용이 있는 범위 (0~1). 48px로 줄여 
   boxCache.set(im, b); return b;
 }
 // skin = true면 지금 쓰는 스킨의 색 필터를 입혀 둔다(내 유닛 그림에만 쓴다)
-let skinFilter = '';
-export function setSkin(filter) { if (filter !== skinFilter) { skinFilter = filter || ''; fitCache.clear(); fitCount = 0; } }
+// 스킨: art = 그 스킨의 그림 묶음 이름(units/<art>_<병과>). 그림이 준비돼 있으면 내 유닛을 그 그림으로 그린다(계급대 구분 없이 한 벌). filter는 그림이 없는 스킨의 색 필터
+let skinFilter = '', skinArt = '';
+export function setSkin(filter, artName = '') { skinArt = artName || ''; if (filter !== skinFilter) { skinFilter = filter || ''; fitCache.clear(); fitCount = 0; } }
 function fit(im, w, k, flip = false, skin = false) {
   let m = fitCache.get(im); if (!m) fitCache.set(im, m = new Map());
   const key = (flip ? -1 : 1) * Math.round(w * k) + (skin ? 0.5 : 0); let f = m.get(key);
@@ -431,11 +432,14 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   // 캐릭터: 가만히 있을 때는 숨쉬듯 조금 움직이고, 사격할 때는 반동으로 튄다. 발을 기준으로 커졌다 작아진다
   const fire = u.fireT > 0 ? Math.sin((1 - u.fireT / 0.16) * Math.PI) : 0;
   const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.2 : 0) - fire * 6, sc = 1 + fire * 0.07;
-  const im = unitImage(b.id, u.type, grp) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
+  // 그림 고르기: 용사 전용 그림(각성하면 각성 그림) → 내 스킨 그림 → 군별·계급대 그림 → 코드 그림
+  const hk = hero ? [hero.id + (u.level > hero.level ? 'aw' : ''), hero.id + (u.level > hero.level ? 'aw' : '')] : null;
+  const heroIm = hk && unitImage('hero', hk, 0), skinIm = !heroIm && skin && skinArt ? unitImage(skinArt, u.type, 0) : null;
+  const im = heroIm || skinIm || unitImage(b.id, u.type, grp) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
   const w = size * sc;
   const stunned = u.stunT > 0;
   // 등 뒤 장식 (캐릭터보다 먼저 그려 뒤에 놓는다): 위관 깃발 하나, 영관 깃발 둘, 장성 망토와 후광
-  const own = unitArtTier(b.id, u.type, grp) === grp;      // 이 계급대 전용 그림이 있으면 깃발·망토·후광은 그리지 않는다(그림에 이미 차림이 있다)
+  const own = heroIm ? true : skinIm ? false : unitArtTier(b.id, u.type, grp) === grp;      // 이 계급대 전용 그림이 있으면 깃발·망토·후광은 그리지 않는다(그림에 이미 차림이 있다). 스킨은 한 벌이라 계급대 장식을 그려 준다
   if (!own && (grp === 2 || grp === 3)) for (const sd of grp === 3 ? [-1, 1] : [1]) {
     const x0 = p.x + sd * size * 0.12, y0 = fy - 6, x1 = p.x + sd * size * 0.46, y1 = top + size * 0.1;
     ctx.strokeStyle = '#3a2f20'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
@@ -451,7 +455,7 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   }
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
-  const atk = u.atkT > 0 && !stunned ? unitAtkImage(b.id, u.type, grp) : null;
+  const atk = u.atkT > 0 && !stunned ? (heroIm ? unitAtkImage('hero', hk, 0) : skinIm ? unitAtkImage(skinArt, u.type, 0) : unitAtkImage(b.id, u.type, grp)) : null;
   if (atk) put(ctx, fit(atk, size * 2, k, u.faceL, skin), p.x - size, p.y + FEET + dy - size * 2);
   else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, skin), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
   else { const f = fit(im, size, k, false, skin); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다

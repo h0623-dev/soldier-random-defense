@@ -4,3 +4,4 @@ node_modules/
 www/version.json
 dist/
 .wrangler/
+__pycache__/

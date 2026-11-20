@@ -85,13 +85,15 @@ export function pull(meta, n, rand) {
   const cost = n >= 10 ? PULL.cost10 : PULL.cost * n; if (meta.gems < cost) return null;
   meta.gems -= cost; return Array.from({ length: n }, () => pullOne(meta, rand));
 }
-// 스킨: 내 유닛의 겉모습. 지금은 그림을 새로 그린 것이 아니라 기존 그림에 색을 입히는 '도색'이다(filter = 캔버스·CSS 필터)
+// 스킨: 내 유닛의 겉모습. 스킨마다 10병과의 대기·공격 그림 한 벌이 있고(art = 그림 묶음 이름, www/img/units/<art>_<병과>.webp),
+// 군별과 계급에 상관없이 그 복장으로 보인다(계급은 받침대 색·계급장·깃발과 망토로 구분된다). 용사는 스킨을 입지 않는다.
+// 처음에는 색 필터('도색')였고 2026-11-20에 그림으로 바꿨다. 스킨 id는 그대로라 이미 가진 스킨은 유지된다
 export const SKINS = [
-  { id: 'base', name: '기본 군복', cost: 0, filter: '' },
-  { id: 'desert', name: '사막 도색', cost: 300, filter: 'sepia(0.6) saturate(1.35) brightness(1.04)' },
-  { id: 'snow', name: '설상 도색', cost: 300, filter: 'saturate(0.3) brightness(1.22) contrast(0.96)' },
-  { id: 'night', name: '야간 도색', cost: 300, filter: 'saturate(0.55) brightness(0.78) contrast(1.12)' },
-  { id: 'gold', name: '황금 도색', cost: 600, filter: 'sepia(1) saturate(2.4) brightness(1.06)' },
+  { id: 'base', name: '기본 군복', cost: 0, filter: '', art: '' },
+  { id: 'desert', name: '사막 전투복', cost: 300, filter: '', art: 'skindesert' },
+  { id: 'snow', name: '설상 위장복', cost: 300, filter: '', art: 'skinsnow' },
+  { id: 'night', name: '야간 특수복', cost: 300, filter: '', art: 'skinnight' },
+  { id: 'gold', name: '황금 의장대', cost: 600, filter: '', art: 'skingold' },
 ];
 export const skinOwned = (meta, id) => id === 'base' || !!meta.skins.own[id];
 export const skinOf = meta => SKINS.find(s => s.id === meta.skins.on) || SKINS[0];

@@ -92,13 +92,14 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .blds { position: relative; display: flex; align-items: flex-end; gap: 0.2rem; padding: 0.5rem 0.4rem 0.6rem; margin-bottom: 1.1rem; border-radius: 1.8rem;
   background: var(--p1, #a9bb6e); border: 0.22rem solid rgba(74, 47, 27, .6); box-shadow: 0 0.9rem 0 var(--p3, #5f6f3a), 0 1.5rem 1.2rem rgba(40, 25, 10, .4); }
 .bld { flex: 1; min-width: 0; padding: 0; background: none; display: flex; flex-direction: column; align-items: center; position: relative; color: #fff6e0; }
-.bld svg { width: 100%; max-width: calc(6.6rem * var(--bs, 1)); height: auto; display: block; filter: drop-shadow(0 0.35rem 0.25rem rgba(40, 25, 10, .4)); }
-.bld.main { flex: 1.5; } .bld.main svg { max-width: calc(10rem * var(--bs, 1)); }
+.bld svg, .bld img.bimg { width: 100%; max-width: calc(6.6rem * var(--bs, 1)); height: auto; display: block; filter: drop-shadow(0 0.35rem 0.25rem rgba(40, 25, 10, .4)); }
+.bld img.bimg { aspect-ratio: 1; object-fit: contain; }
+.bld.main { flex: 1.5; } .bld.main svg, .bld.main img.bimg { max-width: calc(10rem * var(--bs, 1)); }
 .bld .sign { margin-top: -0.3rem; max-width: 100%; background: #6b4a2a; border: 0.2rem solid #3a2616; border-radius: 0.8rem; padding: 0.2rem 0.5rem 0.25rem; line-height: 1.2; white-space: nowrap; position: relative; }
 .bld .sign b { display: block; font-size: 1.05rem; font-weight: 900; } .bld .sign small { display: block; font-size: 1rem; font-weight: 800; color: var(--yellow); }
 .bld.main .sign b { font-size: 1.2rem; } .bld.main .sign small { font-size: 1.1rem; }
-.bld:disabled { opacity: 1; } .bld:disabled svg { filter: grayscale(.75) brightness(.82) drop-shadow(0 0.35rem 0.25rem rgba(40, 25, 10, .4)); } .bld:disabled .sign small { color: #d8b9a8; }
-.bld.hot svg { animation: bldglow 0.9s ease-in-out infinite alternate; } .bld.hot .sign { background: var(--purple); border-color: #4a2080; }
+.bld:disabled { opacity: 1; } .bld:disabled svg, .bld:disabled img.bimg { filter: grayscale(.75) brightness(.82) drop-shadow(0 0.35rem 0.25rem rgba(40, 25, 10, .4)); } .bld:disabled .sign small { color: #d8b9a8; }
+.bld.hot svg, .bld.hot img.bimg { animation: bldglow 0.9s ease-in-out infinite alternate; } .bld.hot .sign { background: var(--purple); border-color: #4a2080; }
 @keyframes bldglow { from { filter: drop-shadow(0 0 0.2rem #ffd45e); } to { filter: drop-shadow(0 0 1rem #ffd45e) brightness(1.12); } }
 
 
@@ -262,3 +263,4 @@ img.u { filter: var(--skin, none); }
 #info.c2 .pt.res { display: flex; align-items: center; gap: 0.4rem; flex: 0 1 auto; min-width: 0; padding: 0.1rem 0.7rem 0.1rem 0.2rem; } #info.c2 .pt.res img.u { width: 4rem; height: 4rem; margin: 0; flex: none; } #info.c2 .pt.rnd .qm { height: 4rem; width: 3rem; font-size: 3rem; flex: none; }
 #info.c2 .mix .op { flex: none; }
 #b-coop[hidden] { display: none; }
+.wcard.hero .hrc img.hpic { width: 5.6rem; height: 5.6rem; }
