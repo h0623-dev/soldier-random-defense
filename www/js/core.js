@@ -1,4 +1,4 @@
-// 군인 랜덤 디펜스 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
+// 털뭉치 수비대 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
 import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL, HEROES, TYPE_SKILLS, cmOf } from './data.js';
 
 // ── 전장 ─────────────────────────────────────────────────

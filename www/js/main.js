@@ -206,7 +206,7 @@ const ACT = {
     // 작전 본부: 출격 · 오늘의 임무(출석, 일일 임무 3개) · 전투 밖 성장(표창·숙련도·뽑기판·영구 강화) · 기록
     const run = peekRun(), day = today(), can = M.canAttend(meta, day), ar = M.ATTEND[M.attendDay(meta)], ds = M.dailyState(meta, day), dr = M.DAILY_REWARD;
     const dot = on => (on ? '<i class="dot"></i>' : '');
-    show(`<div class="tart"><div class="tlogo"><h1>군인 랜덤 디펜스</h1><p>계급을 올리고 병과를 조합해 100단계를 방어하라</p></div></div>
+    show(`<div class="tart"><div class="tlogo"><h1>털뭉치 수비대</h1><p>계급을 올리고 병과를 조합해 100단계를 방어하라</p></div></div>
       <div class="tmenu">
         ${resBar()}
         ${run ? `<button class="wide cont" data-act="cont">${ic('play')}이어하기 <small>${runLabel(run)}</small></button>` : ''}

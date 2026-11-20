@@ -1,4 +1,4 @@
-# 군인 랜덤 디펜스 서버 — 랭킹과 2인 협동 방(웹소켓 중계). Cloudflare Workers + Durable Objects(무료 요금제에서 쓰는 SQLite 방식).
+# 털뭉치 수비대 서버 — 랭킹과 2인 협동 방(웹소켓 중계). Cloudflare Workers + Durable Objects(무료 요금제에서 쓰는 SQLite 방식).
 # 배포: 이 폴더에서 `npx wrangler deploy` (Cloudflare 계정 연결 필요 — docs/SERVER.md)
 name = "soldier-rd-server"
 main = "src/index.js"

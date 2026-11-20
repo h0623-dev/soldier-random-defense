@@ -1,4 +1,4 @@
-/* 군인 랜덤 디펜스 — 화면 스타일 (밝은 만화풍: 크림색 바탕, 굵은 검은 테두리, 원색 버튼)
+/* 털뭉치 수비대 — 화면 스타일 (밝은 만화풍: 크림색 바탕, 굵은 검은 테두리, 원색 버튼)
    크기 단위: 1rem = 10px × 화면 배율. 배율·전장 크기·세로/가로 배치는 js/layout.js가 기기 화면을 읽어 정한다. */
 :root { --ink: #2b2118; --cream: #f7e7c2; --paper: #fffaf0; --paper2: #fff1c9; --sand: #f0deb0; --mute: #7b6a55; --soft: #d8c8a6;
   --green: #5fd35a; --yellow: #ffd45e; --orange: #ff8a3c; --purple: #b15bf0; --red: #ff6b5e; --blue: #2f8fe0; --ln: 0.26rem solid var(--ink); --sh: 0 0.4rem 0 var(--ink); }
