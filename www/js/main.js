@@ -1,12 +1,12 @@
 // 화면 · 입력 · 저장 연결
-import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, GROUP_OF_LEVEL, HEROES, COMMENDS, CM_NEED, cmVal } from './data.js';
+import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, HEROES, COMMENDS, CM_NEED, cmVal } from './data.js';
 import * as C from './core.js';
 import * as M from './meta.js';
-import { draw, areaColors, setSkin } from './render.js';
-import { insigUrl, hasArt, unitArtName, loadBranchArt, V2, v2Has, v2UnitSrc, v2HeroSrc } from './sprites.js';
-// 그림 주소(새 그림체 · 예전 그림 공용). 유닛: 군별 id + 병과 키('inf' · 'inf+art') · 적: 'normal' · 'boss3' …
-const upic = (bid, key) => (V2 ? v2UnitSrc(bid, key) : `img/units/${bid}_${key.replace('+', '-')}.webp`);
-const epic = kind => (V2 ? `img/v2/enemy_${/^boss\d/.test(kind) && !v2Has('enemy_' + kind) ? 'boss' : kind}.webp` : `img/enemy_${hasArt('enemy_' + kind) ? kind : /^boss/.test(kind) ? 'boss' : kind === 'elite' ? 'armor' : kind}.webp`);
+import { draw, areaColors } from './render.js';
+import { insigUrl, v2Has, v2UnitSrc, v2HeroSrc } from './sprites.js';
+// 그림 주소. 유닛: 군별 id + 병과 키('inf' · 'inf+art') · 적: 'normal' · 'boss3' … (지역 보스 그림이 없으면 대장 전차)
+const upic = (bid, key) => v2UnitSrc(bid, key);
+const epic = kind => `img/v2/enemy_${/^boss\d/.test(kind) && !v2Has('enemy_' + kind) ? 'boss' : kind}.webp`;
 import { Ads, Store } from './monetize.js';
 import { Net } from './net.js';
 import { initLayout } from './layout.js';
@@ -41,7 +41,6 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 let coop = null;
 const TICK = 0.05, EMOTES = ['도와줘!', '좋아!', '보스 집중!', '고마워!'];
 const duoLive = () => !!(g && g.duo && coop && !coop.dead);
-const myBranch = () => (BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0]);
 const peerP = () => g.duo.ps[1 - g.duo.me];
 function coopLeave() { if (coop) { const c = coop; coop = null; if (c.conn) c.conn.close(); } }
 function coopLost() {      // 동료가 나갔거나 연결이 끊겼다 → 남은 사람이 전장 전체를 맡아 혼자 이어간다
@@ -54,7 +53,7 @@ const okPlayer = p => !!(p && BRANCHES.some(b => b.id === p.branchId) && p.meta 
 function coopBegin(players, seed, me, sp, stage = 1) {
   if (!players.every(okPlayer)) { coopLeave(); return ACT.coop('시작하지 못했습니다 — 다시 해 보세요'); }
   if (!M.spendEnergy(meta, Date.now())) { coopLeave(); return ACT.noenergy(); }
-  saveMeta(); for (const x of BRANCHES) loadBranchArt(x.id);
+  saveMeta();
   players = players.map(pl => ({ ...pl, name: M.cleanName(pl.name) || '동료' }));
   g = C.createDuo({ players, seed, me, stage: C.stageInfo(stage).n });
   Object.assign(coop, { me, tick: 0, goal: 0, q: [], seq: 0, sums: {}, mine: {}, acc: 0, beat: performance.now(), beatSent: 0, need: false });
@@ -144,14 +143,9 @@ async function coopJoin(getCode) {
   } catch { coopLeave(); ACT.coop('연결하지 못했습니다 — 잠시 뒤에 다시 해 보세요'); }
 }
 let rankReq = 0;
-// 스킨(도색): 전장의 내 유닛 그림과 카드의 초상에 같은 색 필터를 입힌다
-function applySkin() { const s = M.skinOf(meta); setSkin(s.filter, s.art); if (s.art) loadBranchArt(s.art); document.documentElement.style.setProperty('--skin', s.filter || 'none'); }
-// 유닛 초상(카드·결과 화면): 용사 전용 그림 → 내 스킨 그림 → 군별·계급대 그림
+// 유닛 초상(카드·결과 화면): 용사는 그 군별의 용사 그림, 그 밖에는 군별·병과 그림
 function unitPic(b, u) {
-  if (V2) { const h = C.heroOf(u); return (h && v2HeroSrc(b.id, h.id)) || upic(b.id, C.typeKey(u.type)); }      // 새 그림체: 용사는 그 군별의 용사 그림, 그 밖에는 군별·병과 그림(스킨·계급대 그림은 없다)
-  const h = C.heroOf(u), hn = h && `units/hero_${h.id}${u.level > h.level ? 'aw' : ''}`; if (hn && hasArt(hn)) return `img/${hn}.webp`;
-  const sk = M.skinOf(meta).art, sn = sk && !h && (!g || !g.duo || C.own(g, u)) && `units/${sk}_${C.typeKey(u.type).replace('+', '-')}`; if (sn && hasArt(sn)) return `img/${sn}.webp`;
-  return unitSrc(b, u.type, C.rankGroup(b, u));
+  const h = C.heroOf(u); return (h && v2HeroSrc(b.id, h.id)) || upic(b.id, C.typeKey(u.type));
 }
 const iga = w => { const c = (w.charCodeAt(w.length - 1) - 0xac00) % 28; return c > 0 ? '이' : '가'; };      // 조사 이/가
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -219,13 +213,13 @@ const c2 = (c, lv) => c.text(cmVal(c, lv));      // 표창의 그 단계 효과 
 const CM_ICON = { summon: 'plus', luck: 'ring', tile: 'target', depot: 'box', supply: 'box', elite: 'skull', boss: 'sword', crit: 'target', gamble: 'up', time: 'flag', sell: 'exit', medal: 'medal' };
 const BOARD_LABEL = { big: ['특등', '표창 3장'], cm: ['표창', '1장'], m3: ['훈장', '3개'], m1: ['훈장', '1개'], xp: ['교본', '경험치'] };
 const sheetHead = (title, sub) => `<div class="sh"><div><b>${title}</b><small>${sub}</small></div><button class="hbtn" data-act="resume" aria-label="닫기">${ic('x')}</button></div>`;
-const unitSrc = (b, type, grp = 0) => (V2 ? upic(b.id, C.typeKey(type)) : `img/${unitArtName(b.id, C.sortType(type), grp)}.webp`);     // 계급대에 맞는 그림이 있으면 그 그림
+const unitSrc = (b, type) => upic(b.id, C.typeKey(type));
 function hide() { overlay.classList.remove('on', 'sheet'); paused = false; last = performance.now(); }
 overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) ACT[b.dataset.act](b.dataset.arg, b);
   else if (e.target === overlay && overlay.classList.contains('sheet')) hide(); });   // 시트 바깥(어두운 부분)을 누르면 닫힌다
 
 // 게임에 들어갈 때(새로 출격·이어하기) 화면 쪽 상태를 처음으로 돌린다
-function enter() { if (view.refit) { view.refit(); setTimeout(view.refit, 400); } loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area, ...(g.mode === 'stage' ? { top: `스테이지 ${g.stage} · 라운드 ${g.rounds}`, label: `보스 — ${C.AREAS[g.area].boss.name}` } : {}) } }; infoKey = ''; setSpeed(SPEEDS[0]); $('app').classList.remove('sel'); }
+function enter() { if (view.refit) { view.refit(); setTimeout(view.refit, 400); } logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area, ...(g.mode === 'stage' ? { top: `스테이지 ${g.stage} · 라운드 ${g.rounds}`, label: `보스 — ${C.AREAS[g.area].boss.name}` } : {}) } }; infoKey = ''; setSpeed(SPEEDS[0]); $('app').classList.remove('sel'); }
 
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {
@@ -287,14 +281,14 @@ const ACT = {
   mode(id) { if (M.modeOpen(meta, id)) { meta.mode = id; saveMeta(); } ACT.branches(); },
   start() {
     if (!M.spendEnergy(meta, Date.now())) return ACT.noenergy();      // 한 판에 행동력 1 (이어하기는 들지 않는다)
-    saveMeta(); for (const x of BRANCHES) loadBranchArt(x.id); clearRun();
+    saveMeta(); clearRun();
     const mode = curMode(); g = C.createGame({ meta, mode, stage: Math.min(M.stageOpen(meta), meta.stageSel | 0 || 1) }); enter();
     hide(); toast(g.mode === 'rush' ? `보스 러시 — ${C.CFG.rushPrep}초 뒤 첫 보스가 옵니다. 받은 군자금으로 부대를 꾸리세요` : '빈 칸을 누르면 그 자리에, 신병 소집 건물을 누르면 무작위 자리에 소집됩니다', g.mode === 'rush' ? 3200 : 2400);
   },
   cont() {      // 저장해 둔 게임 이어하기
     const run = peekRun(), loaded = run && C.loadGame(run.o, meta);
     if (!loaded) { clearRun(); toast('저장된 게임을 불러오지 못했습니다'); return ACT.title(); }
-    g = loaded; for (const x of BRANCHES) loadBranchArt(x.id); enter(); ui.trans = null;
+    g = loaded; enter(); ui.trans = null;
     hide(); toast(`${runLabel(run)} — 이어서 합니다`);
   },
   resume() { hide(); },
@@ -377,15 +371,10 @@ const ACT = {
   },
   skins(msg) {      // 부대 탭 > 스킨
     const b0 = BRANCHES.find(x => x.id === meta.lastBranch) || BRANCHES[0];
-    if (V2) return tabPage('mastery', 'skins', `<p class="note cmmsg">스킨을 동물 캐릭터에 맞춰 새로 그리는 중입니다</p>
-      <div class="skins">${M.SKINS.map(k => { const own = M.skinOwned(meta, k.id);      // 새 그림체: 예전 스킨 그림(사람 병사)은 쓰지 않는다. 가진 스킨은 그대로 두고, 새 그림이 준비될 때까지 사고 입는 것만 막는다
+    tabPage('mastery', 'skins', `<p class="note cmmsg">스킨을 동물 캐릭터에 맞춰 새로 그리는 중입니다</p>
+      <div class="skins">${M.SKINS.map(k => { const own = M.skinOwned(meta, k.id);      // 예전 스킨 그림(사람 병사)은 지웠다. 가진 스킨은 그대로 두고, 새 그림이 준비될 때까지 사고 입는 것만 막는다
         return `<div class="skin${k.id === 'base' ? ' on' : ''}"><img src="${upic(b0.id, 'inf')}" alt=""><b>${k.name}</b><button class="btn" disabled>${k.id === 'base' ? '사용 중' : own ? '보유 · 준비 중' : '준비 중'}</button></div>`; }).join('')}</div>
       <p class="sub" style="margin:1rem 0 0">이미 가진 스킨은 그대로 남아 있고, 새 그림이 준비되면 다시 입을 수 있습니다</p>`, unitSub('skins'), typeof msg === 'string');
-    tabPage('mastery', 'skins', `<p class="note cmmsg">${typeof msg === 'string' && msg ? msg : `보유 보석 ${meta.gems}개`}</p>
-      <div class="skins">${M.SKINS.map(k => { const own = M.skinOwned(meta, k.id), on = meta.skins.on === k.id;
-        return `<div class="skin${on ? ' on' : ''}"><img src="img/units/${k.art || b0.id}_inf.webp" onerror="this.onerror=null;this.src='img/units/${b0.id}_inf.webp'" alt=""><b>${k.name}</b>
-          <button class="btn${own ? '' : ' gold'}" data-act="${own ? 'skinuse' : 'skinbuy'}" data-arg="${k.id}" ${on || (!own && meta.gems < k.cost) ? 'disabled' : ''}>${on ? '사용 중' : own ? '사용' : `${ic('gem')}${k.cost}`}</button></div>`; }).join('')}</div>
-      <p class="sub" style="margin:1rem 0 0">스킨을 쓰면 내 유닛이 군별·계급에 상관없이 그 복장으로 보입니다(능력은 같음, 용사는 제 모습 그대로). 상점의 고급 보급 상자에서도 나옵니다</p>`, unitSub('skins'), typeof msg === 'string');
   },
   // 부대 표창: 모든 판에 적용되는 영구 효과. 같은 표창을 모으면 단계가 오른다
   commend(msg) {      // 표창 탭 — 표창 카드(단계 · 모은 장수). 카드를 누르면 위에 효과가 나온다
@@ -479,12 +468,11 @@ const ACT = {
   async pay(id) { const n = await Store.buy(id); if (n > 0) { meta.gems += n; saveMeta(); Sound.play('merge'); ACT.shop(`보석 ${n}개를 받았습니다${Store.dev ? ' (시험 구매)' : ''}`, true); } else toast('결제는 스토어 출시 후에 이용할 수 있습니다'); },
   gembuy(id, el) { const it = M.buyGem(meta, id, Date.now()); if (!it) { Sound.play('deny'); return; } saveMeta(); Sound.play('camp');
     if (el && el.dataset.back) { ACT[el.dataset.back](); toast(`${it.name} 구매`); } else ACT.shop(`${it.name} 구매`, true); },
-  pull(n) { const rs = M.pull(meta, +n, rnd); if (!rs) { Sound.play('deny'); return; } saveMeta(); applySkin(); Sound.play(rs.some(r => r.kind === 'skin') ? 'hidden' : 'merge');
+  pull(n) { const rs = M.pull(meta, +n, rnd); if (!rs) { Sound.play('deny'); return; } saveMeta(); Sound.play(rs.some(r => r.kind === 'skin') ? 'hidden' : 'merge');
     ACT.shop(`${rs.some(r => r.kind === 'skin') ? '★ ' : ''}${rs.map(r => r.text).join(' / ')}`, true); },
-  skinbuy(id) { if (M.buySkin(meta, id)) { M.useSkin(meta, id); saveMeta(); applySkin(); Sound.play('merge'); ACT.skins(`${M.skinOf(meta).name} 구매 — 바로 적용했습니다`); } else Sound.play('deny'); },
-  skinuse(id) { if (M.useSkin(meta, id)) { saveMeta(); applySkin(); Sound.play('camp'); ACT.skins(`${M.skinOf(meta).name} 적용`); } },
+  // 스킨 사기·입기(skinbuy · skinuse)는 스킨을 동물에 맞게 다시 만들 때 되살린다 — 지금은 화면에 누를 곳이 없다. 가진 스킨 기록(meta.skins)과 규칙(meta.js)은 그대로 있다
   help() {
-    show(`<h2>${V2 ? '<img class="gpic" src="img/v2/ui_guide.webp" alt="" onerror="this.remove()">' : ''}게임 방법</h2><div class="list">
+    show(`<h2><img class="gpic" src="img/v2/ui_guide.webp" alt="" onerror="this.remove()">게임 방법</h2><div class="list">
       <p>털뭉치 마을에 <b>고철 군단</b>이 쳐들어왔습니다. 털뭉치 병사들을 소집하고 계급을 올려 스테이지 100개를 깨 나가세요. 스테이지 10개마다 지역이 바뀌고, 한 스테이지는 라운드 30~50개입니다.</p>
       <p><b>1. 신병 소집</b> — <b>빈 칸을 누르면 그 자리에</b>, 아래 <b>신병 소집 건물을 누르면 빈 칸 가운데 무작위 자리에</b> 군자금으로 유닛을 뽑습니다(값은 건물 간판에 적혀 있습니다). <b>군별(육군·해군·해병대·특공대·공군·의경)과 병과가 무작위</b>로 정해집니다. 군별은 동물 생김새로, 등급은 발밑 원판 색으로 구분합니다(유닛을 누르면 이름표가 뜹니다). 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 군별 · 같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 군별이 다르면 조합되지 않습니다. 유닛을 누르면 카드에 <b>같은 병과 조합</b> · <b>랜덤 조합</b> 버튼이 나와, 짝이 있으면 바로 조합됩니다(짝이 없으면 회색). 발밑 <b>원판의 색</b>이 등급입니다. 짝이 있는 유닛의 칸에는 노란 점선이 둘러집니다. 칸이 꽉 찼는데 짝이 없으면 낮은 등급 유닛을 <b>전역</b>시켜 자리를 내세요. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
@@ -622,14 +610,14 @@ const ACT = {
       <div class="grades">${b.grades.map((list, i) => `<div class="gr" style="border-color:${GRADES[i].color}"><b class="gn" style="background:${GRADES[i].color}">${GRADES[i].name}</b>
         <div>${list.map(([name, ins]) => `<span>${ins[1] ? `<img src="${insigUrl(ins)}" alt="">` : ''}${name}</span>`).join('')}</div></div>`).join('')}</div>
       <h3>등급이 오르면 모습이 달라집니다</h3>
-      <div class="cx5">${[0, 2, 3, 4, 5].map(lv => `<div class="ucard" style="border-color:${GRADES[lv].color}"><img class="ui" src="${unitSrc(b, ['inf', 'inf'], GROUP_OF_LEVEL[lv])}" alt=""><b>${GRADES[lv].name}~</b></div>`).join('')}</div>
+      <div class="cx5">${[0, 2, 3, 4, 5].map(lv => `<div class="ucard" style="border-color:${GRADES[lv].color}"><img class="ui" src="${unitSrc(b, ['inf', 'inf'])}" alt=""><b>${GRADES[lv].name}~</b></div>`).join('')}</div>
       ${b.hidden.length ? `<h2>히든 계급</h2>${b.hidden.map(h => meta.found[h.id]
         ? `<div class="wcard hid"><div class="hbadge"><img src="${insigUrl(h.insig)}" alt=""><b>${h.name}</b></div><div><b>${h.name}</b> <small>${GRADES[h.level].name} 등급</small><p>${h.text}</p><p><em>얻는 법</em> ${h.how}</p></div></div>`
         : `<div class="wcard hid"><div class="hbadge"><b>?</b></div><div><b>???</b><p>아직 발견하지 못했습니다</p><p><em>단서</em> ${h.recipe ? '어떤 조합에서 나타납니다' : '신병 소집에서 드물게 나타납니다'}</p></div></div>`).join('')}
         <div class="list"><p>히든 계급을 조합 재료로 쓰면 일반 계급으로 진급하고 능력은 사라집니다.</p></div>` : ''}
       <h2>전설의 용사</h2>
       <p class="sub" style="text-align:left;margin:0 0 .8rem"><b>${GRADES[4].name}</b> 등급의 <b>기본 병과</b> 둘(서로 다른 병과)을 조합하면 용사가 태어납니다. 용사는 종류마다 한 명뿐이고, <b>${GRADES[5].name}</b> 등급 유닛과 조합하면 <b>${GRADES[6].name}</b>로 각성해 기술이 강해집니다.</p>
-      ${HEROES.map(h => { const k = C.typeKey(h.pair); return `<div class="wcard hero" style="border-color:${h.color}"><div class="hrc">${uimg(h.pair[0], 'ui s')}<i>+</i>${uimg(h.pair[1], 'ui s')}<i>→</i><img class="hpic" src="${V2 ? v2HeroSrc(b.id, h.id) || upic(b.id, k) : `img/units/hero_${h.id}.webp`}" alt="" onerror="this.style.display='none'"></div>
+      ${HEROES.map(h => { const k = C.typeKey(h.pair); return `<div class="wcard hero" style="border-color:${h.color}"><div class="hrc">${uimg(h.pair[0], 'ui s')}<i>+</i>${uimg(h.pair[1], 'ui s')}<i>→</i><img class="hpic" src="${v2HeroSrc(b.id, h.id) || upic(b.id, k)}" alt="" onerror="this.style.display='none'"></div>
         <div><b>${h.name}</b> <small>${name(h.pair[0])} + ${name(h.pair[1])} → ${name(k)}</small>${meta.found[h.id] ? '<span class="tag hero">탄생시킴</span>' : ''}<p>${h.text.split(' — ')[1]}</p><p><em>각성</em> ${h.up}</p></div></div>`; }).join('')}
       <h2>작전 지역 · 보스</h2>
       ${C.AREAS.map((a, i) => `<div class="wcard${i === g.area ? ' now' : ''}">${eimg(i ? 'boss' + (i + 1) : 'boss', i + 1)}
@@ -664,7 +652,7 @@ const ACT = {
     // 최우수 유닛(누적 피해 1위)과 병과별 피해 비율
     const mvp = g.units.filter(u => u && C.own(g, u)).sort((x, y) => y.dealt - x.dealt)[0], tot = g.dealt || 1;      // 협동에서는 내 유닛 가운데
     const shares = CLASS_IDS.map(c => [c, g.dmg[c] / tot]).filter(x => x[1] > 0.005);
-    show(`${V2 ? `<img class="respic" src="img/v2/${g.over.win ? (stg ? 'ui_clear' : 'ui_win') : 'ui_lose'}.webp" alt="" onerror="this.remove()">` : ''}<h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
+    show(`<img class="respic" src="img/v2/${g.over.win ? (stg ? 'ui_clear' : 'ui_win') : 'ui_lose'}.webp" alt="" onerror="this.remove()"><h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
       <div class="card resbox" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${stg ? `스테이지 ${g.stage}` : C.MODES.some(m => m.id === mode) ? C.MODES.find(m => m.id === mode).name : '털뭉치수비대'}</b>${stg ? ` · ${C.AREAS[g.area].name}` : ''}${g.duo ? ' · 2인 협동' : ''} · ${mode === 'rush' ? `격파한 보스 ${rec}/${C.AREAS.length}` : stg ? `라운드 ${Math.min(g.wave, g.rounds)}/${g.rounds}` : `도달 ${g.wave}라운드`} · 처치 ${g.kills}${first ? ' · <b class="nb">첫 클리어!</b>' : newBest ? ' · <b class="nb">최고 기록!</b>' : ''}</p>
         <p>${ic('medal')}훈장 <b>+${medals * (doubled ? 2 : 1)}</b>${doubled ? ' (광고 2배)' : g.duo ? ` (협동 ${M.COOP_MEDAL}배)` : ''} · ${ic('ticket')}뽑기 티켓 <b>+${tickets}</b></p>
         ${rank ? `<p>랭킹 · 이번 주 <b>${rank.week ? rank.week + '위' : '100위 밖'}</b> · 전체 <b>${rank.all ? rank.all + '위' : '100위 밖'}</b></p>` : ''}</div></div>
@@ -902,7 +890,7 @@ function frame(now) {
   draw(ctx, g, ui, view.quality); renderHud(); renderInfo();
   if (g.over && !g.reported) ACT.result();
 }
-Sound.setMuted(meta.mute); applySkin();
+Sound.setMuted(meta.mute);
 document.addEventListener('pointerdown', () => Sound.unlock(), { passive: true });
 window.__srd = { get game() { return g; }, C, view, duo: () => coop, back: onBack };   // 자동 검사용
 fillIcons(); ACT.title(); requestAnimationFrame(frame);
@@ -913,7 +901,7 @@ let bootHold = false;      // 새 버전을 받는 동안에는 시작 화면을
 function bootOff() { if (!boot || bootHold || boot.classList.contains('off')) return; boot.classList.add('off'); setTimeout(() => { boot.hidden = true; }, 400); }
 function bootOn(msg) { if (!boot) return; $('boot-msg').textContent = msg; boot.hidden = false; boot.classList.remove('off'); }
 { const im = new Image(), done = () => setTimeout(bootOff, Math.max(0, 700 - performance.now()));
-  im.onload = im.onerror = done; im.src = V2 ? 'img/v2/title.webp' : 'img/title.webp'; setTimeout(bootOff, 3000); }
+  im.onload = im.onerror = done; im.src = 'img/v2/title.webp'; setTimeout(bootOff, 3000); }
 // 자동 업데이트: 새 버전을 다 받으면, 아직 게임을 시작하지 않았을 때는 바로 다시 열고 아니면 다음 실행부터 적용한다
 // 받는 동안: 아직 게임을 시작하지 않았으면 시작 화면에 "새 버전 받는 중 n%"를 띄워 기다리게 한다(다 받으면 바로 새 버전으로 열린다). 게임 중이면 방해하지 않는다
 checkUpdate(() => { if (!g) { bootOn('새 버전 적용 중…'); location.reload(); } else toast('새 버전을 받았습니다 — 앱을 껐다 켜면 적용됩니다', 4000); },

@@ -228,7 +228,6 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .xps span { padding: 0.3rem 0.8rem; border-radius: 0.9rem; background: var(--sand); font-size: 1.15rem; font-weight: 700; } .xps b { color: #1f9d3a; } .xps em { font-style: normal; margin-left: 0.3rem; color: #c2410c; font-weight: 900; }
 .nb { color: #c2410c; } .list .ic { font-size: 1.5rem; vertical-align: -0.25rem; margin-right: 0.2rem; }
 /* ── 행동력 · 상점 · 스킨 · 시험 광고 ── */
-img.u { filter: var(--skin, none); }
 .res { flex-wrap: wrap; gap: 0.5rem; } .res .pill { flex: 1; justify-content: center; min-width: 0; padding-left: 0.6rem; padding-right: 0.8rem; } .res .pill small { font-size: 1rem; color: var(--mute); margin-left: 0.3rem; font-variant-numeric: tabular-nums; } .res .pill.en .ic { color: var(--orange); }
 .wide.adx { background: #fff3c9; } .wide.adx b { color: #b96a00; margin-left: 0.3rem; }
 .list.odds { background: var(--paper); border: 0.2rem solid var(--ink); border-radius: 1.2rem; padding: 0.8rem 1.1rem; margin-top: 0.4rem; } .list.odds p { margin: 0.25rem 0; font-size: 1.15rem; }
