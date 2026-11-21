@@ -93,5 +93,7 @@
 /* 전투 화면: 전장 양옆은 캔버스가 땅 그림으로 채운다. 상태 표시줄 자리(위쪽 안전 영역)는 위쪽 표시줄과 이어지게 나무색 */
 .v2 #app { background: #4a2d14; }
 /* ── 주둔지: 시안 E(동물 직원, 2026-11-21 사용자 선택) — 건물마다 동물 병사가 서 있고, 바닥은 돌길 그림. 건물을 예전보다 크게 ── */
-.v2 .blds { background: url(img/v2/camp_base.webp) center bottom / 100% 100% no-repeat; border: 0; box-shadow: none; border-radius: 0; padding: 1.2rem 0.5rem 0.7rem; filter: drop-shadow(0 0.5rem 0.4rem rgba(10, 30, 20, .4)); }
+.v2 .blds { background: var(--cimg, url(img/v2/camp_meadow.webp)) center bottom / 100% 100% no-repeat; border: 0; box-shadow: none; border-radius: 0; padding: 1.2rem 0.5rem 0.7rem; filter: drop-shadow(0 0.5rem 0.4rem rgba(10, 30, 20, .4)); }
 .v2 .bld svg, .v2 .bld img.bimg { max-width: calc(8.4rem * var(--bs, 1)); } .v2 .bld.main svg, .v2 .bld.main img.bimg { max-width: calc(11.2rem * var(--bs, 1)); }
+/* 간판을 건물 그림 아래로 띄운다: 전에는 건물 아래쪽에 살짝 겹쳐(−0.3rem) 동물의 발을 가렸다(2026-11-21 사용자) */
+.v2 .bld .sign { margin-top: 0.3rem; }

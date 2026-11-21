@@ -854,7 +854,7 @@ function renderHud() {
   if (duoLive()) put('t-info', !coop.host && performance.now() - coop.beat > 2000 ? '방장을 기다리는 중…' : `동료 ${peerP().name} · 군자금 ${fmt(peerP().gold)} · 훈련소 Lv${peerP().camp + 1}`);
   else put('t-info', !nw ? '마지막 라운드입니다' : rush ? `다음 보스 ${g.wave + 1}/${maxW} · ${nw.name}` : `다음 ${g.wave + 1}라운드 ${nw.name} ${nw.count}기 · ${bossAt} ${ar.boss.name}`);
   // 주둔지 땅과 건물 판은 지금 지역의 전장과 같은 색
-  if (hudVal.area !== g.area + bossAt) { hudVal.area = g.area + bossAt; const col = areaColors(g.area), st = $('app').style; st.setProperty('--g1', col.ground[0]); st.setProperty('--g2', col.ground[1]); st.setProperty('--p1', col.pad[0]); st.setProperty('--p3', col.pad[3]); st.setProperty('--p2', col.pad[1]); st.setProperty('--pl', col.line || '#4a3a2c'); if (col.img) st.setProperty('--gimg', `url(${col.img})`);
+  if (hudVal.area !== g.area + bossAt) { hudVal.area = g.area + bossAt; const col = areaColors(g.area), st = $('app').style; st.setProperty('--g1', col.ground[0]); st.setProperty('--g2', col.ground[1]); st.setProperty('--p1', col.pad[0]); st.setProperty('--p3', col.pad[3]); st.setProperty('--p2', col.pad[1]); st.setProperty('--pl', col.line || '#4a3a2c'); if (col.img) st.setProperty('--gimg', `url(${col.img})`); if (col.camp) st.setProperty('--cimg', `url(${col.camp})`);
     // 이 지역 보스 안내 (세로로 긴 화면에서만 보인다)
     $('brief-img').src = epic(g.area ? 'boss' + (g.area + 1) : 'boss');
     $('brief-w').textContent = `${bossAt} · ${ar.name}`; $('brief-t').textContent = ar.boss.name; $('brief-s').textContent = ar.boss.text; }

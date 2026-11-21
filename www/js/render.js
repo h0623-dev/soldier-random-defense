@@ -62,7 +62,8 @@ const DECOR = {
 export const areaColors = area => { const T = THEMES[AREAS[area].theme];
   if (!V2) return { ground: T.ground, pad: T.pad };
   const th = v2Has('ground_' + AREAS[area].theme) ? AREAS[area].theme : 'meadow', P = V2_THEME[th];      // 새 그림체: 그 지역의 땅 그림 · 발판 색 · 길 색 (주둔지와 스테이지 고르기 화면의 작은 맵에 쓴다)
-  return { ground: [P.base, P.base], pad: [P.tile[0], P.tile[3], P.side, P.side, '#fff', P.lip], line: P.line, road: THEMES[th].road, img: `img/v2/ground_${th}.webp` }; };
+  return { ground: [P.base, P.base], pad: [P.tile[0], P.tile[3], P.side, P.side, '#fff', P.lip], line: P.line, road: THEMES[th].road, img: `img/v2/ground_${th}.webp`,
+    camp: `img/v2/camp_${v2Has('camp_' + AREAS[area].theme) ? AREAS[area].theme : 'meadow'}.webp` }; };      // camp: 주둔지 바닥 그림(지역마다)
 
 // 종이 결 무늬 (한 번만 만든다): 밝은 점과 갈색 점이 드문드문 섞인 작은 타일
 let grainCv = null;
