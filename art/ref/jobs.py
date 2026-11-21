@@ -73,3 +73,113 @@ add('enemies.png', "A game sprite sheet with exactly six separate enemy illustra
     "Each one is centered in its own cell, nothing overlapping, nothing touching the image edges or crossing into another cell. No insignia, no emblems, no flags, original designs.", 1536, 1024)
 for k, (who, wear, a, b, c, d) in B.items(): add(f'units_{k}.png', UNIT.format(who=who, wear=wear, a=a, b=b, c=c, d=d))
 json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장', max(len(j['prompt']) for j in jobs))
+
+# ══ 2차 (2026-11-21, 사용자가 이 그림체로 확정) ═══════════════════════════════
+#  조합 병과 36종(군별 3×2 한 장) · 대기실 배경 · 지역 보스 9종 · 나머지 지역 9곳의 땅·길·소품.  사용: python3 art/ref/jobs.py && python3 tools/codex_art.py 3 99 art/ref/jobs.json
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), 'tools'))
+import soft_jobs as S
+MIX = ['inf-art', 'inf-med', 'inf-sig', 'art-med', 'art-sig', 'med-sig']
+FIX = {  # 동물 세계관에 안 맞는 예전 문구(사람 손·개 동반)를 바꾼 것
+ ('police', 'med-sig'): (None, 'holding a big yellow search flashlight in one wing, with a tiny white search drone hovering beside the shoulder'),
+ ('police', 'art-med'): ('a bulky dark green padded bomb disposal suit with a big round helmet and a clear face visor', 'holding small wire cutters'),
+}
+SHEET6 = ("A game sprite sheet with exactly six separate chibi character illustrations arranged in a clean grid of 3 columns and 2 rows with wide empty gaps between them, on a plain solid pure white background. "
+          "No borders, no panels, no labels, no text, no arrows, no ground, no cast shadows. Art style: " + CHIBI + ". "
+          "All six figures are the same {who}, standing upright on two legs like a person, full body, facing the viewer and turned very slightly to the right, with the same cute face. "
+          "It is clearly an animal (animal head, ears, muzzle or beak, fur or feathers, tail), not a human. Unless said otherwise the character wears {wear}. "
+          "Row 1, left to right: (1) {p0}; (2) {p1}; (3) {p2}. Row 2, left to right: (4) {p3}; (5) {p4}; (6) {p5}. "
+          "Each figure is the same size, centered inside its own cell, nothing overlapping, nothing touching the image edges and nothing crossing into another cell. "
+          "No insignia, no emblems, no flags, no letters, no numbers, no humans, original character design.")
+def animalize(t): return t.replace('both hands', 'both arms').replace(' beside him', ' beside').replace(' his ', ' the ').replace('near the face', 'near the eyes')
+for k, (who, wear, *_rest) in B.items():
+    ps = []
+    for m in MIX:
+        outfit, idle = FIX.get((k, m)) or S.BR[k][2][m][:2]
+        ps.append((f'wearing {outfit} instead of the usual outfit, ' if outfit else '') + animalize(idle))
+    add(f'mix_{k}.png', SHEET6.format(who=who, wear=wear, **{f'p{i}': p for i, p in enumerate(ps)}), 1536, 1024)
+
+add('title.png', "A cheerful key-art illustration for a cute mobile tower defense game, portrait orientation, filling the entire image. Art style: " + CHIBI + ". "
+    "In the lower third, six cute anthropomorphic animal soldiers stand side by side behind a low wall of stacked burlap sacks full of acorns, facing the viewer with brave happy faces: from left to right "
+    "a gray spotted seal pup in a white sailor uniform and sailor cap, a green crocodile in a camouflage field cap with a red neck scarf, a fluffy tan-and-cream Korean Jindo-style puppy with upright pointy triangular ears poking out through holes in its round olive camouflage helmet (the ears must stand up, not floppy), a black button nose and a cream muzzle, in an olive camouflage uniform holding a rifle (in the middle, slightly bigger), "
+    "a white tiger cub in a black beret and black tactical uniform, a brown falcon in a sky-blue air force shirt and blue side cap, and a dark brown sea eagle with a big orange beak in a navy police cap and light blue police shirt. "
+    "Behind them a sunny green meadow with oak trees and a winding dirt path; far away on the path a few small toy-like steel-blue robots with red eyes and one small red toy tank are approaching. "
+    "The upper half of the image is a clear bright blue sky with a few soft white clouds and a gentle sun glow, kept simple and empty. The caps and uniforms are plain: no badges, no anchors, no wings, no stars, no insignia. No text, no letters, no logo, no user interface, no frame, no humans.", 1024, 1536, True)
+
+ROBOT = (CHIBI + ". Simple toy-like shapes with few details, flat clean color areas and one glossy highlight each, NOT realistic, NOT gritty, no rust texture. "
+         "These are boss machines of the 'Scrap Legion': big naughty toy robots and vehicles with angry glowing yellow eyes, all facing and moving toward the right side. ")
+add('bosses_a.png', "A game sprite sheet with exactly six separate boss enemy illustrations arranged in a clean grid of 3 columns and 2 rows with wide empty gaps between them, on a plain solid pure white background. "
+    "No borders, no panels, no labels, no text, no letters, no numbers, no ground, no cast shadows. Art style: " + ROBOT +
+    "Row 1, left to right: (1) a chubby teal-blue toy hovercraft with a black rubber skirt, a big round fan at the back and water spray; (2) a heavy orange-brown toy truck carrying one huge fat cannon on its back; "
+    "(3) a white and ice-blue toy armored car with thick rounded plates, snow piled on its roof and a snowplow at the front. "
+    "Row 2, left to right: (4) a round dark-green toy helicopter with spinning rotor blades and stubby landing skids; (5) a dark red toy armored car with a flamethrower nozzle at the front shooting a small orange flame; "
+    "(6) a purple toy truck carrying a rack of colorful firework rockets pointing up and forward. "
+    "Each one is centered in its own cell, about the same size, nothing overlapping, nothing touching the image edges or crossing into another cell. No insignia, no emblems, no flags, original designs.", 1536, 1024)
+add('bosses_b.png', "A game sprite sheet with exactly four separate boss enemy illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. "
+    "No borders, no panels, no labels, no text, no letters, no numbers, no ground, no cast shadows. Art style: " + ROBOT +
+    "Top-left: a flying drone carrier: a fat gray flying saucer-like machine with four propellers and round holes from which two tiny drones peek out. "
+    "Top-right: a dark storm-gray toy bomber airplane with two propellers and a small dark cloud with a lightning bolt trailing behind it. "
+    "Bottom-left: a giant steel robot: a tall bulky silver-blue humanoid robot with huge fists, shoulder plates, a chest reactor glowing orange and a small crown-like antenna. "
+    "Bottom-right: a small round wooden training target dummy on a stand with a red and white bullseye. "
+    "Each one is centered in its own quadrant, nothing overlapping, nothing touching the image edges or crossing into another quadrant. No insignia, no emblems, no flags, original designs.", 1024, 1024)
+
+SOFT = STYLE.replace('clean thick dark brown outlines', 'soft thin outlines')
+AREA = {  # 지역: (땅 한가운데, 가장자리 장식, 길 바닥, 소품 12개 — 큰 것 6 · 작은 것 5 · 덤 1)
+ 'beach': ('a sunny seashell beach', 'warm pale golden sand with gentle ripple marks, a few small seashells and one or two starfish scattered sparsely',
+           'turquoise shallow sea water with white foam, palm leaves, big seashells, starfish, driftwood and beach grass',
+           'damp darker tan beach sand with scattered small seashells, pebbles and tiny bits of seaweed',
+           'a leaning palm tree with coconuts; a big sandcastle with a tiny flag; a striped beach parasol stuck in the sand; a wooden rowboat pulled ashore; a stack of wooden crates with a fishing net; a big spiral conch shell on a rock; '
+           'a red starfish; a pile of seashells; a small crab; a patch of beach grass; a coconut cut in half; a red and white life ring leaning on a post'),
+ 'desert': ('a sunny cactus desert', 'pale yellow desert sand with soft dune shadows, a few tiny pebbles and dry grass tufts scattered sparsely',
+            'green cactuses with pink flowers, orange sandstone rocks, dry bushes and small pottery jars',
+            'cracked orange-brown dry clay ground with small stones and a few dry twigs',
+            'a tall green saguaro cactus with pink flowers; a round barrel cactus cluster; a big orange sandstone rock arch; a wooden water well with a bucket; a striped desert tent; a stack of clay pots and jars; '
+            'a small prickly pear cactus; a dry tumbleweed; a pile of sandstone pebbles; a tiny desert flower patch; a wooden canteen and rope; a wooden wagon wheel leaning on a rock'),
+ 'snow': ('a snowy hill in winter', 'clean white snow with soft pale-blue shadows, gentle sparkles and a few small footprints scattered sparsely',
+          'snow-covered pine trees, snowy bushes with red berries, icy rocks, little snow mounds and frozen puddles',
+          'packed brown earth path with small stones and thin patches of melting snow along it',
+          'a snow-covered pine tree; a cheerful snowman with a carrot nose and scarf; a small log cabin woodpile covered with snow; an icy blue rock with icicles; a wooden sled with a sack; a round igloo; '
+          'a snowy bush with red berries; a pile of snowballs; a small frozen puddle with a fish shape; a tiny pine sapling in snow; a lantern on a snowy post; a wooden signboard covered with snow'),
+ 'city': ('an old ruined market town square', 'worn pale gray cobblestone pavement with moss in the cracks, a few fallen leaves and small weeds scattered sparsely',
+          'broken market stalls with striped awnings, cracked brick walls, wooden crates of fruit, barrels, street lamps and potted plants',
+          'old reddish-brown brick pavement with a few missing bricks and small weeds in the cracks',
+          'a market stall with a red and white striped awning and fruit crates; a broken brick wall corner with ivy; an old iron street lamp; a wooden cart with pumpkins; a stone fountain with water; a stack of barrels and sacks; '
+          'a crate of apples; a potted flower; a pile of loose bricks; a wooden stool with a basket; a hanging shop sign on a post without any writing; a small pile of pumpkins'),
+ 'jungle': ('a vine-covered jungle riverside', 'deep green jungle grass with big leaf shadows, tiny ferns and a few fallen tropical flowers scattered sparsely',
+            'big tropical leaves, hanging vines, pink and orange jungle flowers, mossy stones, bamboo and a blue river edge',
+            'dark reddish-brown muddy jungle path with small roots, pebbles and fallen leaves',
+            'a jungle tree with hanging vines and broad leaves; a clump of tall green bamboo; a mossy ancient stone statue head of a friendly frog; a giant pink tropical flower plant; a wooden rope bridge post with ropes; a hollow log with mushrooms; '
+            'a big fern; a pile of yellow bananas; a red tropical flower; a mossy pebble pile; a tiny blue frog on a leaf; a bamboo fence section'),
+ 'volcano': ('a fiery volcano slope', 'dark charcoal-gray volcanic rock ground with faint warm orange glow in thin cracks and a little ash scattered sparsely',
+             'glowing orange lava pools and lava streams, black jagged rocks, small smoking vents and red crystals',
+             'dark basalt stone path with thin glowing orange lava cracks and small black pebbles',
+             'a small smoking volcano cone with lava dripping; a cluster of red glowing crystals; a jagged black rock spire; a charred dead tree with embers; a pool of bubbling orange lava ringed with rocks; a stone brazier with a big flame; '
+             'a small smoking vent; a pile of black rocks with one glowing ember; a red crystal shard; a little lava bubble puddle; a burnt tree stump; an iron torch on a pole'),
+ 'harbor': ('a lighthouse harbor dock', 'light gray concrete quay floor with painted pale lines worn away, small puddles and a few rope bits scattered sparsely',
+            'deep blue sea water with small waves, wooden pier posts with ropes, life rings, stacked colorful cargo crates, anchors and seagull feathers',
+            'weathered warm brown wooden dock boards with nail heads and small gaps, seen from straight above, no clear direction',
+            'a red and white striped lighthouse; a stack of colorful cargo containers; a big iron anchor leaning on a post; a harbor crane hook with a crate; a small fishing boat on a trailer; a pile of barrels and coiled ropes; '
+            'a mooring post with rope; a crate of fish; a red and white life ring; a small lobster trap; a seagull standing on a post; a signal lamp on a pole'),
+ 'airfield': ('a grassy airfield above the clouds', 'short pale green airfield grass with soft cloud shadows and a few tiny white flowers scattered sparsely',
+              'fluffy white clouds drifting over the edges, orange windsocks, striped runway markers, small landing lights and fuel barrels',
+              'dark gray asphalt runway surface with tiny cracks, a few small white and yellow paint specks, evenly worn',
+              'an airfield control tower with a striped roof; an orange windsock on a pole; a small parked blue propeller plane; a round radar dish on a stand; a stack of fuel barrels; an open hangar toolbox cart; '
+              'an orange traffic cone pair; a runway landing light; a small fluffy cloud; a wooden crate with a parachute; a red and white striped barrier; a spare airplane propeller leaning on a crate'),
+ 'hq': ('the inside yard of a dark scrap-metal fortress at night', 'dark navy steel floor plates with rivets, faint red glow lines and a few loose bolts scattered sparsely',
+        'tall scrap metal walls, big gears, red warning lights, pipes with steam, piles of junk metal and glowing red control panels',
+        'dark gunmetal riveted floor plating with faint red glowing seams and small bolts',
+        'a tall scrap-metal watchtower with a red light; a huge gear half-buried in the floor; a pile of junk robot parts; a steaming pipe machine with a pressure gauge; a red glowing control console; a stack of steel drums; '
+        'a red warning lamp on a short pole; a small heap of bolts and nuts; a broken robot arm; a little steam vent; a spring and gear pile; a spiked metal barricade'),
+}
+for th, (place, mid, edge, road, props) in AREA.items():
+    add(f'ground_{th}.png', f"A top-down (bird's-eye view, looking straight down) background painting of {place} for a casual mobile tower defense game, filling the entire image edge to edge. Art style: " + SOFT
+        + f". The whole middle of the picture is calm open ground: {mid}. Only along the four outer edges of the picture there is a narrow border of denser decoration seen from above: {edge}. "
+        "No path, no road, no buildings in the middle, no characters, no animals, no text, no letters, no user interface, no frame. Evenly lit, not too busy, medium contrast so that game pieces placed on top stay easy to see.", 1024, 1536, True)
+    add(f'road_{th}.png', f"A seamless-looking top-down ground texture for a casual mobile game, filling the entire image edge to edge with no border: {road}, seen from straight above. Art style: " + SOFT + ". "
+        "Uniform everywhere (no single focal object, no vignette, no dark corners), evenly lit, low contrast, gentle details only. No objects, no characters, no text, no frame.", 1024, 1536, True)
+    ps = [x.strip() for x in props.split(';')]; assert len(ps) == 12, (th, len(ps))
+    add(f'props_{th}.png', "A game sprite sheet with exactly twelve separate prop illustrations arranged in a clean grid of 4 columns and 3 rows with wide empty gaps between them, on a plain solid pure white background. "
+        "No borders, no panels, no frames, no labels, no text, no letters, no numbers, no cast shadows. Art style for every prop: " + STYLE + f". These are scenery props for {place} in a cute game, each seen from the front and slightly above. "
+        + ' '.join(f"Row {r + 1}, left to right: " + '; '.join(f'({r * 4 + i + 1}) {ps[r * 4 + i]}' for i in range(4)) + '.' for r in range(3))
+        + " Each prop is centered in its own cell, all about the same visual size, nothing overlapping, nothing touching the image edges or crossing into another cell.", 1536, 1024)
+json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장', max(len(j['prompt']) for j in jobs))

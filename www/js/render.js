@@ -1,7 +1,7 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
 import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig, mergePreview, heroOf, branchOf, charName, mine, own } from './core.js';
-import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art } from './sprites.js';
+import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art, v2Has } from './sprites.js';
 loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
@@ -20,25 +20,25 @@ const rnd = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x 
 // ── 지역별 배경 색과 장식 ──────────────────────────────────
 //  ground 땅(위→아래) · speck 땅 무늬(밝은/어두운) · road [테두리, 길, 길 가운데, 진행 표시] · pad [윗면 A, 윗면 B, 옆면 위, 옆면 아래, 밝은 모서리, 어두운 모서리]
 const THEMES = {
-  meadow:   { ground: ['#46683a', '#35522d'], speck: ['rgba(140,190,100,.16)', 'rgba(20,40,18,.2)'], road: ['#4a3b25', '#c9ad74', '#d6bc86', 'rgba(110,84,46,.5)'],
+  meadow:   { road: '#d9a968', ground: ['#46683a', '#35522d'], speck: ['rgba(140,190,100,.16)', 'rgba(20,40,18,.2)'], road: ['#4a3b25', '#c9ad74', '#d6bc86', 'rgba(110,84,46,.5)'],
               pad: ['#a9bb6e', '#9db063', '#5f6f3a', '#46532b', '#d3e39a', '#6f7f43'], decor: 'bush', tuft: 'grass' },
-  beach:    { ground: ['#3d93ad', '#2a6f8c'], speck: ['rgba(255,255,255,.2)', 'rgba(10,50,80,.2)'], road: ['#a8915a', '#ecdba2', '#f5e7b8', 'rgba(150,120,60,.45)'],
+  beach:    { road: '#c9a676', ground: ['#3d93ad', '#2a6f8c'], speck: ['rgba(255,255,255,.2)', 'rgba(10,50,80,.2)'], road: ['#a8915a', '#ecdba2', '#f5e7b8', 'rgba(150,120,60,.45)'],
               pad: ['#e2cf96', '#d6c287', '#a38b55', '#836d3f', '#f6e9bd', '#b39a62'], decor: 'palm', tuft: 'mound' },
-  desert:   { ground: ['#d9a95c', '#bf8c43'], speck: ['rgba(255,235,180,.25)', 'rgba(120,70,20,.18)'], road: ['#8a6532', '#f0d9a0', '#f7e6b8', 'rgba(140,100,50,.45)'],
+  desert:   { road: '#c98a52', ground: ['#d9a95c', '#bf8c43'], speck: ['rgba(255,235,180,.25)', 'rgba(120,70,20,.18)'], road: ['#8a6532', '#f0d9a0', '#f7e6b8', 'rgba(140,100,50,.45)'],
               pad: ['#d2804f', '#c67444', '#93492a', '#70341c', '#eda477', '#a65a35'], decor: 'cactus', tuft: 'mound' },
-  snow:     { ground: ['#e3edf5', '#c5d5e4'], speck: ['rgba(255,255,255,.6)', 'rgba(120,150,180,.2)'], road: ['#667487', '#a9b6c5', '#b8c4d1', 'rgba(70,85,105,.45)'],
+  snow:     { road: '#a5825e', ground: ['#e3edf5', '#c5d5e4'], speck: ['rgba(255,255,255,.6)', 'rgba(120,150,180,.2)'], road: ['#667487', '#a9b6c5', '#b8c4d1', 'rgba(70,85,105,.45)'],
               pad: ['#f6fafc', '#e7eff6', '#a5b8cb', '#8399b0', '#ffffff', '#b9c9d9'], decor: 'pine', tuft: 'mound' },
-  city:     { ground: ['#4c5159', '#3a3e45'], speck: ['rgba(255,255,255,.07)', 'rgba(0,0,0,.2)'], road: ['#22252a', '#6a6f78', '#777d87', 'rgba(255,210,90,.55)'],
+  city:     { road: '#b0624a', ground: ['#4c5159', '#3a3e45'], speck: ['rgba(255,255,255,.07)', 'rgba(0,0,0,.2)'], road: ['#22252a', '#6a6f78', '#777d87', 'rgba(255,210,90,.55)'],
               pad: ['#bdb7aa', '#aea89b', '#77726a', '#5a564f', '#dcd6c8', '#8b867b'], decor: 'rubble' },
-  jungle:   { ground: ['#1f4d2e', '#153821'], speck: ['rgba(110,200,90,.16)', 'rgba(5,25,10,.3)'], road: ['#3a2b17', '#8c7148', '#9a7f55', 'rgba(60,40,15,.5)'],
+  jungle:   { road: '#7a4a30', ground: ['#1f4d2e', '#153821'], speck: ['rgba(110,200,90,.16)', 'rgba(5,25,10,.3)'], road: ['#3a2b17', '#8c7148', '#9a7f55', 'rgba(60,40,15,.5)'],
               pad: ['#76a350', '#699546', '#3f612d', '#2d4720', '#a3cc78', '#507a36'], decor: 'palm', tuft: 'grass' },
-  volcano:  { ground: ['#3b2b29', '#281b1b'], speck: ['rgba(255,120,40,.3)', 'rgba(0,0,0,.3)'], road: ['#160e0e', '#6c5852', '#7a665f', 'rgba(255,140,60,.5)'],
+  volcano:  { road: '#4a3a38', ground: ['#3b2b29', '#281b1b'], speck: ['rgba(255,120,40,.3)', 'rgba(0,0,0,.3)'], road: ['#160e0e', '#6c5852', '#7a665f', 'rgba(255,140,60,.5)'],
               pad: ['#91867d', '#82776f', '#4e443e', '#372f2a', '#b5aa9f', '#5f554e'], decor: 'rock' },
-  harbor:   { ground: ['#2f6682', '#234e66'], speck: ['rgba(255,255,255,.14)', 'rgba(5,30,50,.25)'], road: ['#33383f', '#8d939b', '#9aa0a8', 'rgba(255,255,255,.45)'],
+  harbor:   { road: '#a57a4c', ground: ['#2f6682', '#234e66'], speck: ['rgba(255,255,255,.14)', 'rgba(5,30,50,.25)'], road: ['#33383f', '#8d939b', '#9aa0a8', 'rgba(255,255,255,.45)'],
               pad: ['#c4a871', '#b79b65', '#7d653a', '#5f4c2a', '#e0c792', '#927847'], decor: 'crate' },
-  airfield: { ground: ['#5f7c4b', '#4d693d'], speck: ['rgba(170,210,120,.15)', 'rgba(20,40,18,.2)'], road: ['#24272b', '#50555b', '#5b6067', 'rgba(255,255,255,.6)'],
+  airfield: { road: '#5c5f66', ground: ['#5f7c4b', '#4d693d'], speck: ['rgba(170,210,120,.15)', 'rgba(20,40,18,.2)'], road: ['#24272b', '#50555b', '#5b6067', 'rgba(255,255,255,.6)'],
               pad: ['#c3c8cd', '#b3b8bd', '#7c8187', '#5f6469', '#e3e7eb', '#8e9399'], decor: 'crate' },
-  hq:       { ground: ['#1d2132', '#11131e'], speck: ['rgba(255,70,70,.22)', 'rgba(0,0,0,.35)'], road: ['#07080d', '#3d4359', '#484f69', 'rgba(255,90,90,.55)'],
+  hq:       { road: '#3c4258', ground: ['#1d2132', '#11131e'], speck: ['rgba(255,70,70,.22)', 'rgba(0,0,0,.35)'], road: ['#07080d', '#3d4359', '#484f69', 'rgba(255,90,90,.55)'],
               pad: ['#5c6689', '#515a7b', '#313752', '#22273c', '#93a3e3', '#3d4563'], decor: 'rock' },
 };
 const DECOR = {
@@ -59,7 +59,10 @@ const DECOR = {
 };
 
 // 지역의 땅·발판 색 (주둔지를 전장과 같은 색으로 칠하는 데 쓴다)
-export const areaColors = area => { const T = THEMES[AREAS[area].theme]; return { ground: T.ground, pad: T.pad }; };
+export const areaColors = area => { const T = THEMES[AREAS[area].theme];
+  if (!V2) return { ground: T.ground, pad: T.pad };
+  const th = v2Has('ground_' + AREAS[area].theme) ? AREAS[area].theme : 'meadow', P = V2_THEME[th];      // 새 그림체: 그 지역의 땅 그림 · 발판 색 · 길 색 (주둔지와 스테이지 고르기 화면의 작은 맵에 쓴다)
+  return { ground: [P.base, P.base], pad: [P.tile[0], P.tile[3], P.side, P.side, '#fff', P.lip], line: P.line, road: THEMES[th].road, img: `img/v2/ground_${th}.webp` }; };
 
 // 종이 결 무늬 (한 번만 만든다): 밝은 점과 갈색 점이 드문드문 섞인 작은 타일
 let grainCv = null;
@@ -74,61 +77,84 @@ function grain() {
 
 // ── 배경(움직이지 않는 부분)은 지역마다 한 번만 그려 두고 복사한다 ──────────
 let bg = null, bgKey = '';
-// 새 그림체 배경: 땅 그림 한 장 위에 길(길 바닥 그림을 길 모양으로 오려 붙임) · 돌판 발판 · 소품 그림을 얹는다. 맵(길 모양)이 달라도 같은 그림을 쓴다
-const V2_DECOR = [['tree', 128, 0, 34], ['sacks', 92, 0, 40], ['rock', 84, -8, 36], ['stump', 84, 4, 36], ['barrel', 88, 0, 38], ['bush', 92, 0, 36]];      // [소품, 크기, x, 발 위치 y]
-const V2_SIDE = [['mushroom', 44, -30, 44], ['flowers', 50, 30, 46], ['acorns', 46, 32, 44], ['flowers', 46, -32, 46], ['mushroom', 40, 32, 46], ['acorns', 44, -30, 46]];
+// 새 그림체 배경: 땅 그림 한 장 위에 길(길 바닥 그림을 길 모양으로 오려 붙임) · 두께 있는 발판 · 소품 그림을 얹는다. 한 지역의 맵(길 모양)이 달라도 같은 그림을 쓴다.
+// 지역(theme)마다 그림 한 벌(ground_ · road_ · prop_<지역>_b1~b6 큰 소품 · s1~s6 작은 소품)과 아래 색 한 벌이 있다. 그 지역 그림이 아직 없으면 초원 것을 쓴다.
+//  tile 발판 타일 [밝은 칸 위, 아래, 어두운 칸 위, 아래] · grout 줄눈 · lip 타일 아랫단 · side 옆면 · foot 옆면 아래 · line 둘레 선 · tone 땅을 누르는 색 · sh 그림자 · rim 길 [테두리, 안쪽 밝은 선] · shade 길 [가장자리, 가운데] 누르는 색 · arrow 진행 표시
+const STONE = { tile: ['#f7efd9', '#e9ddbf', '#efe5cb', '#dfd2b2'], grout: '#cbbd9e', lip: '#bcae90', side: '#8f7f6c', foot: '#6f6050', line: '#4a3a2c' };
+const WOOD = { tile: ['#f6e3bd', '#e6cd9c', '#efd9ad', '#ddc18c'], grout: '#bd9d63', lip: '#ab8b52', side: '#80623a', foot: '#614829', line: '#3f2c16' };
+const CONC = { tile: ['#f3f2ed', '#dfddd5', '#e9e8e2', '#d3d1c8'], grout: '#b6b3a7', lip: '#a6a397', side: '#7d7a70', foot: '#605d55', line: '#3a3833' };
+const V2_THEME = {
+  meadow:   { ...STONE, base: '#86c832', tone: 'rgba(20,80,40,.2)', sh: 'rgba(14,56,24,.38)', rim: ['#6a421c', '#ffe3a6'], shade: ['rgba(104,66,34,.52)', 'rgba(150,112,78,.34)'], arrow: 'rgba(96,58,22,.5)' },
+  beach:    { tile: ['#f6fcfb', '#e0f1ef', '#ebf7f5', '#d4e9e6'], grout: '#b6d3d0', lip: '#a4c4c1', side: '#709b9d', foot: '#567c7f', line: '#2f4f52',
+              base: '#f0d79a', tone: 'rgba(130,90,30,.1)', sh: 'rgba(100,66,20,.32)', rim: ['#7a5a2e', '#fff0c8'], shade: ['rgba(90,60,30,.42)', 'rgba(110,80,50,.16)'], arrow: 'rgba(96,66,30,.45)' },
+  desert:   { tile: ['#fff7e8', '#f2e3c8', '#f9edd8', '#e9d7b8'], grout: '#d3bc95', lip: '#c3aa80', side: '#a47f53', foot: '#81613b', line: '#4f3520',
+              base: '#ecd08a', tone: 'rgba(150,90,20,.1)', sh: 'rgba(110,60,10,.32)', rim: ['#6e3d1c', '#ffd9a0'], shade: ['rgba(96,64,44,.46)', 'rgba(128,98,78,.26)'], arrow: 'rgba(90,50,20,.45)' },
+  snow:     { ...WOOD, base: '#eef4fa', tone: 'rgba(60,90,140,.1)', sh: 'rgba(40,70,120,.3)', rim: ['#5a4028', '#f3e6d4'], shade: ['rgba(70,48,30,.42)', 'rgba(90,66,44,.14)'], arrow: 'rgba(70,46,26,.45)' },
+  city:     { ...CONC, base: '#b9b7ae', tone: 'rgba(30,30,40,.16)', sh: 'rgba(20,20,30,.36)', rim: ['#5a2f22', '#f0c9b0'], shade: ['rgba(70,36,26,.42)', 'rgba(90,56,44,.14)'], arrow: 'rgba(70,34,24,.45)' },
+  jungle:   { tile: ['#f3f5da', '#e0e4be', '#e9eccc', '#d4d9af'], grout: '#b5bc8d', lip: '#a3ab7b', side: '#78815b', foot: '#5a6345', line: '#34402a',
+              base: '#3f8a3a', tone: 'rgba(0,40,20,.2)', sh: 'rgba(0,30,10,.42)', rim: ['#4a2a16', '#e8c79a'], shade: ['rgba(60,34,18,.42)', 'rgba(80,52,34,.14)'], arrow: 'rgba(255,230,190,.4)' },
+  volcano:  { tile: ['#f3ebe4', '#dfd4ca', '#e9e0d8', '#d3c7bc'], grout: '#b4a699', lip: '#a39587', side: '#7c6d61', foot: '#5d5046', line: '#2e2622',
+              base: '#3d3636', tone: 'rgba(0,0,0,.1)', sh: 'rgba(0,0,0,.46)', rim: ['#1c1210', '#ff9a4a'], shade: ['rgba(20,12,10,.4)', 'rgba(30,20,16,.1)'], arrow: 'rgba(255,170,90,.5)' },
+  harbor:   { ...WOOD, base: '#b9bcbd', tone: 'rgba(20,40,60,.14)', sh: 'rgba(20,34,50,.36)', rim: ['#4a321c', '#f0dcb8'], shade: ['rgba(60,40,22,.42)', 'rgba(80,58,38,.14)'], arrow: 'rgba(60,38,18,.45)' },
+  airfield: { ...CONC, base: '#9fcf6a', tone: 'rgba(30,70,40,.14)', sh: 'rgba(20,50,30,.36)', rim: ['#26282c', '#f4f4ee'], shade: ['rgba(20,22,26,.36)', 'rgba(30,32,36,.1)'], arrow: 'rgba(255,255,255,.5)' },
+  hq:       { tile: ['#ebf0f6', '#d4dce8', '#e1e8f0', '#c8d1de'], grout: '#a5b0c1', lip: '#94a0b2', side: '#68748c', foot: '#4e586d', line: '#232a3a',
+              base: '#2b3146', tone: 'rgba(0,0,10,.08)', sh: 'rgba(0,0,0,.5)', rim: ['#0c0e16', '#ff6a5a'], shade: ['rgba(8,10,18,.36)', 'rgba(14,16,26,.08)'], arrow: 'rgba(255,120,110,.5)' },
+};
 function background2(k, area, map) {
-  const G = v2Art('ground'), RD = v2Art('road'), ready = [G, RD, ...V2_DECOR.map(d => v2Art('prop_' + d[0])), ...V2_SIDE.map(d => v2Art('prop_' + d[0])), v2Art('prop_flag'), v2Art('prop_sign')].filter(Boolean).length;
-  const key = 'v2:' + area + ':' + (map.id || '') + '@' + k.toFixed(3) + ':' + ready; if (bg && bgKey === key) return bg;
+  const want = AREAS[area].theme, th = v2Has('ground_' + want) ? want : 'meadow', P = V2_THEME[th], pth = v2Has(`prop_${th}_b1`) ? th : 'meadow';
+  const G = v2Art('ground_' + th), RD = v2Art(v2Has('road_' + th) ? 'road_' + th : 'road_meadow');
+  const big = [1, 2, 3, 4, 5, 6].map(i => `prop_${pth}_b${i}`), small = [1, 2, 3, 4, 5, 6].map(i => `prop_${pth}_s${i}`).filter(v2Has);
+  const ready = [G, RD, v2Art('prop_flag'), ...big.map(v2Art), ...small.map(v2Art)].filter(Boolean).length;
+  const key = 'v2:' + area + ':' + th + ':' + (map.id || '') + '@' + k.toFixed(3) + ':' + ready; if (bg && bgKey === key) return bg;
   if (!bg) bg = document.createElement('canvas');
   bg.width = Math.ceil(FIELD.w * k); bg.height = Math.ceil(FIELD.h * k); bgKey = key;
   const c = bg.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); c.imageSmoothingQuality = 'high';
   const hw = CELL.w / 2, hh = CELL.h / 2, seed = area * 1000;
-  if (G) c.drawImage(G, 0, 0, FIELD.w, FIELD.h); else { c.fillStyle = '#86c832'; c.fillRect(0, 0, FIELD.w, FIELD.h); }
-  c.fillStyle = 'rgba(20,80,40,.2)'; c.fillRect(0, 0, FIELD.w, FIELD.h);      // 땅을 한 톤 눌러 길·발판·캐릭터가 먼저 보이게
+  if (G) c.drawImage(G, 0, 0, FIELD.w, FIELD.h); else { c.fillStyle = P.base; c.fillRect(0, 0, FIELD.w, FIELD.h); }
+  c.fillStyle = P.tone; c.fillRect(0, 0, FIELD.w, FIELD.h);      // 땅을 한 톤 눌러 길·발판·캐릭터가 먼저 보이게
   // 길
   const line = (cc, w, col, dy = 0) => { cc.save(); cc.translate(0, dy); cc.lineJoin = cc.lineCap = 'round'; cc.lineWidth = w; cc.strokeStyle = col;
     cc.beginPath(); map.path.forEach((p, i) => cc[i ? 'lineTo' : 'moveTo'](p.x, p.y)); cc.closePath(); cc.stroke(); cc.restore(); };
-  line(c, 104, 'rgba(16,60,24,.4)', 5); line(c, 102, '#6a421c'); line(c, 95, '#ffe3a6');
-  // 길 바닥 그림을 길 모양으로 오려 붙인다: 먼저 길 전체(가장자리는 그늘지게), 그 위에 가운데만 다시 밝게
-  const rc = document.createElement('canvas'); rc.width = bg.width; rc.height = bg.height; const r = rc.getContext('2d');
+  line(c, 104, P.sh, 5); line(c, 102, P.rim[0]); line(c, 95, P.rim[1]);
   const pat = document.createElement('canvas'); pat.width = bg.width; pat.height = bg.height; const pc = pat.getContext('2d'); pc.setTransform(k, 0, 0, k, 0, 0);      // 길 바닥 무늬: 그림을 절반 크기로 네 번(거울처럼 뒤집어 이음매가 안 보이게) — 돌·풀이 캐릭터보다 커 보이지 않게
   if (RD) for (let iy = 0; iy < 2; iy++) for (let ix = 0; ix < 2; ix++) { pc.save(); pc.translate(ix ? FIELD.w : 0, iy ? FIELD.h : 0); pc.scale(ix ? -1 : 1, iy ? -1 : 1); pc.drawImage(RD, 0, 0, FIELD.w / 2 + 1, FIELD.h / 2 + 1); pc.restore(); }
-  else { pc.fillStyle = '#e8b866'; pc.fillRect(0, 0, FIELD.w, FIELD.h); }
+  else { pc.fillStyle = '#c9a36a'; pc.fillRect(0, 0, FIELD.w, FIELD.h); }
+  // 길 바닥 그림을 길 모양으로 오려 붙인다: 먼저 길 전체(가장자리는 그늘지게), 그 위에 가운데만 다시 밝게
+  const rc = document.createElement('canvas'); rc.width = bg.width; rc.height = bg.height; const r = rc.getContext('2d');
   const tex = (w, shade) => { r.setTransform(1, 0, 0, 1, 0, 0); r.globalCompositeOperation = 'source-over'; r.clearRect(0, 0, rc.width, rc.height); r.setTransform(k, 0, 0, k, 0, 0);
-    line(r, w, '#fff'); r.globalCompositeOperation = 'source-in';
-    r.drawImage(pat, 0, 0, FIELD.w, FIELD.h);
-    r.globalCompositeOperation = 'source-atop'; r.fillStyle = shade; r.fillRect(0, 0, FIELD.w, FIELD.h);      // 길을 살짝 어둡고 덜 진하게: 적과 발판이 묻히지 않게
+    line(r, w, '#fff'); r.globalCompositeOperation = 'source-in'; r.drawImage(pat, 0, 0, FIELD.w, FIELD.h);
+    r.globalCompositeOperation = 'source-atop'; r.fillStyle = shade; r.fillRect(0, 0, FIELD.w, FIELD.h);      // 길을 살짝 눌러 적과 발판이 묻히지 않게
     c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(rc, 0, 0); c.setTransform(k, 0, 0, k, 0, 0); };
-  tex(89, 'rgba(104,66,34,.52)'); tex(75, 'rgba(150,112,78,.34)');
-  c.fillStyle = 'rgba(96,58,22,.5)';      // 진행 방향 표시
+  tex(89, P.shade[0]); tex(75, P.shade[1]);
+  c.fillStyle = P.arrow;      // 진행 방향 표시
   for (let d = 60; d < map.len; d += 120) { const p = map.pathPos(d); c.save(); c.translate(p.x, p.y); c.rotate(Math.atan2(p.dy, p.dx));
     c.beginPath(); c.moveTo(11, 0); c.lineTo(-5, -9); c.lineTo(-1, 0); c.lineTo(-5, 9); c.closePath(); c.fill(); c.restore(); }
-  // 발판: 두께가 있는 돌판 덩어리. 이웃한 칸은 한 덩어리로 이어지고, 칸마다 둥근 돌 타일을 얹는다
+  // 발판: 두께가 있는 판 덩어리. 이웃한 칸은 한 덩어리로 이어지고, 칸마다 둥근 타일을 얹는다
   const has = (rw, cc) => map.padSet.has(rw * 10 + cc), R = 18, D = 16;
   const cell = (s, grow, dy, extra = 0) => { const u = has(s.r - 1, s.c), d = has(s.r + 1, s.c), l = has(s.r, s.c - 1), rt = has(s.r, s.c + 1), q = R + grow;
     c.beginPath(); c.roundRect(s.x - hw - grow, s.y - hh - 8 - grow + dy, CELL.w + grow * 2, CELL.h + grow * 2 + extra, [!u && !l ? q : 0, !u && !rt ? q : 0, !d && !rt ? q : 0, !d && !l ? q : 0]); c.fill(); };
-  c.fillStyle = 'rgba(14,56,24,.36)'; for (const s of map.slots) cell(s, 5, D + 5);                 // 바닥 그림자
-  c.fillStyle = '#4a3a2c'; for (const s of map.slots) cell(s, 3.5, 0, D);                           // 둘레 선
-  c.fillStyle = '#8f7f6c'; for (const s of map.slots) cell(s, 0, D);                                // 옆면
-  c.fillStyle = '#6f6050'; for (const s of map.slots) if (!has(s.r + 1, s.c)) c.fillRect(s.x - hw + (has(s.r, s.c - 1) ? 0 : 8), s.y + hh - 8 + D - 5, CELL.w - (has(s.r, s.c - 1) ? 0 : 8) - (has(s.r, s.c + 1) ? 0 : 8), 5);
-  c.fillStyle = '#cbbd9e'; for (const s of map.slots) cell(s, 0, 0);                                // 윗면(타일 사이 줄눈)
+  c.fillStyle = P.sh; for (const s of map.slots) cell(s, 5, D + 5);                              // 바닥 그림자
+  c.fillStyle = P.line; for (const s of map.slots) cell(s, 3.5, 0, D);                           // 둘레 선
+  c.fillStyle = P.side; for (const s of map.slots) cell(s, 0, D);                                // 옆면
+  c.fillStyle = P.foot; for (const s of map.slots) if (!has(s.r + 1, s.c)) c.fillRect(s.x - hw + (has(s.r, s.c - 1) ? 0 : 8), s.y + hh - 8 + D - 5, CELL.w - (has(s.r, s.c - 1) ? 0 : 8) - (has(s.r, s.c + 1) ? 0 : 8), 5);
+  c.fillStyle = P.grout; for (const s of map.slots) cell(s, 0, 0);                               // 윗면(타일 사이 줄눈)
   for (const s of map.slots) { const x = s.x - hw + 3.5, y = s.y - hh - 8 + 3.5, w = CELL.w - 7, alt = (s.r + s.c) % 2;
-    c.fillStyle = alt ? '#b9ab8e' : '#bfb193'; rr(c, x, y + 2.5, w, w, 13); c.fill();                    // 타일 아랫단
-    const tg = c.createLinearGradient(0, y, 0, y + w); tg.addColorStop(0, alt ? '#efe5cb' : '#f7efd9'); tg.addColorStop(1, alt ? '#dfd2b2' : '#e9ddbf');
+    c.fillStyle = P.lip; rr(c, x, y + 2.5, w, w, 13); c.fill();                                       // 타일 아랫단
+    const tg = c.createLinearGradient(0, y, 0, y + w); tg.addColorStop(0, P.tile[alt ? 2 : 0]); tg.addColorStop(1, P.tile[alt ? 3 : 1]);
     c.fillStyle = tg; rr(c, x, y, w, w - 2, 13); c.fill();
     c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(x + 13, y + 3); c.lineTo(x + w - 13, y + 3); c.stroke();
-    for (let i = 0; i < 3; i++) { const px = x + 12 + rnd(seed + (s.r * 10 + s.c) * 7 + i) * (w - 24), py = y + 14 + rnd(seed + (s.r * 10 + s.c) * 13 + i) * (w - 30);      // 돌 무늬 점
-      c.fillStyle = 'rgba(150,128,90,.22)'; c.beginPath(); c.ellipse(px, py, 3 + rnd(i + s.r) * 3, 2 + rnd(i + s.c) * 1.5, 0, 0, 7); c.fill(); }
-    c.fillStyle = 'rgba(120,96,60,.11)'; c.beginPath(); c.ellipse(s.x, s.y + FEET - 4, 33, 12.5, 0, 0, 7); c.fill(); }      // 유닛이 설 자리
-  // 소품: 빈 칸에 큰 소품 하나와 작은 소품, 길이 시작되는 곳에 깃발과 표지판 (아래쪽 것이 위쪽 것을 가리게 y 순서로)
+    c.fillStyle = P.lip; c.globalAlpha = 0.3;
+    for (let i = 0; i < 3; i++) { const px = x + 12 + rnd(seed + (s.r * 10 + s.c) * 7 + i) * (w - 24), py = y + 14 + rnd(seed + (s.r * 10 + s.c) * 13 + i) * (w - 30);      // 무늬 점
+      c.beginPath(); c.ellipse(px, py, 3 + rnd(i + s.r) * 3, 2 + rnd(i + s.c) * 1.5, 0, 0, 7); c.fill(); }
+    c.globalAlpha = 0.16; c.beginPath(); c.ellipse(s.x, s.y + FEET - 4, 33, 12.5, 0, 0, 7); c.fill(); c.globalAlpha = 1; }      // 유닛이 설 자리
+  // 소품: 빈 칸에 큰 소품 하나와 작은 소품 하나, 길이 시작되는 곳에 깃발 (아래쪽 것이 위쪽 것을 가리게 y 순서로)
   const props = [];
-  map.decor.forEach((d, i) => { const a = V2_DECOR[(i + area) % V2_DECOR.length], b = V2_SIDE[(i * 2 + area) % V2_SIDE.length];
-    props.push([a[0], d.x + a[2], d.y + a[3], a[1]]); props.push([b[0], d.x + b[2], d.y + b[3], b[1]]); });
-  const f = map.path[0]; props.push(['flag', f.x - 36, f.y + 30, 66]);
+  map.decor.forEach((d, i) => { props.push([big[(i + area) % big.length], d.x, d.y + 38, 106]);
+    if (small.length) props.push([small[(i * 2 + area) % small.length], d.x + (i % 2 ? -31 : 31), d.y + 45, 46]); });
+  const f = map.path[0]; props.push(['prop_flag', f.x - 36, f.y + 30, 66]);
   props.sort((p, q) => p[2] - q[2]);
-  for (const [n, x, y, sz] of props) { const im = v2Art('prop_' + n); if (!im) continue;
-    c.fillStyle = 'rgba(14,56,24,.3)'; c.beginPath(); c.ellipse(x, y - 3, sz * 0.36, sz * 0.11, 0, 0, 7); c.fill();
+  for (const [n, x, y, sz] of props) { const im = v2Art(n); if (!im) continue;
+    c.fillStyle = P.sh; c.beginPath(); c.ellipse(x, y - 3, sz * 0.36, sz * 0.11, 0, 0, 7); c.fill();
     c.drawImage(im, x - sz / 2, y - sz * 0.96, sz, sz); }
   return bg;
 }

@@ -44,3 +44,4 @@ npm test                      # 규칙 검사 + 봇 플레이 (반드시 통과)
 
 ## 진행 중 표시를 적는 자리
 `docs/HANDOFF.md`의 첫 제목 바로 아래 `> 진행 중:` 줄.
+- **그림체는 E 광택 캐주얼풍 하나로 확정(2026-11-21 사용자)**: 유닛·적·배경·아이콘을 모두 이 그림체로 그린다. 지시문 `art/ref/jobs.py`(문구 `STYLE` · `CHIBI`), 자르기 `art/ref/apply.py`, 결과 `www/img/v2/`. 글꼴은 Jua · Bagel Fat One(`www/fonts/`). 새 그림을 만들 때 다른 그림체를 섞지 않는다.
