@@ -174,16 +174,18 @@ export function drawTag(c, o, part) {
   }
   // 이름표 (발 아래, 제 칸 안쪽): 병과 글자 + 계급 이름. 글자 길이에 맞춰 폭이 정해진다
   if (part === 'badge') return;
-  const cls = pure ? [type[0]] : type, cw = cls.length * 14.5, fs = rank.length > 3 ? 11.5 : 13;
+  // 맨 앞에 군별 한 글자(네모 칸) — 조합은 같은 군별끼리만 되므로 한눈에 보여야 한다. 그 뒤에 병과 글자(동그라미), 계급 이름
+  const cls = pure ? [type[0]] : type, P = o.mark ? 13.2 : 14.5, m0 = o.mark ? 15.5 : 0, cw = m0 + cls.length * P, fs = rank.length > 3 ? 11 : rank.length > 2 && o.mark && !pure ? 12 : 13;
   c.font = `800 ${fs}px sans-serif`;
-  const tw = Math.ceil(c.measureText(rank).width), w = Math.min(96, cw + tw + 14), x0 = -w / 2;
+  const tw = Math.ceil(c.measureText(rank).width), w = Math.min(99, cw + tw + 13), x0 = -w / 2;
   c.fillStyle = 'rgba(62,40,22,.9)'; rr(c, x0, 26, w, 15, 7.5); c.fill();      // 캐릭터 그림의 갈색 선과 맞춘 짙은 갈색 바탕
   c.strokeStyle = o.gcol || (hidden ? GOLD : ['#a98a5e', '#e6dcc6', GOLD][tier]); c.lineWidth = 2.2; c.stroke();      // 테두리는 계급(등급) 색
   c.fillStyle = hidden ? GOLD : '#fff6e0'; c.fillText(rank, x0 + cw + 5 + tw / 2, 34);
   c.font = '800 11px sans-serif';
+  if (o.mark) { c.fillStyle = o.bcol; rr(c, x0 + 2.2, 27.6, 13, 11.8, 3.2); c.fill(); c.strokeStyle = '#fff6e0'; c.lineWidth = 1; c.stroke(); c.fillStyle = '#fff'; c.fillText(o.mark, x0 + 8.7, 34.2); }
   cls.forEach((k, i) => {
-    c.fillStyle = CLASS_INFO[k].color; c.beginPath(); c.arc(x0 + 8.5 + i * 14.5, 33.5, 6, 0, 7); c.fill();
-    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[k].short, x0 + 8.5 + i * 14.5, 34.2);
+    c.fillStyle = CLASS_INFO[k].color; c.beginPath(); c.arc(x0 + m0 + 8.5 + i * P, 33.5, 6, 0, 7); c.fill();
+    c.fillStyle = '#10140e'; c.fillText(CLASS_INFO[k].short, x0 + m0 + 8.5 + i * P, 34.2);
   });
 }
 

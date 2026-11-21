@@ -123,7 +123,7 @@ export const rankBoard = g => (g.duo ? 'coop' : g.mode === 'normal' ? 'normal-' 
 export const RANK_BOARDS = [['normal-0', '보통'], ['normal-1', '어려움'], ['normal-2', '지옥'], ['endless', '무한'], ['rush', '보스 러시'], ['coop', '2인 협동']];
 export const COOP_MEDAL = 1.2;      // 협동 판의 훈장 배수
 // 협동을 시작할 때 동료 기기에 넘기는 값: 전투 계산에 쓰이는 것만 (영구 강화 · 표창 단계 · 그 군별의 숙련도). 두 기기가 같은 값으로 계산해야 한다
-export const metaLite = (meta, branchId) => ({ atk: meta.atk || 0, gold: meta.gold || 0, bounty: meta.bounty || 0, cm: { ...(meta.cm || {}) }, xp: { [branchId]: { ...((meta.xp || {})[branchId] || {}) } } });
+export const metaLite = meta => ({ atk: meta.atk || 0, gold: meta.gold || 0, bounty: meta.bounty || 0, cm: { ...(meta.cm || {}) }, xp: JSON.parse(JSON.stringify(meta.xp || {})) });      // 협동 상대에게 보내는 내 성장 값(여섯 군별 숙련도 모두)
 
 // ── 병과 숙련도 ─────────────────────────────────────────
 // 한 판의 경험치 = 도달 단계 × 10 × 난이도 훈장 배수 (보스 러시는 보스 하나에 100). 그 판에서 준 피해 비율대로 병과에 나눈다
@@ -131,9 +131,9 @@ export const runXp = g => Math.round((g.mode === 'rush' ? reached(g) * 100 : rea
 export function addRunXp(meta, g) {
   const total = runXp(g), sum = Object.values(g.dmgT || {}).reduce((a, b) => a + b, 0), out = [];
   if (!(total > 0) || !(sum > 0)) return out;
-  const mine = meta.xp[g.branch.id] || (meta.xp[g.branch.id] = {});
-  for (const k of TYPE_KEYS) { const xp = Math.round(total * (g.dmgT[k] || 0) / sum); if (xp < 1) continue;
-    const before = masteryInfo(mine[k] || 0).level; mine[k] = (mine[k] || 0) + xp; out.push({ key: k, xp, before, after: masteryInfo(mine[k]).level }); }
+  for (const key in g.dmgT) {      // 피해 기록의 이름은 '군별:병과'
+    const [bid, k] = key.split(':'), xp = Math.round(total * g.dmgT[key] / sum); if (xp < 1 || !TYPE_KEYS.includes(k)) continue;
+    const mine = meta.xp[bid] || (meta.xp[bid] = {}), before = masteryInfo(mine[k] || 0).level; mine[k] = (mine[k] || 0) + xp; out.push({ b: bid, key: k, xp, before, after: masteryInfo(mine[k]).level }); }
   return out.sort((a, b) => b.xp - a.xp);
 }
 

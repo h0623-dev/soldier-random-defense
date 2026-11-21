@@ -18,7 +18,7 @@ const DEV = [
   for (const [name, w, h] of DEV) {
     const p = await b.newPage({ viewport: { width: w, height: h } });
     const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => m.type() === 'error' && !/favicon/.test(m.text()) && errs.push(m.text()));
-    await p.goto('http://localhost:8080/'); await p.click('.lplay'); await p.click('.bcard:has-text("육군")');
+    await p.goto('http://localhost:8080/'); await p.click('.lplay'); await p.click('[data-act="start"]');
     await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C; g.gold = 5000; for (let i = 0; i < 9; i++) C.summon(g); });
     const fb = await p.locator('#field').boundingBox();
     const btnH = Math.round((await p.locator('#b-summon').boundingBox()).height);      // 유닛을 고르면 하단 버튼이 카드로 바뀌므로 먼저 잰다
@@ -37,7 +37,7 @@ const DEV = [
     const fitCls = () => p.evaluate(() => document.getElementById('info').className || '-');
     const g1 = await gap(), c1 = await fitCls();
     // 조합 미리보기: 같은 등급 두 유닛을 만들어 차례로 누른다
-    const pair = await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C, us = g.units.filter(Boolean); us[1].level = us[0].level; us[1].stats = C.unitStats(g.branch, us[1].level, us[1].type, g.meta, g.up);
+    const pair = await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C, us = g.units.filter(Boolean); us[1].level = us[0].level; us[1].b = us[0].b; us[1].stats = C.unitStats(C.branchOf(g, us[1]), us[1].level, us[1].type, g.meta, g.up);      // 조합은 같은 군별 · 같은 등급끼리만 되므로 둘을 맞춘다
       return [us[0], us[1]].map(u => { const s = g.map.slots[u.slot]; return { x: s.x / C.FIELD.w, y: s.y / C.FIELD.h }; }); });
     await p.mouse.click(fb.x + 2, fb.y + 2); await p.waitForTimeout(80);
     for (const q of pair) { await p.mouse.click(fb.x + fb.width * q.x, fb.y + fb.height * q.y); await p.waitForTimeout(160); }

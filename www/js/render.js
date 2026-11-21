@@ -219,6 +219,8 @@ export function draw(ctx, g, ui, quality = 2) {
   if (g.duo && !g.duo.solo) { ctx.fillStyle = 'rgba(24,30,66,.46)'; SLOTS.forEach((s, i) => { if (!mine(g, i)) ctx.fillRect(s.x - CELL.w / 2, s.y - CELL.h / 2 - 8, CELL.w, CELL.h); }); }
   // 특수 발판: 종류 색으로 빛나는 테두리와 왼쪽 위 표식 (유닛이 올라가도 보이게 모서리에 둔다)
   for (const i in g.tiles) tile(ctx, SLOTS[i], g.tiles[i], k, now, quality);
+  // 아무것도 고르지 않았을 때: 지금 조합할 짝(같은 군별 · 같은 등급)이 있는 내 유닛의 칸에 옅은 노란 점선을 둘러 준다 — 군별이 섞여 나와 짝을 찾기 어렵기 때문
+  const pairN = {}; if (!sel) for (const u of g.units) if (u && own(g, u) && u.level < GRADES.length - 1) { const pk = branchOf(g, u).id + u.level; pairN[pk] = (pairN[pk] || 0) + 1; }
   // 발판 강조: 조합할 수 있는 칸(노랑), 선택한 칸(흰색)
   SLOTS.forEach((s, i) => {
     const x = s.x - CELL.w / 2 + 4, y = s.y - CELL.h / 2 - 4, mergeable = sel && i !== ui.sel && canMerge(g, ui.sel, i);
@@ -228,6 +230,8 @@ export function draw(ctx, g, ui, quality = 2) {
       ctx.strokeStyle = star ? '#ff5a4a' : keep ? '#ffd45e' : '#c9a3ff'; ctx.lineWidth = star ? 5 : 4; if (!keep) ctx.setLineDash([9, 7]); ctx.stroke(); ctx.setLineDash([]);
       if (star) starAt(ctx, s.x + 34, s.y - 42, 11 + 2 * Math.sin(now * 6), '#ffd45e'); }      // 용사·히든 조합이 되는 짝: 붉은 테두리와 별
     else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.stroke(); }
+    else if (!sel) { const u = g.units[i]; if (u && own(g, u) && pairN[branchOf(g, u).id + u.level] >= 2) {
+      ctx.strokeStyle = `rgba(255,224,110,${0.55 + 0.25 * Math.sin(now * 4)})`; ctx.lineWidth = 3; ctx.setLineDash([7, 6]); rr(ctx, x + 2, y + 2, CELL.w - 12, CELL.h - 12, 11); ctx.stroke(); ctx.setLineDash([]); } }
   });
   // 선택 유닛 사거리 · 지원 범위 (바닥에 눕힌 원)
   if (sel) {
@@ -493,8 +497,8 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
 // 계급장(칸 오른쪽 위)과 이름표(발 아래). 캐릭터를 모두 그린 뒤에 찍는다 — 아랫줄 캐릭터의 머리가 윗줄 이름표를 가리지 않게
 function unitTags(ctx, b, u, p, k) {
   const tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u), tk = u.type.join('+');
-  const o = { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u), gcol: GRADES[Math.min(u.level, GRADES.length - 1)].color };
-  const tkey = [tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':');
+  const o = { branchId: b.id, mark: b.mark, bcol: b.color, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u), gcol: GRADES[Math.min(u.level, GRADES.length - 1)].color };
+  const tkey = [b.id, tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':');
   ctx.drawImage(spriteBox('utb:' + tkey, k, BADGE_BOX, c => drawTag(c, o, 'badge')), p.x + BADGE_BOX[0], p.y + BADGE_BOX[1], BADGE_BOX[2] - BADGE_BOX[0], BADGE_BOX[3] - BADGE_BOX[1]);
   ctx.drawImage(spriteBox('utl:' + tkey, k, LABEL_BOX, c => drawTag(c, o, 'label')), p.x + LABEL_BOX[0], p.y + LABEL_BOX[1], LABEL_BOX[2] - LABEL_BOX[0], LABEL_BOX[3] - LABEL_BOX[1]);
 }

@@ -357,17 +357,17 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
 {
   const players = [{ branchId: 'army', meta: M.fillMeta({ atk: 2 }), name: '방장' }, { branchId: 'police', meta: M.fillMeta({}), name: '손님' }];
   const mk = me => C.createDuo({ players, seed: 77, me, fx: false });
-  const g = mk(0); assert.equal(g.duo.ps.length, 2); assert.equal(g.branch.id, 'army'); assert.equal(C.act(g, 1, () => g.branch.id), 'police'); assert.equal(g.hpMul, C.CFG.duoHp);
+  const g = mk(0); assert.equal(g.duo.ps.length, 2); assert.equal(g.only, null, '협동도 여섯 군별이 섞여 나온다'); assert.equal(g.hpMul, C.CFG.duoHp);
   assert.equal(C.saveGame(g), null, '협동 판은 저장하지 않는다'); assert.equal(C.createGame({ branchId: 'army', seed: 1, fx: false }).duo, null);
   // 발판은 위쪽 13칸이 방장, 아래 12칸이 손님. 소집은 자기 몫의 발판에만
   assert.equal(C.ownerOf(0), 0); assert.equal(C.ownerOf(12), 0); assert.equal(C.ownerOf(13), 1); assert.equal(C.ownerOf(24), 1);
   g.duo.ps[0].gold = g.duo.ps[1].gold = 1e6;
   for (let i = 0; i < 30; i++) { C.exec(g, 0, ['summon']); C.exec(g, 1, ['summon']); }
   assert.ok(g.units.every((u, i) => u && u.o === C.ownerOf(i)), '모든 유닛이 주인의 발판에 선다'); assert.equal(g.units.filter(u => u.o === 0).length, 13); assert.equal(C.exec(g, 0, ['summon']), null);
-  assert.equal(C.unitName(C.branchOf(g, g.units[0]), g.units[0]).split(' ')[0].length > 0, true); assert.equal(C.branchOf(g, g.units[20]).id, 'police');
+  assert.equal(C.unitName(C.branchOf(g, g.units[0]), g.units[0]).split(' ')[0].length > 0, true); assert.ok(new Set(g.units.map(u => u.b)).size > 1, '여러 군별이 섞여 있다'); assert.ok(g.units.every(u => BRANCHES.some(b => b.id === u.b)));
   // 남의 유닛은 조합·이동·전역·심사할 수 없다
   const same = (o, n) => g.units.filter(u => u.o === o).slice(0, n);
-  const [a0, a1] = same(0, 2), [b0, b1] = same(1, 2); for (const u of [a0, a1, b0, b1]) u.level = 0;
+  const [a0, a1] = same(0, 2), [b0, b1] = same(1, 2); for (const u of [a0, a1, b0, b1]) { u.level = 0; u.b = 'army'; }
   assert.equal(C.canMerge(g, a0.slot, a1.slot), true); assert.equal(C.canMerge(g, a0.slot, b0.slot), false); assert.equal(C.act(g, 1, () => C.canMerge(g, a0.slot, a1.slot)), false); assert.equal(C.act(g, 1, () => C.canMerge(g, b0.slot, b1.slot)), true);
   assert.equal(C.exec(g, 1, ['sell', a0.slot]), 0); assert.equal(g.units[a0.slot], a0); assert.equal(C.exec(g, 0, ['move', a0.slot, b0.slot]), false); assert.equal(C.exec(g, 1, ['merge', a0.slot, a1.slot]), null);
   const m = C.exec(g, 0, ['merge', a0.slot, a1.slot]); assert.ok(m && m.o === 0 && m.level === 1); assert.equal(C.hasFree(g), true); assert.equal(C.act(g, 1, () => C.hasFree(g)), false);
@@ -376,8 +376,8 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   C.exec(g, 0, ['up', c0]); assert.ok(mine0.stats.dmg > d0 || mine0.type[0] !== c0); assert.equal(theirs.stats.dmg, d1); assert.equal(g.duo.ps[0].up[c0], 1); assert.equal(g.duo.ps[1].up[c0], 0);
   // 수입은 두 사람 모두: 단계 보너스와 처치 보상. 선물은 한쪽에서 다른 쪽으로
   const h = mk(0); const g0 = h.duo.ps.map(p => p.gold); h.nextWave = 0; C.step(h, 0.05); assert.deepEqual(h.duo.ps.map((p, i) => p.gold - g0[i]), [C.CFG.waveBonus, C.CFG.waveBonus]);
-  for (let i = 0; i < 6; i++) { C.exec(h, 0, ['summon']); } const k0 = h.duo.ps.map(p => p.gold); for (let i = 0; i < 600 && h.kills < 3; i++) C.step(h, 0.05);
-  assert.ok(h.kills >= 3 && h.duo.ps[1].gold > k0[1], '방장의 유닛이 잡아도 손님이 보상을 받는다'); assert.ok(h.duo.ps[1].gold - k0[1] > (h.duo.ps[0].gold - k0[0]) * 1.05, '의경은 처치 보상 +10%');
+  for (let i = 0; i < 6; i++) { C.exec(h, 0, ['summon']); } C.exec(h, 1, ['summon']); for (const u of h.units) if (u) u.b = u.o ? 'police' : 'army'; const k0 = h.duo.ps.map(p => p.gold); for (let i = 0; i < 600 && h.kills < 3; i++) C.step(h, 0.05);
+  assert.ok(h.kills >= 3 && h.duo.ps[1].gold > k0[1], '방장의 유닛이 잡아도 손님이 보상을 받는다'); assert.ok(h.duo.ps[1].gold - k0[1] > (h.duo.ps[0].gold - k0[0]) * 1.05, '의경 유닛이 있는 쪽은 처치 보상 +10%');
   const gg = h.duo.ps.map(p => p.gold), gift = C.exec(h, 1, ['gift']); assert.ok(gift > 0); assert.equal(h.duo.ps[1].gold, gg[1] - gift); assert.equal(h.duo.ps[0].gold, gg[0] + gift);
   assert.ok(Object.keys(h.duo.ps[0].dmgT).length > 0 && Object.keys(h.duo.ps[1].dmgT).length === 0, '숙련 경험치용 피해 기록은 자기 유닛 것만');
   // 같은 걸음에 같은 명령을 넣으면 두 기기(방장 · 손님)의 계산이 끝까지 같다
@@ -402,19 +402,43 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   X.duo.solo = true; const other = X.units.find(u => u && u.o === 1); assert.ok(C.own(X, other)); assert.equal(C.mine(X, 24), true);
   assert.equal(M.rankBoard(A), 'coop'); assert.equal(M.rankBoard({ mode: 'normal', diff: 2 }), 'normal-2'); assert.equal(M.rankBoard({ mode: 'rush' }), 'rush');
   const mm = M.ensureId(M.fillMeta({})); assert.equal(mm.uid.length, 20); assert.match(mm.name, /^털뭉치\d{4}$/); assert.equal(M.ensureId(mm).uid, mm.uid); assert.equal(M.cleanName(' <b>가나다라마바사아자차카</b> '), 'b가나다라마바사아자');
-  const lite = M.metaLite(M.fillMeta({ atk: 3, medals: 99, xp: { army: { inf: 500 }, navy: { inf: 9 } }, cmN: { boss: 3 } }), 'army'); assert.deepEqual(Object.keys(lite).sort(), ['atk', 'bounty', 'cm', 'gold', 'xp']); assert.deepEqual(lite.xp, { army: { inf: 500 } }); assert.equal(lite.cm.boss, 2);
+  const lite = M.metaLite(M.fillMeta({ atk: 3, medals: 99, xp: { army: { inf: 500 }, navy: { inf: 9 } }, cmN: { boss: 3 } }), 'army'); assert.deepEqual(Object.keys(lite).sort(), ['atk', 'bounty', 'cm', 'gold', 'xp']); assert.deepEqual(lite.xp, { army: { inf: 500 }, navy: { inf: 9 } }, '여섯 군별 숙련도를 모두 보낸다'); assert.equal(lite.cm.boss, 2);
 }
 console.log('규칙·데이터 검사 통과');
 
+// 3-15) 군별이 섞여 나오는 판: 군별을 주지 않으면 여섯 군별이 섞여 소집되고, 조합은 같은 군별 · 같은 등급끼리만 된다
+{
+  const g = C.createGame({ seed: 11, fx: false }); assert.equal(g.only, null); g.gold = 1e6;
+  for (let i = 0; i < 25; i++) C.summon(g);
+  const bs = new Set(g.units.map(u => u.b)); assert.ok(bs.size >= 5, `군별 ${bs.size}종`); assert.ok(g.units.every(u => BRANCHES.some(b => b.id === u.b)));
+  const one = C.createGame({ branchId: 'navy', seed: 11, fx: false }); one.gold = 1e6; for (let i = 0; i < 10; i++) C.summon(one); assert.ok(one.units.filter(Boolean).every(u => u.b === 'navy'), '군별을 주면 그 군별만');
+  // 같은 등급이라도 군별이 다르면 조합되지 않는다. 같으면 되고, 결과는 그 군별을 이어받는다
+  const [x, y, z] = g.units; x.level = y.level = z.level = 0; x.b = y.b = 'army'; z.b = 'police';
+  assert.equal(C.canMerge(g, x.slot, z.slot), false); assert.equal(C.mergePreview(g, x.slot, z.slot), null); assert.equal(C.merge(g, x.slot, z.slot), null); assert.equal(C.canMerge(g, x.slot, y.slot), true);
+  const m = C.merge(g, x.slot, y.slot); assert.equal(m.b, 'army'); assert.equal(m.level, 1);
+  // 유닛 능력치·이름은 제 군별 것: 의경은 공격력이 낮고(특성) 계급 이름이 다르다
+  const pa = C.unitStats(BRANCHES.find(b => b.id === 'army'), 0, ['inf', 'inf']).dmg; z.type = ['inf', 'inf']; C.reroll; assert.ok(C.branchOf(g, z).id === 'police' && C.unitName(C.branchOf(g, z), z).startsWith('교육생'));
+  g.supply = 9; const before = z.b; C.gamble(g, z.slot); assert.equal(g.units[z.slot].b, before, '진급 심사를 해도 군별은 그대로'); C.reroll(g, z.slot); assert.equal(g.units[z.slot].b, before, '병과 교체를 해도 군별은 그대로');
+  assert.ok(pa > 0);
+  // 숙련 경험치는 군별마다 따로 쌓인다
+  const h = C.createGame({ seed: 5, fx: false }); h.gold = 1e5; for (let i = 0; i < 25; i++) C.summon(h); for (let i = 0; i < 6000 && Object.keys(h.dmgT).length < 4; i++) C.step(h, 0.05);
+  assert.ok(Object.keys(h.dmgT).length > 2 && Object.keys(h.dmgT).every(k => /^[a-z]+:[a-z+]+$/.test(k)), '피해 기록은 군별:병과'); const mt = M.fillMeta({}); h.wave = 20;
+  const gains = M.addRunXp(mt, h); assert.ok(gains.length > 2 && new Set(gains.map(x => x.b)).size > 1 && Object.keys(mt.xp).length > 1, '여러 군별에 경험치가 나뉜다');
+  // 저장하고 이어 해도 군별이 남는다. 군별을 고르던 시절의 저장(only 없음 · 유닛에 군별 없음)은 그 군별만 나오는 판으로 이어진다
+  const sv = JSON.parse(JSON.stringify(C.saveGame(g))), ld = C.loadGame(sv, {}); assert.equal(ld.only, null); assert.deepEqual(ld.units.map(u => u && u.b), g.units.map(u => u && u.b));
+  const old = JSON.parse(JSON.stringify(sv)); delete old.only; old.branchId = 'marine'; for (const u of old.units) if (u) delete u.b;
+  const lo = C.loadGame(old, {}); assert.equal(lo.only, 'marine'); assert.ok(lo.units.filter(Boolean).every(u => u.b === 'marine')); lo.gold = 1e5; lo.units[0] = null; const nu = C.summon(lo); assert.equal(nu.b, 'marine');
+}
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
 if (process.env.HERO === '0') C.setHeroes(false);      // 용사 없이 돌려 비교
 if (process.env.SKILL === '0') C.setSkills(false);     // 병과 고유 기술 없이 돌려 비교
 const UPR = +process.env.UPR || 0.2;    // 봇이 병과 강화에 쓰는 군자금 비율
+const SELL = process.env.SELL !== '0';      // 봇이 짝 없는 유닛을 전역시키는지 (SELL=0이면 안 함)
 const DPR = process.env.DPR != null ? +process.env.DPR : 0.15;    // 봇이 보급병 고용에 쓰는 군자금 비율 (0이면 고용하지 않음)
 // 4) 봇 플레이. 발판이 비면 소집하고 꽉 차면 낮은 계급부터 조합한다.
 //    smart면 쓴 돈의 일정 비율 안에서 훈련소(30%)와 병과 강화(UPR)를 산다 — 보스가 멀고 전장이 조용할 때는 소집을 멈추고 모은다. 특수 임무와 진급 심사도 쓴다.
 function play(branchId, seed, smart = true) {
-  const DUO = process.env.MODE === 'duo';      // MODE=duo: 같은 군별 둘이 한 전장을 나눠 쓰는 협동
+  const DUO = process.env.MODE === 'duo';      // MODE=duo: 둘이 한 전장을 나눠 쓰는 협동
   const g = DUO ? C.createDuo({ players: [{ branchId }, { branchId }], seed, fx: false }) : C.createGame({ branchId, seed, fx: false, diff: +process.env.DIFF || 0, mode: process.env.MODE || 'normal' });      // DIFF=1 어려움, 2 지옥 · MODE=rush|endless
   let acc = 0, spent = 0, upSpent = 0, depSpent = 0; g.first = [];
   const book = [0, 1].map(() => ({ spent: 0, upSpent: 0, depSpent: 0 }));      // 협동: 플레이어마다 쓴 돈을 따로 센다
@@ -444,10 +468,17 @@ function play(branchId, seed, smart = true) {
       let done = false;
       if (smart) {      // 용사 조합식이 맞는 짝이 있으면 먼저 조합한다. 용사는 각성(전설 유닛과 조합)에만 쓴다
         const pure = us.filter(u => u.level === 4 && !u.hidden && u.type[0] === u.type[1]);
-        const pr = pure.flatMap((a, i) => pure.slice(i + 1).map(b => [a, b])).find(([a, b]) => C.heroRecipe(g, a, b));
+        const pr = pure.flatMap((a, i) => pure.slice(i + 1).map(b => [a, b])).find(([a, b]) => C.canMerge(g, a.slot, b.slot) && C.heroRecipe(g, a, b));
         if (pr) { C.merge(g, pr[0].slot, pr[1].slot); continue; }
       }
-      for (let i = 0; i + 1 < us.length; i++) if (C.canMerge(g, us[i].slot, us[i + 1].slot)) { C.merge(g, us[i].slot, us[i + 1].slot); done = true; break; }
+      // 조합할 수 있는 짝(같은 등급 · 같은 군별)을 낮은 등급부터 찾는다
+      find: for (let i = 0; i + 1 < us.length; i++) for (let j = i + 1; j < us.length && us[j].level === us[i].level; j++) if (C.canMerge(g, us[i].slot, us[j].slot)) { C.merge(g, us[i].slot, us[j].slot); done = true; break find; }
+      if (!done && smart && SELL) {      // 꽉 찼는데 짝이 없으면 가장 낮은 등급의 유닛 하나를 전역시켜 자리를 낸다(용사는 빼고)
+        // 어느 유닛을 보낼까: 전장에서 몫이 가장 작은 군별의 가장 낮은 등급(BOT=low면 그냥 가장 낮은 등급). 이렇게 하면 군별이 서너 개로 모인다
+        const val = {}; for (const u of us) val[u.b] = (val[u.b] || 0) + C.unitValue(g.branch, u.level);
+        const cand = us.filter(u => !u.hidden), low = process.env.BOT === 'low' ? cand[0] : cand.sort((x, y) => val[x.b] - val[y.b] || x.level - y.level)[0];
+        if (low && g.gold >= C.summonCost(g.branch, g.camp) && C.sell(g, low.slot)) { g.sells = (g.sells || 0) + 1; continue; }
+      }
       if (!done) break;
     }
     if (smart) for (const i of Object.keys(g.tiles)) {      // 특수 발판에는 가장 높은 등급의 유닛을 세운다
@@ -462,12 +493,22 @@ function play(branchId, seed, smart = true) {
   }
   g.earned = spent + g.gold; return g;
 }
+// 실제 게임: 여섯 군별이 섞여 나오고 조합은 같은 군별끼리만 (군별을 주지 않는 판)
+const SEEDS = +process.env.SEEDS || 8, med = xs => [...xs].sort((x, y) => x - y)[Math.floor(xs.length / 2)];
+{
+  const rs = Array.from({ length: SEEDS }, (_, i) => play(null, i + 1)), lazy = play(null, 1, false);
+  console.log('혼성 봇:', rs.map(g => `${g.wave}${g.over?.win ? '승' : '패'}`).join(' '), `(${rs.filter(g => g.over?.win).length}/${SEEDS}승)`,
+    '| 소집·조합만:', `${lazy.wave}${lazy.over?.win ? '승' : '패'}`,
+    '| 등급 첫 등장(중앙)', GRADES.slice(2).map((gr, i) => `${gr.name} ${med(rs.map(g => g.first[i + 2] || 999))}`).join(' · '),
+    '| 끝 초월', med(rs.map(g => g.units.filter(u => u && u.level === 6).length)) + '명',
+    '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'), '| 용사', rs.map(g => g.heroGot).join('/'), '| 보급병', rs.map(g => g.depot).join('/'), '| 전역', rs.map(g => g.sells || 0).join('/'));
+}
+// 견줌용: 한 군별만 나오는 판(예전 규칙). MONO=1일 때만 돌린다
 const only = process.argv[2];
-const SEEDS = +process.env.SEEDS || 4;
-for (const b of BRANCHES) {
+if (process.env.MONO === '1' || only) for (const b of BRANCHES) {
   if (only && b.id !== only) continue;
-  const rs = Array.from({ length: SEEDS }, (_, i) => play(b.id, i + 1));
-  const lazy = play(b.id, 1, false), med = xs => [...xs].sort((x, y) => x - y)[Math.floor(xs.length / 2)];
+  const rs = Array.from({ length: Math.min(4, SEEDS) }, (_, i) => play(b.id, i + 1));
+  const lazy = play(b.id, 1, false);
   console.log(b.name.padEnd(4), '봇:', rs.map(g => `${g.wave}${g.over?.win ? '승' : '패'}`).join(' '),
     '| 소집·조합만:', `${lazy.wave}${lazy.over?.win ? '승' : '패'}`,
     '| 등급 첫 등장(중앙)', GRADES.slice(2).map((gr, i) => `${gr.name} ${med(rs.map(g => g.first[i + 2] || 999))}`).join(' · '),

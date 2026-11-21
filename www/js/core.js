@@ -1,5 +1,5 @@
 // 털뭉치수비대 — 게임 규칙 (화면과 분리된 순수 로직, node 테스트 가능)
-import { CLASS_IDS, branchById, GRADES, rankOf, GROUP_OF_LEVEL, HEROES, TYPE_SKILLS, cmOf } from './data.js';
+import { CLASS_IDS, BRANCHES, branchById, GRADES, rankOf, GROUP_OF_LEVEL, HEROES, TYPE_SKILLS, cmOf } from './data.js';
 
 // ── 전장 ─────────────────────────────────────────────────
 // 가로 7칸 × 세로 9칸(칸 100×100)의 세로로 긴 전장. 적은 발판 덩어리 사이로 꺾이며 도는 닫힌 길을 계속 돈다.
@@ -183,10 +183,13 @@ export function waveInfo(wave) {
 }
 
 // ── 게임 상태 ────────────────────────────────────────────
-export function createGame({ branchId, meta = {}, seed = Date.now(), fx = true, diff = 0, mode = 'normal' }) {
-  const branch = branchById(branchId), rush = mode === 'rush';
+// 군별: 한 판에 여섯 군별의 유닛이 섞여 나온다(2026-11-21 사용자 결정). 유닛마다 제 군별(u.b)이 있고, **조합은 같은 군별끼리만** 된다.
+//  branchId를 주면 그 군별 유닛만 나오는 판이 된다(g.only) — 검사와, 군별을 고르던 시절에 저장한 판을 이어 할 때 쓴다.
+//  g.branch는 군별에 상관없는 값(등급 수, 소집·훈련소 비용)을 읽는 기준일 뿐이다. 유닛의 군별은 branchOf(g, u)로 읽는다.
+export function createGame({ branchId = null, meta = {}, seed = Date.now(), fx = true, diff = 0, mode = 'normal' }) {
+  const only = branchById(branchId) ? branchId : null, branch = branchById(only) || BRANCHES[0], rush = mode === 'rush';
   const g = {
-    branch, meta, rand: rng(seed), fx, diff, mode, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: rush ? CFG.rushPrep : CFG.prepTime,
+    branch, only, meta, rand: rng(seed), fx, diff, mode, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: rush ? CFG.rushPrep : CFG.prepTime,
     gold: CFG.startGold + 40 * (meta.gold || 0) + (rush ? rushStipend(1) : 0), camp: 0, units: Array(SLOT_COUNT).fill(null), area: 0, map: MAPS[0],
     supply: cmOf(meta, 'supply') + (rush ? CFG.rushSupply : 0), dmgT: {}, bossKills: 0, bossT0: CFG.bossTime, up: { inf: 0, art: 0, med: 0, sig: 0 }, elite: { n: 0, cd: 0, active: false }, done: {}, hiddenGot: 0, missionT: 0,
     enemies: [], effects: [], sfx: [], spawn: null, bossTimer: 0, over: null, kills: 0, uid: 1, auraDirty: true, log: [],
@@ -218,15 +221,17 @@ export function summon(g) {
   if (g.over || g.gold < cost || slot < 0) return null;
   g.gold -= cost;
   const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.03 ? 2 : r < 0.18 + cmOf(g.meta, 'luck') / 100 ? 1 : 0));      // 3% 두 계급 위, 15% 한 계급 위 (+행운의 군번줄)
-  const c = CLASS_IDS[Math.floor(g.rand() * 4)];
-  // 히든 계급 뽑기
-  for (const h of g.branch.hidden) if (h.draw && g.camp >= h.drawCamp[0] && g.camp <= h.drawCamp[1] && g.rand() < h.draw)
-    return placeUnit(g, slot, h.level, [c, c], h.id);
-  return placeUnit(g, slot, level, [c, c]);
+  const c = CLASS_IDS[Math.floor(g.rand() * 4)], bid = pickBranch(g);
+  // 히든 계급 뽑기 (그 군별에 히든 계급이 있을 때)
+  for (const h of BR[bid].hidden) if (h.draw && g.camp >= h.drawCamp[0] && g.camp <= h.drawCamp[1] && g.rand() < h.draw)
+    return placeUnit(g, slot, h.level, [c, c], h.id, bid);
+  return placeUnit(g, slot, level, [c, c], null, bid);
 }
-function placeUnit(g, slot, level, type, hidden = null) {
-  const u = { id: g.uid++, slot, level, type, hidden, o: g.duo ? g.duo.cur : 0, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0, dealt: 0,
-    stats: unitStats(g.branch, level, type, g.meta, g.up), flash: 0.5 };
+const BR = Object.fromEntries(BRANCHES.map(b => [b.id, b]));
+const pickBranch = g => g.only || BRANCHES[Math.floor(g.rand() * BRANCHES.length)].id;      // 새 유닛의 군별: 여섯 가운데 무작위
+function placeUnit(g, slot, level, type, hidden = null, bid = pickBranch(g)) {
+  const u = { id: g.uid++, slot, level, type, hidden, b: bid, o: g.duo ? g.duo.cur : 0, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0, dealt: 0,
+    stats: unitStats(BR[bid] || g.branch, level, type, g.meta, g.up), flash: 0.5 };
   if (hidden) { if (heroDef(hidden)) { if (level === heroDef(hidden).level) g.heroGot++; u.skT = 2; } else g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
   g.units[slot] = u; g.auraDirty = true; return u;
 }
@@ -246,7 +251,7 @@ let HERO_ON = true; export const setHeroes = on => { HERO_ON = on; };      // �
 export function hiddenRecipe(g, A, B) {
   if (A.hidden || B.hidden) return null;
   const hero = heroRecipe(g, A, B); if (hero) return hero.id;
-  for (const h of g.branch.hidden) {
+  for (const h of branchOf(g, A).hidden) {
     if (!h.recipe || A.level !== h.level - 1) continue;
     if (h.recipe === 'allDiff' && new Set([...A.type, ...B.type]).size === 4) return h.id;
   }
@@ -258,7 +263,7 @@ export function upgradeClass(g, c) {
   const cost = classUpCost(g, c);
   if (g.over || g.gold < cost) return false;
   g.gold -= cost; g.up[c]++;
-  for (const u of g.units) if (u && own(g, u)) u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up);
+  for (const u of g.units) if (u && own(g, u)) u.stats = unitStats(branchOf(g, u), u.level, u.type, g.meta, g.up);
   g.auraDirty = true; return true;
 }
 // 선택 소집: 보급품을 써서 원하는 기본 병과를 고른다 (계급 운은 일반 소집과 같고 히든 뽑기는 없다)
@@ -280,7 +285,7 @@ export function gamble(g, a) {
   const u = g.units[a], r = g.rand(); g.supply -= CFG.gambleSupply;
   const res = r < gambleChance(u, g.meta) ? 'up' : r < 1 - CFG.gambleDown || u.level === 0 ? 'same' : 'down';
   g.streak = res === 'up' ? g.streak + 1 : 0;      // 연속 통과 횟수 (히든 임무)
-  if (res !== 'same') placeUnit(g, a, u.level + (res === 'up' ? 1 : -1), u.type).dealt = u.dealt;
+  if (res !== 'same') placeUnit(g, a, u.level + (res === 'up' ? 1 : -1), u.type, null, branchOf(g, u).id).dealt = u.dealt;
   return res;
 }
 // 병과 교체: 보급품을 써서 고른 유닛의 병과를 다시 뽑는다. 등급·누적 피해는 그대로이고, 지금 병과는 다시 나오지 않는다(나머지 9종 가운데 무작위)
@@ -292,7 +297,7 @@ export function reroll(g, a) {
   if (!canReroll(g, a)) return null;
   const u = g.units[a], ks = TYPE_KEYS.filter(k => k !== typeKey(u.type));
   g.supply -= CFG.rerollSupply; g.rerolls++;
-  u.type = keyToType(ks[Math.floor(g.rand() * ks.length)]); u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up);
+  u.type = keyToType(ks[Math.floor(g.rand() * ks.length)]); u.stats = unitStats(branchOf(g, u), u.level, u.type, g.meta, g.up);
   u.flash = 0.5; g.auraDirty = true; return u;
 }
 // 보급 기지: 보급병 한 명이 단계마다 가져오는 군자금 = depotFlat + 그 단계 기본 수입(단계 보너스 + 적 부대 처치 보상)의 depotRate.
@@ -359,7 +364,7 @@ export function upgradeCamp(g) {
 }
 export function canMerge(g, a, b) {
   const A = g.units[a], B = g.units[b];
-  return !!(A && B && a !== b && own(g, A) && own(g, B) && A.level === B.level && A.level < maxLevel(g.branch));
+  return !!(A && B && a !== b && own(g, A) && own(g, B) && A.level === B.level && branchOf(g, A) === branchOf(g, B) && A.level < maxLevel(g.branch));      // 같은 등급 · 같은 군별끼리만
 }
 export function mergePreview(g, a, b) {
   if (!canMerge(g, a, b)) return null;
@@ -377,7 +382,7 @@ export function merge(g, a, b) {
   const p = mergePreview(g, a, b); if (!p || g.over) return null;
   const sum = g.units[a].dealt + g.units[b].dealt;
   const type = p.type || keyToType(TYPE_KEYS[Math.floor(g.rand() * TYPE_KEYS.length)]);
-  g.units[a] = null; const u = placeUnit(g, b, p.level, type, p.hidden); u.dealt = sum; return u;      // 누적 피해는 두 유닛 것을 이어받는다
+  const bid = branchOf(g, g.units[a]).id; g.units[a] = null; const u = placeUnit(g, b, p.level, type, p.hidden, bid); u.dealt = sum; return u;      // 누적 피해는 두 유닛 것을 이어받는다
 }
 export function moveUnit(g, a, b) {
   if (!g.units[a] || a === b || !own(g, g.units[a]) || !mine(g, b)) return false;      // 협동: 내 유닛을 내 몫의 발판으로만
@@ -436,7 +441,7 @@ function hit(g, e, dmg, o = 0) {
     if (e.kind === 'boss') { each(g, () => { g.supply += CFG.bossSupply; }); g.bossKills++; if (g.bossTimer >= g.bossT0 - FAST_BOSS) g.fastBoss++; if (g.mode === 'rush') g.rushNext = true; }
     if (e.kind === 'elite') { each(g, () => { g.supply += CFG.eliteSupply; }); g.elite.n++; g.elite.active = false; g.elite.cd = CFG.eliteCd; g.log.push({ t: 'eliteKill' }); }
     if (g.fx) { g.effects.push({ puff: true, x: e.x, y: e.y, r: e.kind === 'boss' ? 60 : 18, t: 0.3 }); if (e.kind === 'boss') g.sfx.push('bossdie'); }
-    each(g, () => { g.gold += e.bounty * (g.branch.trait.key === 'slow' ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0)); });      // 협동: 누가 잡든 두 사람 모두 보상을 받는다
+    each(g, () => { g.gold += e.bounty * (hasPolice(g) ? 1.1 : 1) * (1 + 0.03 * (g.meta.bounty || 0)); });      // 협동: 누가 잡든 두 사람 모두 보상을 받는다
   }
   return real;
 }
@@ -467,10 +472,12 @@ function bossSkill(g, e, dt) {
 }
 
 // 피해 기록: 유닛 누적 · 전체 · 기본 병과별(결과 화면) · 병과 키별(숙련도 경험치 배분)
+// 의경의 특성(처치 보상 +10%): 지금 다루는 플레이어의 의경 유닛이 전장에 하나라도 있으면
+const hasPolice = g => g.units.some(u => u && branchOf(g, u).id === 'police' && own(g, u));
 function credit(g, u, type, d, o = 0) {
   if (u) u.dealt += d; g.dealt += d; g.dmg[type[0]] += d / 2; g.dmg[type[1]] += d / 2;
   if (!type.tk) Object.defineProperty(type, 'tk', { value: typeKey(type) });      // 병과 배열에 키를 붙여 둔다(매번 다시 만들지 않게). 열거되지 않아 저장·비교에는 끼지 않는다
-  const t = g.duo ? g.duo.ps[o].dmgT : g.dmgT; t[type.tk] = (t[type.tk] || 0) + d;      // 협동: 숙련 경험치는 자기 유닛이 준 피해로
+  const t = g.duo ? g.duo.ps[o].dmgT : g.dmgT, k = (u ? branchOf(g, u).id : g.branch.id) + ':' + type.tk; t[k] = (t[k] || 0) + d;      // 군별:병과 로 적는다(숙련도는 군별마다 따로)      // 협동: 숙련 경험치는 자기 유닛이 준 피해로
 }
 // 용사의 주기 기술. 표적이 없으면 쓰지 않고 기다린다
 function heroCast(g, u, k, p, base) {
@@ -499,8 +506,8 @@ function heroCast(g, u, k, p, base) {
 //  두 기기가 똑같이 계산해야 하므로(방장의 걸음과 명령을 손님이 그대로 따라 한다) step() 안에서는 cur에 기대지 않는다 — 플레이어별 값은 each()나 유닛의 주인(u.o)으로만 읽는다.
 const PF = ['gold', 'supply', 'camp', 'up', 'depot', 'depotGold', 'branch', 'meta', 'dmgT', 'adGold'];
 export function createDuo({ players, seed, me = 0, fx = true }) {
-  const g = createGame({ branchId: players[0].branchId, meta: players[0].meta || {}, seed, fx });
-  const ps = players.map(p => { const m = p.meta || {}; return { branch: branchById(p.branchId), meta: m, name: p.name || '', gold: CFG.startGold + 40 * (m.gold || 0), supply: cmOf(m, 'supply'),
+  const g = createGame({ meta: players[0].meta || {}, seed, fx });      // 협동도 여섯 군별이 섞여 나온다(플레이어가 군별을 고르지 않는다)
+  const ps = players.map(p => { const m = p.meta || {}; return { branch: g.branch, meta: m, name: p.name || '', gold: CFG.startGold + 40 * (m.gold || 0), supply: cmOf(m, 'supply'),
     camp: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, depot: 0, depotGold: 0, dmgT: {}, adGold: 0 }; });
   g.duo = { ps, me, cur: me, solo: false }; g.hpMul *= CFG.duoHp;
   bindDuo(g); rollTiles(g); return g;      // 특수 발판은 두 사람의 공병 표창 가운데 높은 쪽으로 다시 정한다
@@ -513,7 +520,7 @@ export const ownerOf = slot => (slot < CFG.duoSplit ? 0 : 1);
 export const mine = (g, slot) => !g.duo || g.duo.solo || ownerOf(slot) === g.duo.cur;
 export const own = (g, u) => !g.duo || g.duo.solo || u.o === g.duo.cur;
 export const hasFree = g => g.units.some((u, i) => !u && mine(g, i));
-export const branchOf = (g, u) => (g.duo ? g.duo.ps[u.o].branch : g.branch);
+export const branchOf = (g, u) => BR[u.b] || g.branch;      // 유닛의 군별
 const metaOf = (g, o) => (g.duo ? g.duo.ps[o].meta : g.meta);
 const cmShared = (g, id) => (g.duo ? Math.max(...g.duo.ps.map(p => cmOf(p.meta, id))) : cmOf(g.meta, id));      // 함께 쓰는 것(특수 발판 수, 보스 제한 시간)은 둘 중 높은 쪽
 // 플레이어 i의 자리에서 f를 실행한다 (명령 실행)
@@ -554,7 +561,7 @@ export function duoLoad(g, o) {
   for (const k in o) if (k !== 'seed' && k !== 'ps') g[k] = o[k];
   o.ps.forEach((p, i) => { const P = g.duo.ps[i]; for (const k of PF) if (k !== 'branch' && k !== 'meta' && p[k] !== undefined) P[k] = p[k]; });
   g.rand = rng(o.seed); g.map = MAPS[g.area]; g.effects = []; g.sfx = [];
-  for (const u of g.units) if (u) { const P = g.duo.ps[u.o === 1 ? 1 : 0]; u.stats = unitStats(P.branch, u.level, u.type, P.meta, P.up); u.flash = 0; }
+  for (const u of g.units) if (u) { const P = g.duo.ps[u.o === 1 ? 1 : 0]; u.stats = unitStats(BR[u.b] || P.branch, u.level, u.type, P.meta, P.up); u.flash = 0; }
   g.auraDirty = true; return true;
 }
 export const fieldClear = g => g.wave >= maxWaveOf(g) && !!g.spawn && g.spawn.left === 0 && g.enemies.length === 0;
@@ -691,13 +698,14 @@ export function saveGame(g) {
 export function loadGame(o, meta = {}) {
   try {
     if (!o || o.v !== SAVE_V || o.over || !branchById(o.branchId)) return null;
-    const g = createGame({ branchId: o.branchId, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0, mode: MODES.some(m => m.id === o.mode) ? o.mode : 'normal' });
+    const mono = 'only' in o ? o.only : o.branchId;      // 군별을 고르던 시절의 저장(only 없음)은 그 군별만 나오는 판으로 이어 한다
+    const g = createGame({ branchId: mono, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0, mode: MODES.some(m => m.id === o.mode) ? o.mode : 'normal' });
     g.rand = rng(o.seed);      // createGame이 특수 발판을 정하느라 난수를 썼으므로 저장한 상태로 되돌린다
-    for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff' && k !== 'mode') g[k] = o[k];
+    for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff' && k !== 'mode' && k !== 'only') g[k] = o[k];
     if (!Array.isArray(g.units) || g.units.length !== SLOT_COUNT || !MAPS[g.area] || !(g.wave >= 0)) return null;
     g.map = MAPS[g.area]; g.hpMul = DIFFS[g.diff].hp;
-    for (const u of g.units) if (u) { if (!(u.level >= 0 && u.level <= maxLevel(g.branch))) return null; u.stats = unitStats(g.branch, u.level, u.type, g.meta, g.up); u.flash = 0;
-      if (u.hidden && !hiddenDef(g.branch, u.hidden)) u.hidden = null; }
+    for (const u of g.units) if (u) { if (!(u.level >= 0 && u.level <= maxLevel(g.branch))) return null; if (!BR[u.b]) u.b = o.branchId; u.stats = unitStats(BR[u.b], u.level, u.type, g.meta, g.up); u.flash = 0;
+      if (u.hidden && !hiddenDef(BR[u.b], u.hidden)) u.hidden = null; }
     if (!Array.isArray(g.zones)) g.zones = [];
     g.auraDirty = true; return g;
   } catch { return null; }
