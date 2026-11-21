@@ -229,6 +229,15 @@ export const ENEMY_DRAW = {
 // ── 그림 파일 (만화풍 일러스트) ────────────────────────────
 // www/img/manifest.json에 적힌 그림만 불러온다. 군별 10병과가 모두 준비된 군별만 그림 파일을 쓰고,
 // 아니면 위의 코드 그림을 쓴다(한 화면에 두 그림체가 섞이지 않게). 파일 이름: units/<군별>_<병과>.webp, enemy_<종류>.webp
+// ── 새 그림체 미리보기(기준 화면, 2026-11-21) ──────────────────
+// 주소에 ?art=2 를 붙이면 유닛(동물)·적(고철 군단)·배경을 한 그림체(E 광택 캐주얼풍)로 그린다. 그림은 www/img/v2/ (만드는 법: art/ref/jobs.py).
+// 아직 군별마다 기본 병과 4종의 대기 그림만 있어, 조합 병과·용사·스킨·계급대는 첫 병과의 기본 그림을 빌려 쓴다. 확정되면 나머지를 그려 이 모드를 기본으로 바꾼다.
+export const V2 = typeof location !== 'undefined' && /[?&]art=2\b/.test(location.search);
+const V2_UNITS = ['army', 'navy', 'marine', 'sf', 'air', 'police'].flatMap(b => ['inf', 'art', 'med', 'sig'].map(c => `v2/units/${b}_${c}`));
+const V2_PROPS = ['tree', 'bush', 'mushroom', 'rock', 'acorns', 'sign', 'fence', 'flowers', 'stump', 'sacks', 'flag', 'barrel'].map(n => 'v2/prop_' + n);
+const V2_LIST = [...V2_UNITS, ...V2_PROPS, 'v2/ground', 'v2/road', ...['normal', 'fast', 'armor', 'elite', 'boss'].map(k => 'v2/enemy_' + k)];
+export const v2Art = name => art['v2/' + name] || null;
+
 const art = {};                 // 이름 → 불러온 Image
 export const artState = { version: 0 };   // 그림이 새로 준비될 때마다 올라간다 (캐시 키에 넣어 다시 그리게 함)
 const fullBranch = new Set();
@@ -240,6 +249,7 @@ function loadOne(name) {
 const loading = new Set();
 // 시작할 때는 메뉴와 전장에 바로 필요한 것(군별 기본 대기 그림, 적)만 읽는다
 export function loadArt() {
+  if (V2) { for (const name of V2_LIST) loadOne(name); return; }
   fetch('img/manifest.json').then(r => (r.ok ? r.json() : [])).then(list => {
     artList = list; const byBranch = {};
     for (const name of list) { const m = /^units\/([a-z]+)_[a-z-]+$/.exec(name); if (m) byBranch[m[1]] = (byBranch[m[1]] || 0) + 1; }   // 공격(_atk)·계급대(_t1 …) 그림은 세지 않는다
@@ -261,10 +271,10 @@ export function unitArtName(branchId, type, grp = 0) {
 }
 // 지금 쓰이는 그림이 몇 번째 계급대용인지 (0이면 기본 그림)
 export const unitArtTier = (branchId, type, grp = 0) => { const m = /_t(\d)$/.exec(unitArtName(branchId, type, grp)); return m ? +m[1] : 0; };
-const unitArt = (branchId, type, grp = 0) => (fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp)] : null) || null;
+const unitArt = (branchId, type, grp = 0) => (V2 ? art[`v2/units/${branchId}_${type[0]}`] : fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp)] : null) || null;
 // 공격 자세 그림(<이름>_atk): 지금 쓰는 대기 그림과 짝이 맞는 것이 있을 때만
-export const unitAtkImage = (branchId, type, grp = 0) => (fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
-export const enemyArt = kind => art['enemy_' + kind] || null;
+export const unitAtkImage = (branchId, type, grp = 0) => (!V2 && fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
+export const enemyArt = kind => (V2 ? art['v2/enemy_' + (/^boss/.test(kind) ? 'boss' : kind)] : art['enemy_' + kind]) || null;
 export const hasArt = name => !!art[name];     // 그림 파일이 준비됐는지 (도감에서 <img> 주소를 고를 때 쓴다)
 
 // ── 그림 캐시: 같은 그림은 한 번만 그려 두고 복사한다 ───────────

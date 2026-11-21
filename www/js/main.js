@@ -3,7 +3,8 @@ import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, GROUP_OF_LEVEL, HEROES, COMMEN
 import * as C from './core.js';
 import * as M from './meta.js';
 import { draw, areaColors, setSkin } from './render.js';
-import { insigUrl, hasArt, unitArtName, loadBranchArt } from './sprites.js';
+import { insigUrl, hasArt, unitArtName, loadBranchArt, V2 } from './sprites.js';
+if (V2) { document.documentElement.classList.add('v2'); const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'v2.css'; document.head.appendChild(l); }      // 새 그림체 미리보기(?art=2): 글꼴과 화면 틀도 같이 바꾼다
 import { Ads, Store } from './monetize.js';
 import { Net } from './net.js';
 import { initLayout } from './layout.js';
@@ -145,6 +146,7 @@ let rankReq = 0;
 function applySkin() { const s = M.skinOf(meta); setSkin(s.filter, s.art); if (s.art) loadBranchArt(s.art); document.documentElement.style.setProperty('--skin', s.filter || 'none'); }
 // 유닛 초상(카드·결과 화면): 용사 전용 그림 → 내 스킨 그림 → 군별·계급대 그림
 function unitPic(b, u) {
+  if (V2) return `img/v2/units/${b.id}_${u.type[0]}.webp`;      // 새 그림체 미리보기: 기본 병과 그림만 있다
   const h = C.heroOf(u), hn = h && `units/hero_${h.id}${u.level > h.level ? 'aw' : ''}`; if (hn && hasArt(hn)) return `img/${hn}.webp`;
   const sk = M.skinOf(meta).art, sn = sk && !h && (!g || !g.duo || C.own(g, u)) && `units/${sk}_${C.typeKey(u.type).replace('+', '-')}`; if (sn && hasArt(sn)) return `img/${sn}.webp`;
   return unitSrc(b, u.type, C.rankGroup(b, u));
@@ -848,7 +850,7 @@ function renderHud() {
   // 주둔지 땅과 건물 판은 지금 지역의 전장과 같은 색
   if (hudVal.area !== g.area + bossAt) { hudVal.area = g.area + bossAt; const col = areaColors(g.area), st = $('app').style; st.setProperty('--g1', col.ground[0]); st.setProperty('--g2', col.ground[1]); st.setProperty('--p1', col.pad[0]); st.setProperty('--p3', col.pad[3]);
     // 이 지역 보스 안내 (세로로 긴 화면에서만 보인다)
-    const n = g.area + 1, f = hasArt('enemy_boss' + n) ? 'enemy_boss' + n : 'enemy_boss'; $('brief-img').src = `img/${f}.webp`;
+    const n = g.area + 1, f = V2 ? 'v2/enemy_boss' : hasArt('enemy_boss' + n) ? 'enemy_boss' + n : 'enemy_boss'; $('brief-img').src = `img/${f}.webp`;
     $('brief-w').textContent = `${bossAt} · ${ar.name}`; $('brief-t').textContent = ar.boss.name; $('brief-s').textContent = ar.boss.text; }
   putOff('b-camp', maxed || g.gold < cc);
   put('c-pick', `보급병 ${g.depot}/${C.CFG.depotMax}`);

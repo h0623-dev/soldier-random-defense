@@ -262,7 +262,7 @@ export function summon(g, at = -1) {
 }
 const BR = Object.fromEntries(BRANCHES.map(b => [b.id, b]));
 const pickBranch = g => g.only || BRANCHES[Math.floor(g.rand() * BRANCHES.length)].id;      // 새 유닛의 군별: 여섯 가운데 무작위
-function placeUnit(g, slot, level, type, hidden = null, bid = pickBranch(g)) {
+export function placeUnit(g, slot, level, type, hidden = null, bid = pickBranch(g)) {
   const u = { id: g.uid++, slot, level, type, hidden, b: bid, o: g.duo ? g.duo.cur : 0, cd: 0.2, haste: 0, dmgUp: 0, rangeUp: 0, padH: 0, padR: 0, padC: 0, fireT: 0, atkT: 0, faceL: false, stunT: 0, burnT: 0, burn: 0, dealt: 0,
     stats: unitStats(BR[bid] || g.branch, level, type, g.meta, g.up), flash: 0.5 };
   if (hidden) { if (heroDef(hidden)) { if (level === heroDef(hidden).level) g.heroGot++; u.skT = 2; } else g.hiddenGot++; g.log.push({ t: 'hidden', id: hidden }); }
@@ -463,8 +463,13 @@ function startWave(g) {
     if (isMe) { g.log.push({ t: 'depot', gold, sup }); if (g.fx) g.effects.push({ txt: `보급 +${gold}`, x: FIELD.w * 0.7, y: FIELD.h - 34, t: 1.6 }); }
   });
 }
-// 돌려주는 값: 실제로 깎은 체력 (누적 피해 기록용). o = 때린 유닛의 주인(협동)
-function hit(g, e, dmg, o = 0) {
+const numText = n => { n = Math.round(n); return n < 1e4 ? String(n) : n < 1e8 ? (n / 1e4).toFixed(n < 1e5 ? 1 : 0).replace(/\.0$/, '') + '만' : (n / 1e8).toFixed(n < 1e9 ? 1 : 0).replace(/\.0$/, '') + '억'; };
+function dmgNum(g, e) {
+  if (g.effects.length < 110 && e.numAcc >= 0.5) g.effects.push({ num: e.numAcc, s: numText(e.numAcc), crit: !!e.numCrit, x: e.x + ((e.id * 37 + Math.round(e.numAcc)) % 17) - 8, y: e.y - 26, t: 0.75 });
+  e.numAcc = 0; e.numCrit = false; e.numT = 0.2;
+}
+// 돌려주는 값: 실제로 깎은 체력 (누적 피해 기록용). o = 때린 유닛의 주인(협동). crit = 치명타(피해 숫자 표시용)
+function hit(g, e, dmg, o = 0, crit = false) {
   const k = e.skill;
   if (k) {      // 보스 방어 능력
     if (k.id === 'evade' && g.rand() < k.p) { if (g.fx) g.effects.push({ txt: '회피', x: e.x, y: e.y - 30, t: 0.6, small: true }); return 0; }
@@ -474,6 +479,9 @@ function hit(g, e, dmg, o = 0) {
   if (e.kind === 'boss') dmg *= 1 + cmOf(metaOf(g, o), 'boss') / 100;      // 무공 표창
   const full = dmg * (1 + (e.vulnT > 0 ? e.vuln : 0)), real = Math.max(0, Math.min(full, e.hp));
   e.hp -= full;
+  if (g.fx && real > 0) {      // 화면용: 맞은 적이 번쩍이고 피해 숫자가 뜬다. 숫자는 적마다 0.2초에 한 번, 그 사이 피해는 모아서 보여 준다
+    e.hitT = 0.12; e.numAcc = (e.numAcc || 0) + real; if (crit) e.numCrit = true;
+    if (!(e.numT > 0) || e.hp <= 0) dmgNum(g, e); }
   if (e.hp <= 0 && !e.dead) {
     e.dead = true; g.kills++;
     if (e.kind === 'boss') { each(g, () => { g.supply += CFG.bossSupply; }); g.bossKills++; if (g.bossTimer >= g.bossT0 - FAST_BOSS) g.fastBoss++; if (g.mode === 'rush') g.rushNext = true; }
@@ -694,7 +702,7 @@ export function step(g, dt) {
       if (st.slow > 0) { const s = e.kind === 'boss' || e.kind === 'elite' ? st.slow / 2 : st.slow; if (s >= e.slow || e.slowT <= 0) { e.slow = s; e.slowT = 1.5; } }
       if (st.vuln > 0 && (st.vuln >= e.vuln || e.vulnT <= 0)) { e.vuln = st.vuln; e.vulnT = Math.max(e.vulnT, st.vulnDur); }
       if (st.dot > 0 && !(e.dotT > 0 && e.dot > base * st.dot)) { e.dot = base * st.dot; e.dotT = st.dotDur; e.dotBy = u.id; e.dotC = u.type; e.dotO = u.o; if (!(e.dotTk > 0)) e.dotTk = 0.5; }
-      credit(g, u, u.type, hit(g, e, dmg, u.o), u.o);
+      credit(g, u, u.type, hit(g, e, dmg, u.o, crit || big), u.o);
     }
     if (hk && hk.id === 'fire') g.zones.push({ x: target.x, y: target.y, r: hk.r, t: hk.dur, tk: 0.5, dps: base * sv(u, hk.dps), uid: u.id, c: u.type, o: u.o });      // 불바다: 맞은 자리에 화염 지대
     if (g.fx) { u.fireT = 0.16; u.atkT = 0.3; u.faceL = target.x < p.x;      // atkT 동안 공격 자세 그림을 보여 준다 (faceL: 표적이 왼쪽)
@@ -709,7 +717,8 @@ export function step(g, dt) {
     g.zones = g.zones.filter(z => z.t > 0);
   }
   if (g.enemies.some(e => e.dead)) g.enemies = g.enemies.filter(e => !e.dead);
-  if (g.fx) { for (const f of g.effects) f.t -= dt; g.effects = g.effects.filter(f => f.t > 0); }
+  if (g.fx) { for (const f of g.effects) f.t -= dt; g.effects = g.effects.filter(f => f.t > 0);
+    for (const e of g.enemies) { if (e.hitT > 0) e.hitT -= dt; if (e.numT > 0 && (e.numT -= dt) <= 0 && e.numAcc > 0) dmgNum(g, e); } }
   // 승패
   const boss = g.enemies.some(e => e.kind === 'boss');
   if (boss) { g.bossTimer -= dt; if (g.bossTimer <= 0) g.over = { win: false, reason: '보스를 제한 시간 안에 막지 못했습니다' }; }
