@@ -198,6 +198,17 @@ export const BRANCHES = [
   },
 ];
 
+// 캐릭터 이름: 군별 × 병종마다 하나(60명). 한 캐릭터는 훈련병에서 원수까지 같은 이름으로 진급한다. 동물에 맞춰 지었다 — 풀이는 docs/PLAN_NAMES.md
+const NAMES = {
+  army: { 'inf': '바둑이', 'art': '누렁이', 'med': '흰둥이', 'sig': '쫑긋이', 'inf+art': '멍구', 'inf+med': '복실이', 'inf+sig': '킁킁이', 'art+med': '코코', 'art+sig': '말똥이', 'med+sig': '달리' },
+  navy: { 'inf': '첨벙이', 'art': '파도', 'med': '방울이', 'sig': '빙글이', 'inf+art': '물총이', 'inf+med': '튜브', 'inf+sig': '돌돌이', 'art+med': '성게', 'art+sig': '뚜뚜', 'med+sig': '물보라' },
+  marine: { 'inf': '덥석이', 'art': '우지끈', 'med': '토닥이', 'sig': '쩌렁이', 'inf+art': '쿵쾅이', 'inf+med': '든든이', 'inf+sig': '살금이', 'art+med': '늪돌이', 'art+sig': '번쩍이', 'med+sig': '영차' },
+  sf: { 'inf': '호야', 'art': '우르릉', 'med': '솜발', 'sig': '속닥이', 'inf+art': '쾅이', 'inf+med': '눈송이', 'inf+sig': '한방이', 'art+med': '조심이', 'art+sig': '번개', 'med+sig': '사뿐이' },
+  air: { 'inf': '보라', 'art': '하늘이', 'med': '깃털이', 'sig': '삐삐', 'inf+art': '쌩쌩이', 'inf+med': '날개', 'inf+sig': '매눈이', 'art+med': '뚝딱이', 'art+sig': '돌풍', 'med+sig': '구름이' },
+  police: { 'inf': '수리', 'art': '듬직이', 'med': '포근이', 'sig': '치직이', 'inf+art': '부리부리', 'inf+med': '수호', 'inf+sig': '호루', 'art+med': '차분이', 'art+sig': '으뜸이', 'med+sig': '찾음이' },
+};
+for (const b of BRANCHES) b.names = NAMES[b.id];
+
 // 부대 표창: 전투 밖에서 모으는 영구 효과(모든 판에 적용). 같은 표창을 여러 장 모으면 단계가 오른다 — CM_NEED[n]장째에 n+1단계, 최고 5단계.
 //  per: 단계당 효과 값 · vals: 단계별 값을 따로 적을 때 · branch: 그 군별로 출격할 때만 적용
 export const CM_NEED = [1, 3, 6, 10, 15];

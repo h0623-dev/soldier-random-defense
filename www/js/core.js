@@ -401,6 +401,9 @@ export const rankInsig = (branch, u) => (hiddenDef(branch, u.hidden) || {}).insi
 // 계급대: 계급장 모양으로 나눈 5단계 (0 병 · 1 부사관 · 2 위관 · 3 영관 · 4 장성). 겉모습과 그림이 이 단계에 따라 달라진다
 export const rankGroup = (branch, u) => { const h = hiddenDef(branch, u.hidden); return h && h.grp != null ? h.grp : GROUP_OF_LEVEL[Math.min(u.level, GROUP_OF_LEVEL.length - 1)]; };
 export const rankName = (branch, u) => (hiddenDef(branch, u.hidden) || {}).name || rankOf(branch, u.level, typeKey(u.type))[0];
+// 캐릭터 이름(바둑이 · 첨벙이 …). 용사는 용사 이름. 병종 이름(보병 · 갑판병 …)은 typeName
+export const typeName = (branch, u) => branch.types[typeKey(u.type)][0];
+export const charName = (branch, u) => (heroOf(u) || {}).name || branch.names[typeKey(u.type)];
 export const unitName = (branch, u) => `${rankName(branch, u)} ${branch.types[typeKey(u.type)][0]}`;
 export const unitWeapon = (branch, u) =>
   branch.types[typeKey(u.type)][1][u.level >= branch.tiers[1] ? 2 : u.level >= branch.tiers[0] ? 1 : 0];

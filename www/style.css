@@ -406,3 +406,8 @@ img.u { filter: var(--skin, none); }
 .gtag { display: inline-block; padding: 0.05rem 0.7rem; border-radius: 0.8rem; border: 0.15rem solid var(--ink); font-size: 1.1rem; font-weight: 900; color: #10140e; } .unit h3 .mlv { font-style: normal; font-size: 1.1rem; font-weight: 800; color: #b96a00; }
 #info.c2 .unit h3 { font-size: 1.6rem; } #info.c2 .unit small.uline { font-size: 1.1rem; margin-bottom: 0; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
 
+/* ── 캐릭터 이름: 큰 글씨 이름 옆에 작은 글씨로 병종 ── */
+.unit h3 .tname { font-size: 1.2rem; font-weight: 800; color: var(--mute); } #info.c2 .unit h3 .tname { font-size: 1.1rem; }
+.ci small u { display: block; text-decoration: none; font-weight: 700; font-size: 1rem; color: var(--mute); } .card.mvp b em { font-style: normal; font-size: 0.6em; font-weight: 800; color: var(--mute); }
+.wcard b + small, .ucard small { color: var(--mute); }
+

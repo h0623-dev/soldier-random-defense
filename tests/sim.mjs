@@ -438,6 +438,12 @@ console.log('규칙·데이터 검사 통과');
   const d = C.createDuo({ players: [{ meta: {} }, { meta: {} }], seed: 9, fx: false }); d.duo.ps[0].gold = d.duo.ps[1].gold = 1000;
   assert.equal(C.exec(d, 0, ['summon', 20]), null, '협동: 동료의 칸에는 소집할 수 없다'); assert.equal(C.exec(d, 1, ['summon', 20]).slot, 20); assert.equal(C.exec(d, 0, ['summon', 2]).o, 0);
 }
+// 3-17) 캐릭터 이름: 군별 × 병종 60명이 모두 이름이 있고 서로 겹치지 않는다. 등급이 올라도 이름은 그대로, 용사는 용사 이름
+{
+  const all = BRANCHES.flatMap(b => C.TYPE_KEYS.map(k => b.names[k])); assert.equal(all.length, 60); assert.ok(all.every(n => typeof n === 'string' && n.length >= 2 && n.length <= 4)); assert.equal(new Set(all).size, 60, '이름이 겹친다');
+  const army = BRANCHES[0]; assert.equal(C.charName(army, { level: 0, type: ['inf', 'inf'], hidden: null }), '바둑이'); assert.equal(C.charName(army, { level: 6, type: ['inf', 'inf'], hidden: null }), '바둑이');
+  assert.equal(C.charName(army, { level: 5, type: ['inf', 'art'], hidden: 'storm' }), '강철비'); assert.equal(C.typeName(army, { level: 0, type: ['art', 'inf'], hidden: null }), '박격포병');
+}
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
 if (process.env.HERO === '0') C.setHeroes(false);      // 용사 없이 돌려 비교
 if (process.env.SKILL === '0') C.setSkills(false);     // 병과 고유 기술 없이 돌려 비교
