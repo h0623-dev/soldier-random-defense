@@ -133,9 +133,17 @@ function insigSize([shape, n]) {
 function vee(c, cx, top) { c.beginPath(); c.moveTo(cx - 4, top); c.lineTo(cx, top + 3.8); c.lineTo(cx + 4, top); c.stroke(); }
 function flower(c, x, y, r, center) { for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; c.beginPath(); c.arc(x + Math.cos(a) * r * 1.24, y + Math.sin(a) * r * 1.24, r, 0, 7); c.fill(); }
   c.fillStyle = center; c.beginPath(); c.arc(x, y, r * 0.68, 0, 7); c.fill(); }
+// 새 그림체의 계급장 기호 그림(막대 · V자 · 다이아몬드 · 금 다이아몬드 · 꽃 · 별 · 봉오리 · 큰 꽃). 여덟 장이 다 읽혔을 때만 쓴다(그 전에는 아래 코드 그림)
+const INSIG_ART = { bar: 'in_bar', chev: 'in_chev', chevstar: 'in_chev', dia: 'in_dia', gdia: 'in_gdia', flower: 'in_flower', star: 'in_star', bud: 'in_bud', tflower: 'in_tflower' };
+export const insigReady = () => V2 && ['in_bar', 'in_chev', 'in_dia', 'in_gdia', 'in_flower', 'in_star', 'in_bud', 'in_tflower'].every(n => !!v2Art(n));
 // (x, y)를 내용의 왼쪽 위로 하여 계급장을 그린다
 function drawInsig(c, insig, x, y) {
   const [shape, n] = insig, [w, h] = insigSize(insig); c.fillStyle = c.strokeStyle = INSIG_COL[shape];
+  if (insigReady()) { const im = v2Art(INSIG_ART[shape]), at = (cx, cy, sz, pic = im) => c.drawImage(pic, cx - sz / 2, cy - sz / 2, sz, sz);      // 기호 그림을 예전과 같은 자리·개수로 놓는다
+    if (shape === 'bar') for (let i = 0; i < n; i++) at(x + 4.5, y + 0.95 + i * 3.1, 9.6);
+    else if (shape === 'chev' || shape === 'chevstar') { for (let i = 0; i < n; i++) at(x + 4.7, y + 2.3 + i * 3.3, 9.4); if (shape === 'chevstar') at(x + 9.4 + 4.4, y + h / 2, 9.4, v2Art('in_star')); }
+    else for (let i = 0; i < n; i++) at(x + (shape === 'tflower' ? 5 : shape === 'bud' ? 3 : 4) + i * SIDE_STEP[shape], y + h / 2, shape === 'tflower' ? 11.4 : shape === 'bud' ? 8.6 : 10);
+    return; }
   if (shape === 'bar') for (let i = 0; i < n; i++) rr(c, x, y + i * 3.1, 9, 1.9, 0.9), c.fill();
   else if (shape === 'chev' || shape === 'chevstar') { c.lineWidth = 1.9; c.lineJoin = 'miter'; c.lineCap = 'round';
     for (let i = 0; i < n; i++) vee(c, x + 4.7, y + 0.4 + i * 3.3);
@@ -152,7 +160,7 @@ const badgeSize = insig => { const [w, h] = insigSize(insig); return w ? [w + 7.
 // 도감 등 HTML 화면에서 쓸 계급장 그림 (data URL, 한 번 만들어 두고 다시 쓴다). 계급장이 없는 계급(훈련병)은 투명한 점 하나
 const insigUrls = {};
 export function insigUrl(insig) {
-  const key = insig.join('');
+  const key = insig.join('') + (insigReady() ? ':i' : '');      // 기호 그림이 읽힌 뒤에는 그림으로 다시 만든다
   if (!insigUrls[key]) {
     const [w, h] = badgeSize(insig), k = 4, [cw, ch] = insigSize(insig);
     const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.ceil(w * k)); cv.height = Math.max(1, Math.ceil((h || 15) * k));

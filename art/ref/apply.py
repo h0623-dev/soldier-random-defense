@@ -148,6 +148,17 @@ def cut_tight(sheet, cols, rows, names, maxw):
 cut_tight('uikit', 4, 3, 'ui_btn_green ui_btn_gold ui_btn_blue ui_btn_red ui_btn_gray ui_btn_purple ui_panel ui_wood ui_ribbon ui_plaque ui_cardback ui_cardfront'.split(), 256)
 p = os.path.join(RAW, 'title.png')
 if os.path.exists(p): Image.open(p).convert('RGB').resize((768, 1152), Image.LANCZOS).save(os.path.join(OUT, 'title.webp'), quality=84); print('title')
+# 7차: 화면 틀 조각 · 지역별 발판 타일(+ 사거리 고리) · 선택 표시와 계급장 기호
+cut_tight('uikit2', 4, 3, 'ui_pill ui_sq ui_bar ui_plank ui_trough ui_fill_gold ui_fill_red ui_fill_green ui_sq_green ui_sq_tan ui_sq_blue ui_sq_purple'.split(), 256)
+cut('tiles', 4, 3, ['tile_' + t for t in THEMES] + ['ring_sel', 'ring_aura'], 256, pad=0, center=True)
+cut('marks2', 4, 3, 'hl_merge hl_rand hl_star hl_sel in_bar in_chev in_dia in_gdia in_flower in_star in_bud in_tflower'.split(), 192, pad=0.02, center=True)
+# 선택 틀 · 사거리 고리: 틀 안쪽의 흰 바탕은 틀에 막혀 지워지지 않는다 → 흰 픽셀을 어디에 있든 투명하게
+for n in 'hl_merge hl_rand hl_star hl_sel ring_sel ring_aura'.split():
+    f = os.path.join(OUT, n + '.webp')
+    if os.path.exists(f):
+        im = Image.open(f).convert('RGBA'); a = np.array(im).astype(np.int16); mn, mx = a[:, :, :3].min(2), a[:, :, :3].max(2)
+        key = np.clip((mn - 226) / 22, 0, 1) * (mx - mn < 26)      # 밝고 색이 없는 정도(0~1)
+        a[:, :, 3] = (a[:, :, 3] * (1 - key)).astype(np.int16); Image.fromarray(a.astype(np.uint8)).save(f, quality=92)
 # 크림색 버튼(기본 버튼): 회색 버튼의 밝기를 크림색으로 옮겨 만든다(윤곽선은 짙은 갈색 그대로)
 _g = os.path.join(OUT, 'ui_btn_gray.webp')
 if os.path.exists(_g):

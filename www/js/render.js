@@ -1,7 +1,7 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
 import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig, mergePreview, heroOf, branchOf, charName, mine, own } from './core.js';
-import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitRdyImage, v2HeroArt, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art, v2Has } from './sprites.js';
+import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitRdyImage, v2HeroArt, insigReady, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art, v2Has } from './sprites.js';
 loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
@@ -104,7 +104,8 @@ function background2(k, area, map) {
   const want = AREAS[area].theme, th = v2Has('ground_' + want) ? want : 'meadow', P = V2_THEME[th], pth = v2Has(`prop_${th}_b1`) ? th : 'meadow';
   const G = v2Art('ground_' + th), RD = v2Art(v2Has('road_' + th) ? 'road_' + th : 'road_meadow');
   const big = [1, 2, 3, 4, 5, 6].map(i => `prop_${pth}_b${i}`), small = [1, 2, 3, 4, 5, 6].map(i => `prop_${pth}_s${i}`).filter(v2Has);
-  const ready = [G, RD, v2Art('prop_flag'), ...big.map(v2Art), ...small.map(v2Art)].filter(Boolean).length;
+  const TI = v2Art('tile_' + th);      // 발판 타일 그림(지역마다 한 장)
+  const ready = [G, RD, TI, v2Art('prop_flag'), ...big.map(v2Art), ...small.map(v2Art)].filter(Boolean).length;
   const key = 'v2:' + area + ':' + th + ':' + (map.id || '') + '@' + k.toFixed(3) + ':' + ready; if (bg && bgKey === key) return bg;
   if (!bg) bg = document.createElement('canvas');
   bg.width = Math.ceil(FIELD.w * k); bg.height = Math.ceil(FIELD.h * k); bgKey = key;
@@ -140,6 +141,7 @@ function background2(k, area, map) {
   c.fillStyle = P.grout; for (const s of map.slots) cell(s, 0, 0);                               // 윗면(타일 사이 줄눈)
   for (const s of map.slots) { const x = s.x - hw + 3.5, y = s.y - hh - 8 + 3.5, w = CELL.w - 7, alt = (s.r + s.c) % 2;
     c.fillStyle = P.lip; rr(c, x, y + 2.5, w, w, 13); c.fill();                                       // 타일 아랫단
+    if (TI) { c.drawImage(TI, x, y, w, w - 2); if (alt) { c.fillStyle = 'rgba(60,40,20,.07)'; rr(c, x, y, w, w - 2, 13); c.fill(); } c.fillStyle = P.lip; c.globalAlpha = 0.16; c.beginPath(); c.ellipse(s.x, s.y + FEET - 4, 33, 12.5, 0, 0, 7); c.fill(); c.globalAlpha = 1; continue; }      // 타일 그림(칸이 번갈아 살짝 어둡다)
     const tg = c.createLinearGradient(0, y, 0, y + w); tg.addColorStop(0, P.tile[alt ? 2 : 0]); tg.addColorStop(1, P.tile[alt ? 3 : 1]);
     c.fillStyle = tg; rr(c, x, y, w, w - 2, 13); c.fill();
     c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(x + 13, y + 3); c.lineTo(x + w - 13, y + 3); c.stroke();
@@ -313,20 +315,27 @@ export function draw(ctx, g, ui, quality = 2) {
   SLOTS.forEach((s, i) => {
     const x = s.x - CELL.w / 2 + 4, y = s.y - CELL.h / 2 - 4, mergeable = sel && i !== ui.sel && canMerge(g, ui.sel, i);
     // 조합할 수 있는 칸: 같은 병과(병과 유지)는 노란색, 다른 병과(무작위)는 보라색 점선
-    if (mergeable) { const pv = mergePreview(g, ui.sel, i), keep = !pv.random, star = !!pv.hidden, a = 0.32 + 0.18 * Math.sin(now * 6);
+    const cy = s.y - 8;      // 칸 가운데 높이
+    if (mergeable && V2 && v2Art('hl_merge') && v2Art('hl_rand') && v2Art('hl_star')) { const pv = mergePreview(g, ui.sel, i), a = 0.32 + 0.18 * Math.sin(now * 6);      // 새 그림체: 조합할 수 있는 칸에 빛나는 틀 그림(같은 병과 = 금색 · 다른 병과 = 보라 점선 · 용사/히든 = 별 달린 붉은 틀)
+      ctx.fillStyle = pv.hidden ? `rgba(255,120,80,${a * 0.7})` : !pv.random ? `rgba(255,212,94,${a * 0.7})` : `rgba(190,150,255,${a * 0.55})`; rr(ctx, x + 2, y + 2, CELL.w - 12, CELL.h - 12, 12); ctx.fill();
+      fx(ctx, pv.hidden ? 'hl_star' : !pv.random ? 'hl_merge' : 'hl_rand', s.x, cy, 104 + 3 * Math.sin(now * 6), 0, 0.82 + 0.18 * Math.sin(now * 6)); }
+    else if (mergeable) { const pv = mergePreview(g, ui.sel, i), keep = !pv.random, star = !!pv.hidden, a = 0.32 + 0.18 * Math.sin(now * 6);
       ctx.fillStyle = star ? `rgba(255,120,80,${a})` : keep ? `rgba(255,212,94,${a})` : `rgba(190,150,255,${a * 0.8})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill();
       ctx.strokeStyle = star ? '#ff5a4a' : keep ? '#ffd45e' : '#c9a3ff'; ctx.lineWidth = star ? 5 : 4; if (!keep) ctx.setLineDash([9, 7]); ctx.stroke(); ctx.setLineDash([]);
       if (star) starAt(ctx, s.x + 34, s.y - 42, 11 + 2 * Math.sin(now * 6), '#ffd45e'); }      // 용사·히든 조합이 되는 짝: 붉은 테두리와 별
+    else if (sel && i === ui.sel && fx(ctx, 'hl_sel', s.x, cy, 104)) { /* 고른 칸: 하늘색 틀 그림 */ }
     else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.stroke(); }
     else if (!sel) { const u = g.units[i]; if (u && own(g, u) && pairN[branchOf(g, u).id + u.level] >= 2) {
+      if (fx(ctx, 'hl_merge', s.x, cy, 98, 0, 0.42 + 0.2 * Math.sin(now * 4))) return;      // 짝이 있는 칸: 금색 틀 그림을 옅게
       ctx.strokeStyle = `rgba(255,224,110,${0.55 + 0.25 * Math.sin(now * 4)})`; ctx.lineWidth = 3; ctx.setLineDash([7, 6]); rr(ctx, x + 2, y + 2, CELL.w - 12, CELL.h - 12, 11); ctx.stroke(); ctx.setLineDash([]); } }
   });
   // 선택 유닛 사거리 · 지원 범위 (바닥에 눕힌 원)
   if (sel) {
     const p = SLOTS[sel.slot];
     ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(p.x, p.y, unitRange(sel), 0, 7); ctx.fill(); ctx.stroke();
-    if ((sel.hidden && !heroOf(sel)) || sel.stats.haste > 0) { ctx.strokeStyle = sel.hidden ? '#ffd45e' : CLASS_INFO.med.color; ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.arc(p.x, p.y, unitRange(sel), 0, 7); ctx.fill(); if (!fx(ctx, 'ring_sel', p.x, p.y, unitRange(sel) * 2.06, now * 0.15, 0.9)) ctx.stroke();      // 사거리: 천천히 도는 점선 고리 그림
+    if (((sel.hidden && !heroOf(sel)) || sel.stats.haste > 0) && fx(ctx, 'ring_aura', p.x, p.y, CFG.auraRadius * 2.06, -now * 0.2, 0.9)) { /* 지원 범위: 연두색 점선 고리 그림 */ }
+    else if ((sel.hidden && !heroOf(sel)) || sel.stats.haste > 0) { ctx.strokeStyle = sel.hidden ? '#ffd45e' : CLASS_INFO.med.color; ctx.setLineDash([6, 6]);
       ctx.beginPath(); ctx.arc(p.x, p.y, CFG.auraRadius, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   }
   // 화염 지대(불바다): 바닥에서 일렁이는 불
@@ -434,7 +443,10 @@ function enemy(ctx, e, k, quality) {
   if (bubble) fx(ctx, 'st_bubble', e.x, e.y - 2 - fly, half * 2.7, 0, 0.6 + 0.12 * Math.sin(performance.now() / 120));
   if (V2 && e.hitT > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, e.hitT / 0.12) * 0.75; put(ctx, ef, e.x - half, e.y - half + by - fly); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }      // 맞는 순간 밝게 번쩍
   if (V2) { const bw = Math.max(26, r * 1.7), bx = e.x - bw / 2, byy = Math.max(4, e.y - half - 9 - fly), hp = Math.max(0, e.hp / e.maxHp);      // 체력 막대: 둥근 테두리, 체력이 줄면 초록 → 노랑 → 빨강
-    if (hp < 1 || e.kind === 'boss' || elite) { ctx.fillStyle = '#2b1a0c'; rr(ctx, bx - 2, byy - 2, bw + 4, 9, 4.5); ctx.fill(); ctx.fillStyle = '#5a4634'; rr(ctx, bx, byy, bw, 5, 2.5); ctx.fill();
+    const tr = v2Art('ui_trough'), fl = v2Art(hp > 0.5 ? 'ui_fill_green' : hp > 0.25 ? 'ui_fill_gold' : 'ui_fill_red');
+    if ((hp < 1 || e.kind === 'boss' || elite) && tr && fl) { ctx.drawImage(tr, bx - 2.5, byy - 2.5, bw + 5, 10);      // 체력 막대: 막대 틀 그림 안에 남은 만큼 색 막대 그림(체력이 줄면 초록 → 노랑 → 빨강)
+      const fw = Math.max(0.06, hp); ctx.drawImage(fl, 0, 0, fl.naturalWidth * fw, fl.naturalHeight, bx, byy, bw * fw, 5); }
+    else if (hp < 1 || e.kind === 'boss' || elite) { ctx.fillStyle = '#2b1a0c'; rr(ctx, bx - 2, byy - 2, bw + 4, 9, 4.5); ctx.fill(); ctx.fillStyle = '#5a4634'; rr(ctx, bx, byy, bw, 5, 2.5); ctx.fill();
       ctx.fillStyle = hp > 0.5 ? '#6fe04a' : hp > 0.25 ? '#ffc93a' : '#ff5a44'; rr(ctx, bx, byy, Math.max(3, bw * hp), 5, 2.5); ctx.fill(); } }
   else { ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fillRect(e.x - r - 1, e.y - half - 4 - fly, r * 2 + 2, 6);
     ctx.fillStyle = '#7be36a'; ctx.fillRect(e.x - r, e.y - half - 3 - fly, r * 2 * Math.max(0, e.hp / e.maxHp), 4); }
@@ -678,7 +690,7 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
 function unitTags(ctx, b, u, p, k) {
   const tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u), tk = u.type.join('+');
   const o = { branchId: b.id, bname: b.name, bcol: b.color, nick: charName(b, u), type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u), gcol: GRADES[Math.min(u.level, GRADES.length - 1)].color };
-  const tkey = [b.id, tk, tier, rank, u.hidden || 0, o.insig.join('')].join(':');
+  const tkey = [b.id, tk, tier, rank, u.hidden || 0, o.insig.join(''), insigReady() ? 'i' : ''].join(':');
   ctx.drawImage(spriteBox('utb:' + tkey, k, BADGE_BOX, c => drawTag(c, o, 'badge')), p.x + BADGE_BOX[0], p.y + BADGE_BOX[1], BADGE_BOX[2] - BADGE_BOX[0], BADGE_BOX[3] - BADGE_BOX[1]);
   ctx.drawImage(spriteBox('utl:' + tkey, k, LABEL_BOX, c => drawTag(c, o, 'label')), p.x + LABEL_BOX[0], p.y + LABEL_BOX[1], LABEL_BOX[2] - LABEL_BOX[0], LABEL_BOX[3] - LABEL_BOX[1]);
 }
