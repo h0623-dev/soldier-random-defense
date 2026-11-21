@@ -392,3 +392,11 @@ img.u { filter: var(--skin, none); }
 .rec2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; } .rec2 div { padding: 0.9rem 0.4rem; text-align: center; border-radius: 1.4rem; border: var(--ln); background: var(--paper); box-shadow: 0 0.3rem 0 var(--ink); }
 .rec2 small { display: block; font-size: 1.15rem; font-weight: 800; color: var(--mute); } .rec2 b { display: block; font-size: 2.6rem; font-weight: 900; } .rec2 .top { background: #fff3c9; } .rec2 .top b { color: #b96a00; } .rec2 .none b { color: var(--soft); }
 
+/* ── 유닛 카드의 바로 조합 버튼 (같은 병과 조합 · 랜덤 조합). 짝이 없으면 회색으로 눌리지 않는다 ── */
+.acts.two { gap: 0.6rem; margin-bottom: 0.6rem; } .acts.two .btn { flex: 1; font-size: 1.4rem; white-space: nowrap; min-width: 0; padding: 0 0.5rem; gap: 0.4rem; } .acts.two .btn.primary { flex: 1; }
+.acts.two .btn b { display: inline-block; min-width: 2rem; padding: 0 0.5rem; border-radius: 9.9rem; background: var(--ink); color: #fff; font-size: 1.15rem; line-height: 1.6; }
+.btn.violet { background: #c9a6ff; } .btn.star { background: #ffb347; }
+.acts.two .btn:disabled { background: var(--soft); color: var(--mute); box-shadow: none; opacity: 1; }
+#info.c2 .acts.two { margin: 0.4rem 0 0; } #info.c2 .acts.two + .acts { margin-top: 0.4rem; } #info.c2 .acts.two .btn { height: 3.1rem; font-size: 1.25rem; box-shadow: 0 0.25rem 0 var(--ink); } #info.c2 .acts.three .btn { height: 3.1rem; box-shadow: 0 0.25rem 0 var(--ink); }
+#info.c2 .unit img.u { width: 3.4rem; height: 3.4rem; } #info.c2 .card { padding: 0.4rem 1rem 0.6rem; }
+

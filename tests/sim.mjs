@@ -429,6 +429,15 @@ console.log('규칙·데이터 검사 통과');
   const old = JSON.parse(JSON.stringify(sv)); delete old.only; old.branchId = 'marine'; for (const u of old.units) if (u) delete u.b;
   const lo = C.loadGame(old, {}); assert.equal(lo.only, 'marine'); assert.ok(lo.units.filter(Boolean).every(u => u.b === 'marine')); lo.gold = 1e5; lo.units[0] = null; const nu = C.summon(lo); assert.equal(nu.b, 'marine');
 }
+// 3-16) 원하는 칸에 소집: summon(g, 칸). 빈 내 칸이면 그 자리에, 찼거나 남의 칸이면 소집되지 않는다(돈도 안 든다)
+{
+  const g = C.createGame({ seed: 3, fx: false }); g.gold = 1000; const c0 = C.summonCost(g.branch, g.camp, g.meta);
+  const u = C.summon(g, 7); assert.equal(u.slot, 7); assert.equal(g.units[7], u); assert.equal(g.gold, 1000 - c0);
+  assert.equal(C.summon(g, 7), null, '찬 칸에는 소집되지 않는다'); assert.equal(g.gold, 1000 - c0); assert.equal(C.summon(g, 99), null);
+  const v = C.exec(g, 0, ['summon', 12]); assert.equal(v.slot, 12); const w = C.exec(g, 0, ['summon']); assert.ok(w && w.slot !== 7 && w.slot !== 12, '칸을 주지 않으면 빈 칸 가운데 무작위');
+  const d = C.createDuo({ players: [{ meta: {} }, { meta: {} }], seed: 9, fx: false }); d.duo.ps[0].gold = d.duo.ps[1].gold = 1000;
+  assert.equal(C.exec(d, 0, ['summon', 20]), null, '협동: 동료의 칸에는 소집할 수 없다'); assert.equal(C.exec(d, 1, ['summon', 20]).slot, 20); assert.equal(C.exec(d, 0, ['summon', 2]).o, 0);
+}
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
 if (process.env.HERO === '0') C.setHeroes(false);      // 용사 없이 돌려 비교
 if (process.env.SKILL === '0') C.setSkills(false);     // 병과 고유 기술 없이 돌려 비교

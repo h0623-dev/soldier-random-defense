@@ -95,6 +95,7 @@ function after(c, r) {
   infoKey = ''; const nm = u => C.unitName(C.branchOf(g, u), u), k = c[0];
   if (k === 'summon') {
     if (!r) { toast(C.hasFree(g) ? '군자금이 부족합니다' : '칸이 없습니다 — 같은 군별·등급끼리 조합하거나 짝 없는 유닛을 전역시키세요', 2600); Sound.play('deny'); }
+    else if (c[1] != null && !r.hidden && r.level <= g.camp && C.tileAt(g, r.slot)) { const t = C.tileAt(g, r.slot); toast(`${t.name} — ${t.text}`, 1800); Sound.play('summon'); }      // 특수 발판에 세웠으면 효과를 알려 준다
     else if (r.hidden) { toast(`히든 계급! ${nm(r)} 소집`); found(r); Sound.play('hidden'); }
     else { if (r.level > g.camp) toast(`행운! ${nm(r)} 소집`); Sound.play('summon'); }
   } else if (k === 'pick') { if (r) { toast(`${nm(r)} 소집`); Sound.play('summon'); } else { toast('보급품·군자금·빈 칸을 확인하세요'); Sound.play('deny'); } }
@@ -270,7 +271,7 @@ const ACT = {
     if (!M.spendEnergy(meta, Date.now())) return ACT.noenergy();      // 한 판에 행동력 1 (이어하기는 들지 않는다)
     saveMeta(); for (const x of BRANCHES) loadBranchArt(x.id); clearRun();
     g = C.createGame({ meta, diff: diffOpen(meta.diff) ? meta.diff : 0, mode: curMode() }); enter();
-    hide(); toast(g.mode === 'rush' ? `보스 러시 — ${C.CFG.rushPrep}초 뒤 첫 보스가 옵니다. 받은 군자금으로 부대를 꾸리세요` : '출격! 같은 군별 · 같은 등급끼리 조합하세요', g.mode === 'rush' ? 3200 : 1400);
+    hide(); toast(g.mode === 'rush' ? `보스 러시 — ${C.CFG.rushPrep}초 뒤 첫 보스가 옵니다. 받은 군자금으로 부대를 꾸리세요` : '빈 칸을 누르면 그 자리에 신병이 소집됩니다', g.mode === 'rush' ? 3200 : 1400);
   },
   cont() {      // 저장해 둔 게임 이어하기
     const run = peekRun(), loaded = run && C.loadGame(run.o, meta);
@@ -462,8 +463,8 @@ const ACT = {
   help() {
     show(`<h2>게임 방법</h2><div class="list">
       <p>털뭉치 마을에 <b>고철 군단</b>이 쳐들어왔습니다. 털뭉치 병사들을 소집하고 계급을 올려 100단계를 막아 내세요.</p>
-      <p><b>1. 신병 소집</b> — 군자금으로 유닛을 뽑습니다. <b>군별(육군·해군·해병대·특공대·공군·의경)과 병과가 무작위</b>로 정해집니다. 이름표 맨 앞의 네모 글자(육·해·병·특·공·경)가 군별입니다. 빈 발판 가운데 무작위 자리에 배치됩니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
-      <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 군별 · 같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 군별이 다르면 조합되지 않습니다. 짝이 있는 유닛의 칸에는 노란 점선이 둘러집니다. 칸이 꽉 찼는데 짝이 없으면 낮은 등급 유닛을 <b>전역</b>시켜 자리를 내세요. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
+      <p><b>1. 신병 소집</b> — <b>빈 칸을 누르면 그 자리에</b> 군자금으로 유닛을 뽑습니다(값은 아래 본부 건물에 적혀 있습니다). <b>군별(육군·해군·해병대·특공대·공군·의경)과 병과가 무작위</b>로 정해집니다. 이름표 맨 앞의 네모 글자(육·해·병·특·공·경)가 군별입니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
+      <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 군별 · 같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 군별이 다르면 조합되지 않습니다. 유닛을 누르면 카드에 <b>같은 병과 조합</b> · <b>랜덤 조합</b> 버튼이 나와, 짝이 있으면 바로 조합됩니다(짝이 없으면 회색). 발밑 <b>원판의 색</b>이 등급입니다. 짝이 있는 유닛의 칸에는 노란 점선이 둘러집니다. 칸이 꽉 찼는데 짝이 없으면 낮은 등급 유닛을 <b>전역</b>시켜 자리를 내세요. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
       <p><b>주둔지</b> — 전장 아래의 건물을 눌러 명령합니다. 왼쪽부터 <b>훈련소</b>(천막) · <b>병과 강화</b>(병기창) · <b>신병 소집</b>(연병장) · <b>보급창</b>(보급병 고용 · 선택 소집) · <b>특수 임무</b>(통신탑). 쓸 수 없는 건물은 흐리게 보이고, 특수 임무를 부를 수 있으면 통신탑이 빛납니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 등급이 올라갑니다(최고 영웅). 그 위 등급은 조합으로만 올립니다.</p>
       <p><b>병과 고유 기술</b> — 다른 병과끼리 조합할 때 나오는 특수 병과 6종은 저마다 고유 기술이 있습니다(연속 포격, 응급 처치, 조준 사격, 오염, 표적 지정, 지휘 통신). 유닛을 누르면 카드에 적혀 있습니다.</p>
@@ -658,7 +659,7 @@ canvas.addEventListener('pointerdown', e => {
   const i = g.map.slots.findIndex(s => Math.abs(s.x - x) <= C.CELL.w / 2 && Math.abs(s.y - y) <= C.CELL.h / 2);
   if (i < 0) { ui.sel = ui.target = null; return; }
   if (ui.sel == null || !g.units[ui.sel]) { ui.sel = g.units[i] ? i : null; ui.target = null;
-    const t = !g.units[i] && C.tileAt(g, i); if (t) toast(`${t.name} — 이 위의 유닛은 ${t.text}`, 2200);      // 빈 특수 발판을 누르면 효과를 알려 준다
+    if (!g.units[i]) { if (C.mine(g, i)) cmd(['summon', i]); else if (g.duo) toast('동료의 구역입니다'); }      // 빈 칸을 누르면 그 자리에 신병 소집
     return; }
   if (i === ui.sel) { ui.sel = ui.target = null; return; }
   if (!g.units[i]) { if (C.own(g, g.units[ui.sel]) && C.mine(g, i)) cmd(['move', ui.sel, i]); else if (g.duo) toast('동료의 구역입니다');
@@ -670,13 +671,16 @@ function found(u) { if (u.hidden && !meta.found[u.hidden]) { meta.found[u.hidden
 $('info').addEventListener('click', e => {
   const bt = e.target.closest('[data-do]'), a = bt && !bt.disabled ? bt.dataset.do : null; if (!a || !g) return;      // 버튼 안의 그림(동전·상자)을 눌러도 버튼으로 친다
   if (a === 'merge') cmd(['merge', ui.sel, ui.target]);
+  if ((a === 'msame' || a === 'mrand') && ui.mates) { const m = a === 'msame' ? ui.mates.same : ui.mates.diff; if (m >= 0) cmd(['merge', m, ui.sel]); }      // 바로 조합: 결과는 고른 유닛의 자리에 선다
   if (a === 'cancel') ui.target = null;
   if (a === 'full') { ui.full = !ui.full; infoKey = ''; }      // 줄여 보이던 카드를 다 펼친다 / 다시 접는다
   if (a === 'gamble') cmd(['gamble', ui.sel]);
   if (a === 'reroll') cmd(['reroll', ui.sel]);
   if (a === 'sell') { const i = ui.sel; ui.sel = ui.target = null; cmd(['sell', i]); }
 });
-$('b-summon').onclick = () => g && cmd(['summon']);
+// 신병 소집 건물: 소집은 빈 칸을 눌러서 한다(원하는 자리에). 건물을 누르면 빈 칸을 잠깐 빛내 알려 준다
+$('b-summon').onclick = () => { if (!g) return; if (!C.hasFree(g)) { toast('칸이 없습니다 — 같은 군별·등급끼리 조합하거나 짝 없는 유닛을 전역시키세요', 2600); Sound.play('deny'); return; }
+  ui.sel = ui.target = null; ui.hintT = performance.now() / 1000 + 2.2; toast('소집할 빈 칸을 누르세요', 1800); };
 $('b-camp').onclick = () => g && cmd(['camp']);
 $('b-pick').onclick = () => g && ACT.pick();
 $('b-up').onclick = () => g && ACT.upg();
@@ -721,7 +725,12 @@ function statChips(st, prev, unit) {
 }
 function renderInfo() {
   const A = ui.sel != null ? g.units[ui.sel] : null, B = ui.target != null ? g.units[ui.target] : null, b = A ? C.branchOf(g, A) : g.branch, ownA = !A || C.own(g, A);
-  const key = [A && A.id + A.type.join('') + A.slot + ownA, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join(''), g.buff.haste, g.buff.dmg, g.buff.immune, ui.full ? 1 : 0].join('|');
+  // 바로 조합: 고른 유닛과 조합할 수 있는 짝(같은 군별 · 같은 등급)을 같은 병과 / 다른 병과로 나눈다. 용사는 어느 짝과 조합해도 각성이다
+  const mates = A && ownA && !B ? g.units.filter(u => u && u !== A && C.canMerge(g, ui.sel, u.slot)) : [], heroA = A && C.heroOf(A);
+  const mSame = heroA ? mates : mates.filter(u => C.sameType(u.type, A.type)), mDiff = heroA ? [] : mates.filter(u => !C.sameType(u.type, A.type));
+  const mStar = mDiff.find(u => { const pv = C.mergePreview(g, u.slot, ui.sel); return pv && pv.hidden; });      // 다른 병과 짝 가운데 히든·용사 조합이 되는 것이 있으면 그것부터
+  ui.mates = { same: mSame[0] ? mSame[0].slot : -1, diff: mStar ? mStar.slot : mDiff[0] ? mDiff[0].slot : -1 };
+  const key = [mSame.length, mDiff.length, mStar ? 1 : 0, A && A.id + A.type.join('') + A.slot + ownA, B && B.id, g.wave, g.supply, g.area, CLASS_IDS.map(c => g.up[c]).join(''), g.buff.haste, g.buff.dmg, g.buff.immune, ui.full ? 1 : 0].join('|');
   if (!A) ui.full = false;
   if (key === infoKey) {      // 카드는 그대로 두고 누적 피해 숫자만 바꾼다 (카드를 통째로 다시 만들면 누르던 버튼이 사라진다)
     if (A && !B) { const d = $('u-dealt'), v = fmt(A.dealt); if (d && d.textContent !== v) d.textContent = v; }
@@ -754,6 +763,8 @@ function renderInfo() {
       ${tile ? `<p class="note tile"><i style="background:${tile.color}"></i><b>${tile.name}</b> 위에 있습니다 — ${tile.text}</p>` : ''}
       <p class="note"><b>${b.name}</b> 특성 — ${b.trait.text}</p>
       <p class="note hint">${!ownA ? '동료의 유닛입니다 — 조합·이동은 동료가 합니다' : A.level < C.maxLevel(b) ? `색칠된 발판(같은 ${b.name} · 같은 등급)의 유닛을 누르면 조합 · 빈 발판을 누르면 그 자리로 이동(이동하면 선택이 풀립니다)` : '최고 계급입니다'}</p>
+      <div class="acts two"><button class="btn primary" data-do="msame" ${mSame.length ? '' : 'disabled'}>${heroA ? '용사 각성' : '같은 병과 조합'}${mSame.length ? ` <b>${mSame.length}</b>` : ''}</button>
+        <button class="btn${mStar ? ' star' : ' violet'}" data-do="mrand" ${mDiff.length ? '' : 'disabled'}>${mStar ? '★ 특별 조합' : '랜덤 조합'}${mDiff.length ? ` <b>${mDiff.length}</b>` : ''}</button></div>
       <div class="acts three"><button class="btn purple" data-do="gamble" ${C.canGamble(g, ui.sel) ? '' : 'disabled'}>심사 ${Math.round(C.gambleChance(A, g.meta) * 100)}% ${ic('box')}${C.CFG.gambleSupply}</button>
         <button class="btn blue" data-do="reroll" ${C.canReroll(g, ui.sel) ? '' : 'disabled'}>병과 교체 ${ic('box')}${C.CFG.rerollSupply}</button>
         <button class="btn red" data-do="sell" ${ownA ? '' : 'disabled'}>전역 ${ic('coin')}+${fmt(C.sellValue(g, A))}</button></div></div>`;

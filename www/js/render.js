@@ -230,6 +230,7 @@ export function draw(ctx, g, ui, quality = 2) {
       ctx.strokeStyle = star ? '#ff5a4a' : keep ? '#ffd45e' : '#c9a3ff'; ctx.lineWidth = star ? 5 : 4; if (!keep) ctx.setLineDash([9, 7]); ctx.stroke(); ctx.setLineDash([]);
       if (star) starAt(ctx, s.x + 34, s.y - 42, 11 + 2 * Math.sin(now * 6), '#ffd45e'); }      // 용사·히든 조합이 되는 짝: 붉은 테두리와 별
     else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.stroke(); }
+    else if (!sel && !g.units[i] && ui.hintT > now && mine(g, i)) { ctx.fillStyle = `rgba(255,255,255,${0.22 + 0.16 * Math.sin(now * 9)})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke(); }      // 신병 소집 건물을 눌렀을 때: 소집할 수 있는 빈 칸
     else if (!sel) { const u = g.units[i]; if (u && own(g, u) && pairN[branchOf(g, u).id + u.level] >= 2) {
       ctx.strokeStyle = `rgba(255,224,110,${0.55 + 0.25 * Math.sin(now * 4)})`; ctx.lineWidth = 3; ctx.setLineDash([7, 6]); rr(ctx, x + 2, y + 2, CELL.w - 12, CELL.h - 12, 11); ctx.stroke(); ctx.setLineDash([]); } }
   });
@@ -429,21 +430,15 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
     ctx.restore();
   }
   // 발밑(받침대: 청동 → 은 → 금, 병과 색 띠, 그림자)은 바뀌지 않으므로 한 번 그려 두고 복사한다
-  ctx.drawImage(spriteBox(['ub', u.type[0], u.type[1], lv].join(':'), k, UB_BOX, c => {
-    if (lv > 0) {
-      const rx = 24 + lv * 1.6, ry = 9.5 + lv * 0.7;
-      c.fillStyle = gcol; c.beginPath(); c.ellipse(0, 6, rx, ry, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(40,24,10,.42)'; c.fill();      // 옆면: 등급 색을 어둡게
-      c.fillStyle = gcol; c.beginPath(); c.ellipse(0, 1, rx, ry, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.22)'; c.fill();     // 윗면: 등급 색을 밝게
-      c.strokeStyle = 'rgba(74,47,27,.55)'; c.lineWidth = 1.4; c.stroke();
-      c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(0, 0, rx - 3, ry - 2.5, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
-    }
-    c.lineWidth = 3; c.globalAlpha = 0.8;
-    c.strokeStyle = CLASS_INFO[u.type[0]].color; c.beginPath(); c.ellipse(0, 0, 26, 10.5, 0, Math.PI / 2, Math.PI * 1.5); c.stroke();
-    c.strokeStyle = CLASS_INFO[u.type[1]].color; c.beginPath(); c.ellipse(0, 0, 26, 10.5, 0, -Math.PI / 2, Math.PI / 2); c.stroke();
-    c.globalAlpha = 1;
-    // 발밑 그림자: 가운데가 짙고 가장자리로 번지는 갈색 (딱딱한 검은 타원 대신)
-    const sg = c.createRadialGradient(0, 0, 2, 0, 0, 23); sg.addColorStop(0, 'rgba(50,30,12,.5)'); sg.addColorStop(0.6, 'rgba(50,30,12,.28)'); sg.addColorStop(1, 'rgba(50,30,12,0)');
-    c.save(); c.scale(1, 0.42); c.fillStyle = sg; c.beginPath(); c.arc(0, 0, 23, 0, 7); c.fill(); c.restore();
+  // 발밑 원판: 등급 색(노말 회색 · 매직 초록 · 레어 파랑 · 영웅 보라 · 유니크 주황 · 전설 금 · 초월 빨강). 한눈에 등급이 보이도록 크고 진하게, 모든 등급에 깐다
+  ctx.drawImage(spriteBox(['ub2', lv].join(':'), k, UB_BOX, c => {
+    const rx = 35, ry = 13.5;
+    c.fillStyle = 'rgba(40,24,10,.28)'; c.beginPath(); c.ellipse(0, 9, rx + 2, ry + 1, 0, 0, 7); c.fill();                               // 바닥 그림자
+    c.fillStyle = gcol; c.beginPath(); c.ellipse(0, 6, rx, ry, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(30,18,8,.5)'; c.fill();              // 옆면: 등급 색을 어둡게
+    c.strokeStyle = '#2b2118'; c.lineWidth = 2.2; c.stroke();
+    c.fillStyle = gcol; c.beginPath(); c.ellipse(0, 1, rx, ry, 0, 0, 7); c.fill(); c.strokeStyle = '#2b2118'; c.lineWidth = 2.2; c.stroke();   // 윗면: 등급 색 그대로
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 2; c.beginPath(); c.ellipse(0, 1, rx - 5, ry - 3.6, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke();      // 윗면 밝은 테
+    c.fillStyle = 'rgba(40,24,10,.22)'; c.beginPath(); c.ellipse(0, 1.5, 17, 5.5, 0, 0, 7); c.fill();                                       // 발 그림자
   }), p.x + UB_BOX[0], fy + UB_BOX[1], UB_BOX[2] - UB_BOX[0], UB_BOX[3] - UB_BOX[1]);
   // 캐릭터: 가만히 있을 때는 숨쉬듯 조금 움직이고, 사격할 때는 반동으로 튄다. 발을 기준으로 커졌다 작아진다
   const fire = u.fireT > 0 ? Math.sin((1 - u.fireT / 0.16) * Math.PI) : 0;
@@ -476,12 +471,6 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, skin, OUTLINE), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
   else { const f = fit(im, size, k, false, skin, OUTLINE); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다
   ctx.globalAlpha = 1;
-  if (T.tuft && grp === 0) ctx.drawImage(spriteBox('ft:' + T.tuft + T.pad[4], k, FT_BOX, c => {      // 발 앞 풀·눈·모래 (받침대가 없는 병 계급만)
-    c.lineCap = 'round';
-    for (let i = 0; i < 7; i++) { const x = -18 + i * 6 + (i % 2) * 1.5, h = 5 + (i * 37 % 5); c.strokeStyle = c.fillStyle = i % 2 ? T.pad[5] : T.pad[4];
-      if (T.tuft === 'grass') { c.lineWidth = 2.2; c.beginPath(); c.moveTo(x, 6); c.quadraticCurveTo(x + (i % 3 - 1) * 2, 6 - h * 0.6, x + (i % 3 - 1) * 3.5, 6 - h); c.stroke(); }
-      else { c.globalAlpha = 0.9; c.beginPath(); c.ellipse(x, 4, 5, 2.6, 0, 0, 7); c.fill(); } }
-  }), p.x + FT_BOX[0], fy + FT_BOX[1], FT_BOX[2] - FT_BOX[0], FT_BOX[3] - FT_BOX[1]);
   if (grp === 4 && quality > 0) for (let i = 0; i < 3; i++) {      // 장성: 주변에서 반짝이는 빛
     const ph = now * 2.4 + i * 2.1 + u.id, a = Math.max(0, Math.sin(ph)), sx = p.x + [-0.44, 0.46, 0.1][i] * size, sy = top + [0.3, 0.18, 0.02][i] * size, r = 3 + a * 5;
     ctx.fillStyle = `rgba(255,248,200,${a})`; ctx.beginPath(); ctx.moveTo(sx, sy - r); ctx.quadraticCurveTo(sx, sy, sx + r, sy); ctx.quadraticCurveTo(sx, sy, sx, sy + r); ctx.quadraticCurveTo(sx, sy, sx - r, sy); ctx.quadraticCurveTo(sx, sy, sx, sy - r); ctx.fill();

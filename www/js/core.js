@@ -216,8 +216,9 @@ function randomEmptySlot(g) {
   const free = []; g.units.forEach((u, i) => { if (!u && mine(g, i)) free.push(i); });
   return free.length ? free[Math.floor(g.rand() * free.length)] : -1;
 }
-export function summon(g) {
-  const cost = summonCost(g.branch, g.camp, g.meta), slot = randomEmptySlot(g);
+// at: 소집할 칸(빈 칸을 눌러 소집). 주지 않으면 빈 칸 가운데 무작위(신병 소집 버튼 · 봇)
+export function summon(g, at = -1) {
+  const cost = summonCost(g.branch, g.camp, g.meta), slot = at >= 0 ? (at < g.units.length && !g.units[at] && mine(g, at) ? at : -1) : randomEmptySlot(g);
   if (g.over || g.gold < cost || slot < 0) return null;
   g.gold -= cost;
   const r = g.rand(), level = Math.min(maxLevel(g.branch), g.camp + (r < 0.03 ? 2 : r < 0.18 + cmOf(g.meta, 'luck') / 100 ? 1 : 0));      // 3% 두 계급 위, 15% 한 계급 위 (+행운의 군번줄)
@@ -537,7 +538,7 @@ const slotArg = v => Math.max(0, Math.min(SLOT_COUNT - 1, v | 0));
 export function exec(g, i, c) {
   if (!Array.isArray(c) || g.over) return null;
   const a = slotArg(c[1]), b = slotArg(c[2]), cls = CLASS_IDS.includes(c[1]) ? c[1] : null;
-  const f = { summon: () => summon(g), pick: () => cls && summonPick(g, cls), camp: () => upgradeCamp(g), up: () => cls && upgradeClass(g, cls), merge: () => merge(g, a, b), move: () => moveUnit(g, a, b),
+  const f = { summon: () => summon(g, c[1] != null ? a : -1), pick: () => cls && summonPick(g, cls), camp: () => upgradeCamp(g), up: () => cls && upgradeClass(g, cls), merge: () => merge(g, a, b), move: () => moveUnit(g, a, b),
     sell: () => sell(g, a), gamble: () => gamble(g, a), reroll: () => reroll(g, a), elite: () => callElite(g), hire: () => hireDepot(g), ad: () => adSupport(g), gift: () => giftGold(g) }[c[0]];
   return f ? act(g, i === 1 ? 1 : 0, f) : null;
 }
