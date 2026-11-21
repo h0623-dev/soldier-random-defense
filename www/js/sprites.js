@@ -240,8 +240,8 @@ export const ENEMY_DRAW = {
 // ── 새 그림체(2026-11-21 사용자 확정) ──────────────────────
 // 유닛(동물)·적(고철 군단)·배경을 한 그림체(E 광택 캐주얼풍)로 그린다. 그림은 www/img/v2/ (만드는 법: art/ref/jobs.py → art/ref/apply.py), 목록은 www/img/v2/manifest.json.
 // 목록에 없는 그림은 대신할 것을 쓴다: 조합 병과 → 첫 병과의 기본 그림, 다른 지역의 땅·길·소품 → 초원, 지역 보스 → 대장 전차.
-// 주소에 ?art=1 을 붙이면 예전 그림(사람 병사 · 코드로 그린 전장)으로 본다 — 비교용이고, 새 그림이 자리 잡으면 예전 그림과 함께 없앤다.
-export const V2 = !(typeof location !== 'undefined' && /[?&]art=1\b/.test(location.search));
+// 예전 그림(사람 병사 · www/img/units 등 약 16MB)과 비교용 주소 ?art=1 은 2026-11-21에 없앴다(앱 용량). 코드의 `V2 ? … : …` 가운데 예전 쪽 갈래는 이제 쓰이지 않는다 — 다음에 정리할 것.
+export const V2 = true;
 const v2Set = new Set();        // 목록에 있는 새 그림 이름 ('ground_meadow', 'units/army_inf' …)
 export const v2Has = name => v2Set.has(name);
 // 새 그림 하나: 목록에 있으면 처음 찾을 때 읽기 시작하고, 다 읽힐 때까지는 null (artState.version이 올라가면 다시 찾는다)

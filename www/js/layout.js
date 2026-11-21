@@ -41,7 +41,7 @@ export function initLayout(onChange) {
     const fw = Math.max(120, Math.floor(land ? Math.min(H / ratio, W - SIDE_MIN * rem) : Math.min(W, (H - hud.offsetHeight - campMin * rem) / ratio))), fh = Math.floor(fw * ratio);
     // 건물 크기: 주둔지에 남는 높이와 폭에 맞춘다 (세로로 긴 화면에서는 건물이 커지고, 짧은 화면에서는 작아진다)
     const campH = land ? H - hud.offsetHeight : H - hud.offsetHeight - fh, campW = land ? W - fw : W;
-    app.classList.toggle('tall', !land && campH / rem > 25.5);      // 주둔지가 넉넉하면 보스 안내를 함께 보여 준다
+    app.classList.toggle('tall', campH / rem > (land ? 30 : 25.5));      // 주둔지가 넉넉하면 보스 안내를 함께 보여 준다 (가로 배치에서도 — 전에는 주둔지 위가 텅 비었다)
     let bs = clamp(Math.min((campH / rem - 8.2) / 8.4, campW / rem / 38), 0.72, 1.6), fW = fw, fH = fh;
     // 세로 배치에서는 캔버스를 화면 폭 가득 편다: 전장(4:5)이 폭보다 좁으면 양옆 남는 자리에 땅 그림을 이어 그린다(render.js) — 빈 띠가 보이지 않게
     const put = () => { root.style.setProperty('--bs', bs.toFixed(2)); canvas.style.width = (land ? fW : Math.max(fW, Math.floor(W))) + 'px'; canvas.style.height = fH + 'px'; };

@@ -123,7 +123,7 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .hero { display: flex; justify-content: center; align-items: flex-end; gap: 0.2rem; margin: 1.6rem 0 0.4rem; } .hero img { width: 11rem; height: 11rem; object-fit: contain; }
 /* 처음 화면 · 로딩 화면: 일러스트(세로 2:3)를 폭에 맞춰 아래로 붙인다. 화면이 짧으면 위쪽 하늘이 잘리고, 길면 하늘색이 이어진다 */
 .panel.title, .bootin { padding: 0; display: flex; flex-direction: column; background: #55b9fd; }
-.tart { flex: 1 1 auto; min-height: 20rem; background: url(img/title.webp) center bottom / 100% auto no-repeat; padding: calc(2.6rem + env(safe-area-inset-top)) 1rem 0; }
+.tart { flex: 1 1 auto; min-height: 20rem; background: url(img/v2/title.webp) center bottom / 100% auto no-repeat; padding: calc(2.6rem + env(safe-area-inset-top)) 1rem 0; }
 .tlogo { text-align: center; } .tlogo h1 { margin: 0; font-size: 4.4rem; font-weight: 900; letter-spacing: -1px; line-height: 1.1; color: #fff; -webkit-text-stroke: 0.9rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.5rem 0 var(--ink); }
 .tlogo p { display: inline-block; margin: 1.2rem 0 0; padding: 0.5rem 1.2rem; border-radius: 2rem; background: var(--ink); color: var(--yellow); font-size: 1.25rem; font-weight: 800; }
 .tmenu { flex: none; position: relative; margin-top: -2.4rem; background: var(--cream); border-top: 0.3rem solid var(--ink); border-radius: 2.4rem 2.4rem 0 0;
@@ -131,7 +131,7 @@ button:active:not(:disabled) { transform: translateY(0.2rem); }
 .tmenu .wide { height: 5.6rem; font-size: 2rem; } .tmenu .tgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; } .tmenu .wide.sec { height: 5rem; font-size: 1.35rem; }
 .panel .sub.ver { margin: 1.2rem 0 0; font-size: 1.1rem; }
 #boot { position: fixed; inset: 0; z-index: 20; background: var(--ink); transition: opacity .35s; } #boot.off { opacity: 0; pointer-events: none; } #boot[hidden] { display: none; }
-.bootin { max-width: 52rem; height: 100%; margin: 0 auto; background: #55b9fd url(img/title.webp) center bottom / 100% auto no-repeat; justify-content: space-between; align-items: center;
+.bootin { max-width: 52rem; height: 100%; margin: 0 auto; background: #55b9fd url(img/v2/title.webp) center bottom / 100% auto no-repeat; justify-content: space-between; align-items: center;
   padding: calc(2.6rem + env(safe-area-inset-top)) 1rem calc(3rem + env(safe-area-inset-bottom)); }
 .bload { width: 70%; max-width: 30rem; text-align: center; } .bload small { display: block; margin-top: 0.8rem; font-weight: 800; font-size: 1.3rem; color: #fff; -webkit-text-stroke: 0.5rem var(--ink); paint-order: stroke fill; }
 .bload .bar { display: block; height: 1.6rem; border-radius: 1rem; border: var(--ln); background: var(--paper); overflow: hidden; }
@@ -267,7 +267,7 @@ img.u { filter: var(--skin, none); }
 
 /* ── 대기실(작전 본부) — 한 화면에 다 들어온다. 위: 프로필·재화 / 양옆: 기능 버튼 / 가운데: 무대(일러스트) / 아래: 출격 ── */
 .panel.title { height: 100%; min-height: 0; overflow: hidden; background: #55b9fd; }
-.lstage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; background: linear-gradient(rgba(64, 168, 245, .95), rgba(85, 185, 253, .55) 22%, rgba(85, 185, 253, 0) 46%), url(img/title.webp) center bottom / cover no-repeat;
+.lstage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; background: linear-gradient(rgba(64, 168, 245, .95), rgba(85, 185, 253, .55) 22%, rgba(85, 185, 253, 0) 46%), url(img/v2/title.webp) center bottom / cover no-repeat;
   padding: calc(0.8rem + env(safe-area-inset-top)) calc(0.9rem + env(safe-area-inset-right)) 3rem calc(0.9rem + env(safe-area-inset-left)); }
 .ltop { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; } .ltop .hbtn { border: var(--ln); box-shadow: 0 0.3rem 0 var(--ink); width: 4rem; height: 4rem; } .ltop .hbtn.off { background: var(--soft); color: var(--mute); }
 .lprof { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.7rem; height: 4.6rem; padding: 0.3rem 1.2rem 0.3rem 0.3rem; margin-right: auto; max-width: 24rem; text-align: left;
