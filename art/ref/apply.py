@@ -16,7 +16,7 @@ def scene(name, w, q, out=None):
     im = Image.open(p).convert('RGB'); W, H = im.size; h = round(W * 5 / 4); im = im.crop((0, (H - h) // 2, W, (H - h) // 2 + h)).resize((w, round(w * 5 / 4)), Image.LANCZOS)
     im.save(os.path.join(OUT, (out or name) + '.webp'), quality=q); print(out or name, im.size)
 
-def cut(sheet, cols, rows, names, size, sub='', pad=0.04):
+def cut(sheet, cols, rows, names, size, sub='', pad=0.04, center=False):      # center: 칸 한가운데에 놓는다(효과처럼 돌려 찍는 그림). 아니면 발이 아래 가장자리에 오게
     p = os.path.join(RAW, sheet + '.png')
     if not os.path.exists(p): return
     im = matte(Image.open(p).convert('RGB')); im = im[0] if isinstance(im, tuple) else im
@@ -27,7 +27,7 @@ def cut(sheet, cols, rows, names, size, sub='', pad=0.04):
         bb = c.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()
         if not bb: print('빈 칸:', n); continue
         c = c.crop(bb); k = size * (1 - pad * 2) / max(c.size); c = c.resize((max(1, round(c.width * k)), max(1, round(c.height * k))), Image.LANCZOS)
-        o = Image.new('RGBA', (size, size), (0, 0, 0, 0)); o.paste(c, ((size - c.width) // 2, size - round(size * pad) - c.height), c)      # 발이 아래 가장자리에 오게(가로는 가운데)
+        o = Image.new('RGBA', (size, size), (0, 0, 0, 0)); o.paste(c, ((size - c.width) // 2, (size - c.height) // 2 if center else size - round(size * pad) - c.height), c)
         o.save(os.path.join(OUT, sub + n + '.webp'), quality=90)
     print(sheet, len(names))
 
@@ -128,7 +128,31 @@ if alog: print('공격 동작', len(alog), '종 ·', ' | '.join(alog))
 cut('ranks', 4, 3, ['rank_' + n for n in 'pennant banner_r banner_b cape sun laurel wings crown star star_s medal spark'.split()], 192)
 cut('marks', 4, 3, 'mark_spd mark_rng mark_crit fx_boom fx_smoke fx_heal fx_bolt fx_ice fx_flame fx_coin fx_spark fx_stun'.split(), 160)
 cut('result', 2, 2, 'ui_win ui_lose ui_clear ui_guide'.split(), 384)
+# 6차: 사격 효과 · 상태 표시 · 등급 받침대 (모두 칸 한가운데에 놓는다)
+cut('shots', 4, 3, 'shot_bullet shot_snipe shot_shell shot_mortar shot_band shot_gas shot_aim shot_wave fx_hit fx_ring fx_zap fx_dust'.split(), 160, center=True)
+cut('status', 4, 3, 'st_ice st_slow st_bubble st_shield st_fire st_elite st_hero st_vuln fx_up fx_poof fx_dash fx_buff'.split(), 192, center=True)
+cut('pedestals', 4, 2, ['ped_%d' % i for i in range(7)] + ['ped_hero'], 192, center=True)
+# 아이콘(코드 기호였던 것) → www/img/ic,  스테이지·뽑기 그림 → v2
+cut('icons2', 4, 3, ['../ic/' + n for n in 'play plus up arrow star enemy tent hand lock check retry home'.split()], 128, center=True)
+cut('stageui', 4, 3, 'node node_on node_clear node_lock chest chest_open crate map warn bubble wreath signarrow'.split(), 192, center=True)
+# 메뉴 창 틀 · 버튼: 여백 없이 내용만 잘라 둔다(CSS의 border-image로 가장자리는 그대로, 가운데만 늘여 쓴다)
+def cut_tight(sheet, cols, rows, names, maxw):
+    im = _sheet(sheet)
+    if im is None: return
+    cell = segment(im, cols, rows)      # 이어진 덩어리 단위로 나눈다(옆 칸으로 살짝 넘어간 조각이 섞이지 않게)
+    for i, n in enumerate(names):
+        c = cell(i % cols, i // cols)
+        if c is None: print('빈 칸:', n); continue
+        k = maxw / c.width; c = c.resize((maxw, max(1, round(c.height * k))), Image.LANCZOS); c.save(os.path.join(OUT, n + '.webp'), quality=92)
+    print(sheet, len(names))
+cut_tight('uikit', 4, 3, 'ui_btn_green ui_btn_gold ui_btn_blue ui_btn_red ui_btn_gray ui_btn_purple ui_panel ui_wood ui_ribbon ui_plaque ui_cardback ui_cardfront'.split(), 256)
 p = os.path.join(RAW, 'title.png')
 if os.path.exists(p): Image.open(p).convert('RGB').resize((768, 1152), Image.LANCZOS).save(os.path.join(OUT, 'title.webp'), quality=84); print('title')
+# 크림색 버튼(기본 버튼): 회색 버튼의 밝기를 크림색으로 옮겨 만든다(윤곽선은 짙은 갈색 그대로)
+_g = os.path.join(OUT, 'ui_btn_gray.webp')
+if os.path.exists(_g):
+    from PIL import ImageOps
+    g = Image.open(_g).convert('RGBA'); c = ImageOps.colorize(g.convert('L'), black='#3a2410', mid='#ecd7a6', white='#fffdf5', blackpoint=45, midpoint=170, whitepoint=250).convert('RGBA'); c.putalpha(g.getchannel('A'))
+    c.save(os.path.join(OUT, 'ui_btn_cream.webp'), quality=92)
 names = sorted(os.path.relpath(os.path.join(d, f), OUT)[:-5].replace(os.sep, '/') for d, _, fs in os.walk(OUT) for f in fs if f.endswith('.webp'))      # 게임이 읽을 그림 목록
 import json; json.dump(names, open(os.path.join(OUT, 'manifest.json'), 'w')); print('목록', len(names))

@@ -331,6 +331,7 @@ export function draw(ctx, g, ui, quality = 2) {
   }
   // 화염 지대(불바다): 바닥에서 일렁이는 불
   for (const z of g.zones) { const a = Math.min(1, z.t / 0.6) * (0.3 + 0.1 * Math.sin(now * 9 + z.x));
+    if (fx(ctx, 'st_fire', z.x, z.y - z.r * 0.1, z.r * 2.3 * (1 + 0.04 * Math.sin(now * 11 + z.x)), 0, Math.min(1, z.t / 0.6) * 0.92)) continue;      // 새 그림체: 불타는 땅 그림
     ctx.fillStyle = `rgba(255,110,40,${a})`; ctx.beginPath(); ctx.ellipse(z.x, z.y + 6, z.r, z.r * 0.62, 0, 0, 7); ctx.fill();
     ctx.fillStyle = `rgba(255,214,94,${a * 0.9})`; ctx.beginPath(); ctx.ellipse(z.x, z.y + 6, z.r * 0.55, z.r * 0.34, 0, 0, 7); ctx.fill(); }
   // 적: 화면 아래쪽에 있는 것이 위쪽 것을 가리도록 y 순서로 그린다
@@ -414,14 +415,23 @@ function enemy(ctx, e, k, quality) {
   const by = quality > 0 ? Math.sin(e.s * 0.22 + e.id) * (e.kind === 'boss' ? 1 : 1.8) : 0, fly = e.kind === 'fast' ? 9 : e.fly ? 16 : 0;
   // 바닥 그림자 · 상태 표시
   ctx.drawImage(sprite('esh:' + r, r, k, c => { const sg = c.createRadialGradient(0, 0, 1, 0, 0, r); sg.addColorStop(0, 'rgba(50,30,12,.45)'); sg.addColorStop(1, 'rgba(50,30,12,0)'); c.scale(1, 0.4); c.fillStyle = sg; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); }), e.x - r, e.y + r * 0.85 - r, r * 2, r * 2);
-  if (elite) { ctx.fillStyle = 'rgba(160,90,220,.4)'; ctx.strokeStyle = '#c99bff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.6, r + 9, (r + 9) * 0.5, 0, 0, 7); ctx.fill(); ctx.stroke(); }
-  if (e.dashT > 0) { ctx.strokeStyle = '#7fe3ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
+  const gy = e.y + r * 0.62;      // 발밑 높이
+  if (elite && fx(ctx, 'st_elite', e.x, gy, (r + 12) * 2.5)) { /* 정예 표적: 보라색 표식 그림 */ }
+  else if (elite) { ctx.fillStyle = 'rgba(160,90,220,.4)'; ctx.strokeStyle = '#c99bff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.6, r + 9, (r + 9) * 0.5, 0, 0, 7); ctx.fill(); ctx.stroke(); }
+  const bubble = V2 && v2Art('st_bubble') && (e.dashT > 0 || (e.skill && e.skill.id === 'armor' && e.hp > e.maxHp * 0.5));      // 고속 기동 · 중장갑: 방어막 그림(적 위에 덮는다)
+  if (bubble) { /* 아래에서 적을 찍은 뒤에 덮는다 */ }
+  else if (e.dashT > 0) { ctx.strokeStyle = '#7fe3ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
   else if (e.skill && e.skill.id === 'armor' && e.hp > e.maxHp * 0.5) { ctx.strokeStyle = '#cfd6dc'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(e.x, e.y - 4, r + 12, 0, 7); ctx.stroke(); }
-  if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.5)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 4, (r + 4) * 0.45, 0, 0, 7); ctx.fill(); }
-  if (e.freezeT > 0) { ctx.fillStyle = 'rgba(190,240,255,.55)'; ctx.strokeStyle = '#e8fbff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(e.x, e.y - 2, r + 7, 0, 7); ctx.fill(); ctx.stroke(); }      // 빙결
-  if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 5, (r + 5) * 0.45, 0, 0, 7); ctx.stroke(); }
+  if (e.slowT > 0 && fx(ctx, 'st_slow', e.x, gy + 2, (r + 6) * 2.5, 0, 0.9)) { /* 둔화: 물웅덩이 그림 */ }
+  else if (e.slowT > 0) { ctx.fillStyle = 'rgba(90,150,235,.5)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 4, (r + 4) * 0.45, 0, 0, 7); ctx.fill(); }
+  const ice = V2 && v2Art('st_ice') && e.freezeT > 0;      // 빙결: 얼음 그림(적 위에 덮는다)
+  if (!ice && e.freezeT > 0) { ctx.fillStyle = 'rgba(190,240,255,.55)'; ctx.strokeStyle = '#e8fbff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(e.x, e.y - 2, r + 7, 0, 7); ctx.fill(); ctx.stroke(); }      // 빙결
+  if (e.vulnT > 0 && fx(ctx, 'st_vuln', e.x, gy + 1, (r + 8) * 2.5, 0, 0.9)) { /* 표적 지정(받는 피해 증가): 갈라진 붉은 고리 그림 */ }
+  else if (e.vulnT > 0) { ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x, e.y + r * 0.7, r + 5, (r + 5) * 0.45, 0, 0, 7); ctx.stroke(); }
   const im = (e.kind === 'boss' && bossImage(e.boss)) || (elite && enemyArt('elite')) || enemyArt(art) || sprite('e:' + art, half, k, ENEMY_DRAW[art]);
   const ef = fit(im, half * 2, k, left, false, V2 ? 1.3 : 0); put(ctx, ef, e.x - half, e.y - half + by - fly);
+  if (ice) fx(ctx, 'st_ice', e.x, e.y - fly, half * 2.1, 0, 0.62);
+  if (bubble) fx(ctx, 'st_bubble', e.x, e.y - 2 - fly, half * 2.7, 0, 0.6 + 0.12 * Math.sin(performance.now() / 120));
   if (V2 && e.hitT > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, e.hitT / 0.12) * 0.75; put(ctx, ef, e.x - half, e.y - half + by - fly); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; }      // 맞는 순간 밝게 번쩍
   if (V2) { const bw = Math.max(26, r * 1.7), bx = e.x - bw / 2, byy = Math.max(4, e.y - half - 9 - fly), hp = Math.max(0, e.hp / e.maxHp);      // 체력 막대: 둥근 테두리, 체력이 줄면 초록 → 노랑 → 빨강
     if (hp < 1 || e.kind === 'boss' || elite) { ctx.fillStyle = '#2b1a0c'; rr(ctx, bx - 2, byy - 2, bw + 4, 9, 4.5); ctx.fill(); ctx.fillStyle = '#5a4634'; rr(ctx, bx, byy, bw, 5, 2.5); ctx.fill();
@@ -431,6 +441,36 @@ function enemy(ctx, e, k, quality) {
   if (elite) { ctx.fillStyle = '#e9d6ff'; ctx.font = '800 14px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(Math.ceil(e.life) + '초', e.x, e.y - half - 14); }
 }
 
+// 새 그림체의 사격 효과: 총알·저격(빛줄기 그림 → 착탄 별) · 포탄·박격포탄(포탄 그림 → 폭발) · 붕대(붕대 그림 → 초록 십자) · 번개(지그재그 선 + 전기 불꽃) · 가스(구름 그림) · 유도(붉은 선 + 조준 그림 → 폭발) · 전파(전파 그림)
+function shot2(ctx, f, kind, o) {
+  const { sx, sy, len, ang, p, big, at, arc } = o, need = { bullet: 'shot_bullet', snipe: 'shot_snipe', shell: 'shot_shell', mortar: 'shot_mortar', heal: 'shot_band', bolt: 'fx_zap', gas: 'shot_gas', laser: 'shot_aim', wave: 'shot_wave' }[kind];
+  if (!need || !v2Art(need)) return false;
+  if (kind === 'bullet' || kind === 'snipe') { const fly = kind === 'snipe' ? 0.22 : 0.38;
+    if (p < fly) { const [x, y] = at(p / fly); fx(ctx, need, x, y, (kind === 'snipe' ? 92 : 58) * big, ang); }
+    else { const a = (p - fly) / (1 - fly); if (!fx(ctx, 'fx_hit', f.x2, f.y2, (kind === 'snipe' ? 50 : 34) * big * (0.55 + a * 0.75), a * 1.4 + f.x1, 1 - a)) burst(ctx, f.x2, f.y2, a, 13 * big, '#ffd45e', 6); }
+  } else if (kind === 'shell' || kind === 'mortar') { const fly = 0.55, h = kind === 'mortar' ? Math.min(130, len * 0.55) : Math.min(60, len * 0.2);
+    if (p < fly) { const q = p / fly, [x, y] = arc(q, h), [px, py] = arc(Math.max(0, q - 0.04), h); fx(ctx, 'fx_dust', px, py, 16 * big, 0, 0.5); fx(ctx, need, x, y, 36 * big, Math.atan2(y - py, x - px)); }
+    else boom(ctx, f.x2, f.y2, (p - fly) / (1 - fly), Math.max(f.r, 26) * big);
+  } else if (kind === 'heal') { const fly = 0.5, h = Math.min(50, len * 0.25);
+    if (p < fly) { const [x, y] = arc(p / fly, h); fx(ctx, need, x, y, 30 * big, p * 12); }
+    else { const a = (p - fly) / (1 - fly); fx(ctx, 'fx_ring', f.x2, f.y2, (26 + a * 34) * big, 0, (1 - a) * 0.8); fx(ctx, 'fx_heal', f.x2, f.y2 - a * 12, 38 * big * (0.7 + a * 0.4), 0, 1 - a); }
+  } else if (kind === 'bolt') { const seg = 6, nx = -Math.sin(ang), ny = Math.cos(ang), step = Math.floor(p * 5);      // 지그재그 번개(길이가 제각각이라 선으로 그린다) + 맞은 자리의 전기 불꽃
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(sx, sy - 12);
+    for (let i = 1; i < seg; i++) { const j = (((Math.sin((f.x1 + f.y2) * 0.37 + i * 12.9898 + step * 78.233) * 43758.5453) % 1 + 1) % 1 - 0.5) * 26, [x, y] = at(i / seg); ctx.lineTo(x + nx * j, y + ny * j); }
+    ctx.lineTo(f.x2, f.y2); ctx.globalAlpha = (1 - p) * 0.95; ctx.strokeStyle = '#3a6fd8'; ctx.lineWidth = 9 * big; ctx.stroke(); ctx.strokeStyle = '#7fd8ff'; ctx.lineWidth = 5.5 * big; ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2 * big; ctx.stroke(); ctx.restore();
+    fx(ctx, need, f.x2, f.y2, (34 + p * 30) * big, step * 0.7, 1 - p);
+  } else if (kind === 'gas') { const R = Math.max(f.r, 28) * big, q = Math.min(1, p * 2.2);
+    if (q < 1) { const [x, y] = at(q); fx(ctx, need, x, y, 26 + q * 14, 0, 0.9); }
+    else { const a = (p - 0.45) / 0.55; fx(ctx, need, f.x2, f.y2 - a * 6, R * (1.3 + a * 1.1), 0, (1 - a) * 0.85); }
+  } else if (kind === 'laser') {
+    if (p < 0.55) { ctx.save(); ctx.lineCap = 'round'; ctx.globalAlpha = 0.35 * (1 - p); ctx.strokeStyle = '#ff5a4a'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(f.x2, f.y2); ctx.stroke();
+      ctx.globalAlpha = 1 - p; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.stroke(); ctx.restore(); fx(ctx, need, f.x2, f.y2, 34 - p * 10, p * 2, 1); }
+    if (p > 0.35) boom(ctx, f.x2, f.y2, (p - 0.35) / 0.65, Math.max(f.r, 24) * big);
+  } else { const q = Math.min(1, p * 1.3);      // 전파: 표적 쪽으로 가며 커지고 옅어진다
+    if (q < 1) { const [x, y] = at(q); fx(ctx, need, x, y, (26 + q * 26) * big, ang, 1 - q * 0.7); }
+    if (p > 0.6) { const a = (p - 0.6) / 0.4; fx(ctx, 'fx_ring', f.x2, f.y2, (20 + a * 30) * big, 0, (1 - a) * 0.8); fx(ctx, 'fx_heal', f.x2, f.y2 - a * 10, 30 * big, 0, 1 - a); } }
+  return true;
+}
 // ── 공격 이펙트: 병과 조합마다 날아가는 것과 맞는 모습이 다르다 ───────────
 // 총알(보병) · 포탄(포병) · 박격포탄(보+포) · 저격(보+통) · 붕대(의무) · 번개(통신) · 가스(포+의) · 레이저 유도(포+통) · 전파(의+통)
 const FX_KIND = { 'inf+inf': 'bullet', 'art+art': 'shell', 'med+med': 'heal', 'sig+sig': 'bolt', 'inf+art': 'mortar', 'inf+med': 'bullet', 'inf+sig': 'snipe', 'art+med': 'gas', 'art+sig': 'laser', 'med+sig': 'wave' };
@@ -439,6 +479,13 @@ function burst(ctx, x, y, a, r, col, rays = 6) {       // 맞은 자리에서 �
   ctx.globalAlpha = 1 - a; ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath();
   for (let i = 0; i < rays; i++) { const q = i * Math.PI * 2 / rays + 0.4; ctx.moveTo(x + Math.cos(q) * r * (0.35 + a * 0.5), y + Math.sin(q) * r * (0.35 + a * 0.5)); ctx.lineTo(x + Math.cos(q) * r * (0.8 + a * 0.6), y + Math.sin(q) * r * (0.8 + a * 0.6)); }
   ctx.stroke(); ctx.fillStyle = '#fff6d6'; ctx.beginPath(); ctx.arc(x, y, r * 0.38 * (1 - a), 0, 7); ctx.fill(); ctx.lineCap = 'butt';
+}
+// 새 그림체의 효과 그림 한 장을 (x, y) 가운데에 찍는다. w: 칸 한 변, rot: 회전(라디안), a: 불투명도. 그림이 아직 없으면 false — 그때는 예전 코드 그림으로 그린다
+function fx(ctx, name, x, y, w, rot = 0, a = 1) {
+  const im = V2 ? v2Art(name) : null; if (!im) return false; if (a <= 0.01) return true;
+  if (rot) { ctx.save(); ctx.globalAlpha = Math.min(1, a); ctx.translate(x, y); ctx.rotate(rot); ctx.drawImage(im, -w / 2, -w / 2, w, w); ctx.restore(); }
+  else { const g0 = ctx.globalAlpha; ctx.globalAlpha = Math.min(1, a); ctx.drawImage(im, x - w / 2, y - w / 2, w, w); ctx.globalAlpha = g0; }
+  return true;
 }
 function boom(ctx, x, y, a, R) {                       // 폭발: 불덩이가 커지며 옅어지고 연기가 위로 흩어진다
   const bi = V2 ? v2Art('fx_boom') : null;
@@ -463,6 +510,7 @@ function shot(ctx, f, quality) {
   const kind = FX_KIND[f.c + '+' + f.c2] || FX_KIND[f.c2 + '+' + f.c] || 'bullet';
   const at = q => [sx + dx * q, sy + dy * q];
   const arc = (q, h) => [sx + dx * q, sy + dy * q - h * 4 * q * (1 - q)];
+  if (V2 && shot2(ctx, f, kind, { sx, sy, len, ang, p, big, at, arc })) return;      // 새 그림체: 날아가는 것과 맞는 모습을 그림으로 (그림이 아직 안 읽혔으면 아래 코드 그림)
   ctx.save();
   if (kind === 'bullet' || kind === 'snipe') {
     const fly = kind === 'snipe' ? 0.22 : 0.38;
@@ -517,7 +565,8 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   const o = { branchId: b.id, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u), gcol }, tk = u.type.join('+');
   const fy = p.y + FEET - 5;
   // 발밑: 소집·진급 때 번쩍임, 히든 계급의 금빛, 병과 색 띠, 그림자
-  if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 50, 26, 0, 0, 7); ctx.fill(); }
+  if (u.flash > 0) { ctx.fillStyle = `rgba(255,212,94,${u.flash})`; ctx.beginPath(); ctx.ellipse(p.x, fy, 50, 26, 0, 0, 7); ctx.fill();
+    fx(ctx, 'fx_poof', p.x, p.y - 4, 96 * (1.35 - u.flash * 0.45), 0, u.flash * 0.9); }      // 소집·진급 순간: 별이 튀는 구름
   const hero = u.hidden ? heroOf(u) : null;
   if (hero) {      // 전설의 용사: 용사 색으로 타오르는 발밑(각성하면 고리가 하나 더), 위로 피어오르는 불티
     const pu = 0.5 + 0.5 * Math.sin(now * 4 + u.id), aw = u.level > hero.level;
@@ -539,7 +588,9 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   }
   // 발밑(받침대: 청동 → 은 → 금, 병과 색 띠, 그림자)은 바뀌지 않으므로 한 번 그려 두고 복사한다
   // 발밑 원판: 등급 색(노말 회색 · 매직 초록 · 레어 파랑 · 영웅 보라 · 유니크 주황 · 전설 금 · 초월 빨강). 한눈에 등급이 보이도록 크고 진하게, 모든 등급에 깐다
-  ctx.drawImage(spriteBox(['ub2', lv].join(':'), k, UB_BOX, c => {
+  const ped = V2 ? v2Art('ped_' + lv) : null;
+  if (ped) { if (hero) fx(ctx, 'st_hero', p.x, fy + 3, 118 + 6 * Math.sin(now * 4 + u.id), 0, 0.9); put(ctx, fit(ped, 84, k), p.x - 42, fy + 4 - 42); }      // 새 그림체: 등급 색 받침대 그림(용사는 그 아래 금빛 마법진)
+  else ctx.drawImage(spriteBox(['ub2', lv].join(':'), k, UB_BOX, c => {
     const rx = 35, ry = 13.5;
     c.fillStyle = 'rgba(40,24,10,.28)'; c.beginPath(); c.ellipse(0, 9, rx + 2, ry + 1, 0, 0, 7); c.fill();                               // 바닥 그림자
     c.fillStyle = gcol; c.beginPath(); c.ellipse(0, 6, rx, ry, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(30,18,8,.5)'; c.fill();              // 옆면: 등급 색을 어둡게

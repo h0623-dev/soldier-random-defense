@@ -34,7 +34,8 @@ export const ICON = {
 };
 // 재화 기호는 그림 파일(img/ic/<이름>.webp, 상점과 같은 그림체)로 보여 준다. 그림을 못 읽으면 위의 SVG로 돌아간다
 const PIC = { gem: 'gem', coin: 'coin', box: 'box', ticket: 'ticket', bolt: 'bolt', medal: 'medal',      // 재화
-  flag: 'flag', menu: 'menu', list: 'mission', book: 'book', exit: 'exit', sword: 'sword', ring: 'target', help: 'help', sound: 'sound' };      // 전투 화면 · 메뉴 (기호 이름 → 그림 파일)
+  flag: 'flag', menu: 'menu', list: 'mission', book: 'book', exit: 'exit', sword: 'sword', ring: 'target', help: 'help', sound: 'sound',
+  x: 'close', plus: 'plus', arrow: 'arrow', star: 'star', up: 'up', tent: 'tent', hand: 'hand', skull: 'enemy' };      // 코드 기호였던 것(2026-11-21). play는 버튼 글자색을 따라가야 해서 기호 그대로 둔다      // 전투 화면 · 메뉴 (기호 이름 → 그림 파일)
 const body = name => (PIC[name] ? `<img src="img/ic/${PIC[name]}.webp" alt="" onerror="this.outerHTML=window.__icSvg('${name}')">` : ICON[name] || '');
 if (typeof window !== 'undefined') window.__icSvg = n => ICON[n] || '';
 export const ic = (name, cls = '') => `<span class="ic ${cls}">${body(name)}</span>`;
