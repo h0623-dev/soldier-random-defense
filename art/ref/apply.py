@@ -152,6 +152,9 @@ if os.path.exists(p): Image.open(p).convert('RGB').resize((768, 1152), Image.LAN
 cut_tight('uikit2', 4, 3, 'ui_pill ui_sq ui_bar ui_plank ui_trough ui_fill_gold ui_fill_red ui_fill_green ui_sq_green ui_sq_tan ui_sq_blue ui_sq_purple'.split(), 256)
 cut('tiles', 4, 3, ['tile_' + t for t in THEMES] + ['ring_sel', 'ring_aura'], 256, pad=0, center=True)
 cut('marks2', 4, 3, 'hl_merge hl_rand hl_star hl_sel in_bar in_chev in_dia in_gdia in_flower in_star in_bud in_tflower'.split(), 192, pad=0.02, center=True)
+# 못 없는 나무 띠(위쪽 표시줄 · 하단 탭 바탕): ui_plank의 가운데 62%만 — 양 끝의 금색 못이 아이콘과 겹쳐 보였다(2026-11-21 사용자 제보)
+_p = os.path.join(OUT, 'ui_plank.webp')
+if os.path.exists(_p): im = Image.open(_p).convert('RGB'); im.crop((round(im.width * 0.19), 4, round(im.width * 0.81), im.height - 4)).save(os.path.join(OUT, 'ui_plank_mid.webp'), quality=90)
 # 선택 틀 · 사거리 고리: 틀 안쪽의 흰 바탕은 틀에 막혀 지워지지 않는다 → 흰 픽셀을 어디에 있든 투명하게
 for n in 'hl_merge hl_rand hl_star hl_sel ring_sel ring_aura'.split():
     f = os.path.join(OUT, n + '.webp')

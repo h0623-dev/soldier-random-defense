@@ -75,8 +75,8 @@
 .v2 .sh .hbtn { border: 0 solid transparent; }
 .v2 .ticker p, .v2 .lprof { border: 0 solid transparent; background: none !important; box-shadow: none !important; border-radius: 0; border-image: url(img/v2/ui_bar.webp) 48% 14% fill / 50% 1.5rem stretch; }
 .v2 .brief { border: 0 solid transparent; background: none !important; box-shadow: none !important; border-radius: 0; border-image: url(img/v2/ui_wood.webp) 20% fill / 1.5rem stretch; padding: 1.1rem 1.4rem; }
-.v2 #hud { background: #5a3719 url(img/v2/ui_plank.webp) center / 100% 100% no-repeat; border-bottom: 0; box-shadow: 0 0.25rem 0.3rem rgba(20, 10, 0, .35); }
-.v2 .nav5 { background: #4a2d14 url(img/v2/ui_plank.webp) center / 100% 100% no-repeat; border-top: 0; }
+.v2 #hud { background: #5a3719 url(img/v2/ui_plank_mid.webp) center / 100% 100% no-repeat; border-bottom: 0; box-shadow: 0 0.25rem 0.3rem rgba(20, 10, 0, .35); }
+.v2 .nav5 { background: #4a2d14 url(img/v2/ui_plank_mid.webp) center / 100% 100% no-repeat; border-top: 0; }
 .v2 .bar { height: 1.05rem; padding: 0.2rem 0.4rem; box-sizing: border-box; border: 0; border-radius: 0; box-shadow: none; background: url(img/v2/ui_trough.webp) center / 100% 100% no-repeat; }
 .v2 .bar u { border-radius: 0; box-shadow: none; background: url(img/v2/ui_fill_gold.webp) left center / 100% 100% no-repeat; } .v2 .bar.red u { background-image: url(img/v2/ui_fill_red.webp); }
 .v2 .sc, .v2 .sinfo, .v2 .up, .v2 .wcard, .v2 .ucard, .v2 .skin, .v2 .pt.res { border: 0 solid transparent; background: none !important; box-shadow: none !important; border-radius: 0; border-image: url(img/v2/ui_panel.webp) 17% fill / 1.35rem stretch; }
@@ -86,7 +86,9 @@
 /* 대기실·탭 화면 위쪽의 재화 칸은 원래 규칙이 더 세서(border를 다시 정해 그림 틀이 지워진다) 한 번 더 지정한다 */
 .v2 .res .pill, .v2 .thead .res .pill, .v2 .lstage .res .pill { border: 0 solid transparent; border-image: url(img/v2/ui_pill.webp) 48% 21% fill / 50% 1.5rem stretch; }
 /* 위쪽 표시줄의 나무 띠: 양 끝 못이 깃발·단추와 겹치지 않게 가로로 넉넉히 늘려 못을 화면 밖으로 보낸다 */
-.v2 #hud { background-size: 132% 100%; }
+.v2 #hud { background-size: 100% 100%; }
 /* 상점의 구매 단추 */
 .v2 .sbtn { border: 0 solid transparent; background: none !important; box-shadow: none !important; border-radius: 0; border-image: url(img/v2/ui_btn_gold.webp) 44% 20% fill / 50% 1.6rem stretch; color: #5a3206; }
 .v2 .sbtn:disabled { border-image-source: url(img/v2/ui_btn_gray.webp); color: #5c5c5c; opacity: 1; }
+/* 전투 화면: 전장 양옆은 캔버스가 땅 그림으로 채운다. 상태 표시줄 자리(위쪽 안전 영역)는 위쪽 표시줄과 이어지게 나무색 */
+.v2 #app { background: #4a2d14; }

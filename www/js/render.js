@@ -100,19 +100,22 @@ const V2_THEME = {
   hq:       { tile: ['#ebf0f6', '#d4dce8', '#e1e8f0', '#c8d1de'], grout: '#a5b0c1', lip: '#94a0b2', side: '#68748c', foot: '#4e586d', line: '#232a3a',
               base: '#2b3146', tone: 'rgba(0,0,10,.08)', sh: 'rgba(0,0,0,.5)', rim: ['#0c0e16', '#ff6a5a'], shade: ['rgba(8,10,18,.36)', 'rgba(14,16,26,.08)'], arrow: 'rgba(255,120,110,.5)' },
 };
-function background2(k, area, map) {
+let bgW = null;      // 양옆 여백까지 포함한 넓은 배경(세로 화면에서 전장이 화면 폭보다 좁을 때)
+function background2(k, area, map, bleed = 0) {
   const want = AREAS[area].theme, th = v2Has('ground_' + want) ? want : 'meadow', P = V2_THEME[th], pth = v2Has(`prop_${th}_b1`) ? th : 'meadow';
   const G = v2Art('ground_' + th), RD = v2Art(v2Has('road_' + th) ? 'road_' + th : 'road_meadow');
   const big = [1, 2, 3, 4, 5, 6].map(i => `prop_${pth}_b${i}`), small = [1, 2, 3, 4, 5, 6].map(i => `prop_${pth}_s${i}`).filter(v2Has);
   const TI = v2Art('tile_' + th);      // 발판 타일 그림(지역마다 한 장)
   const ready = [G, RD, TI, v2Art('prop_flag'), ...big.map(v2Art), ...small.map(v2Art)].filter(Boolean).length;
-  const key = 'v2:' + area + ':' + th + ':' + (map.id || '') + '@' + k.toFixed(3) + ':' + ready; if (bg && bgKey === key) return bg;
+  const key = 'v2:' + area + ':' + th + ':' + (map.id || '') + '@' + k.toFixed(3) + ':' + ready + ':' + bleed.toFixed(2); if (bg && bgKey === key) return bleed > 0 ? bgW : bg;
+  // 땅 그림은 여백까지 덮게 같은 비율로 키워 가운데에 놓는다(위아래 가장자리 장식이 조금 잘린다) — 전장 안과 여백이 한 장으로 이어진다
+  const gs = (FIELD.w + 2 * bleed) / FIELD.w, ground = cc => { if (G) cc.drawImage(G, -bleed, -(gs - 1) * FIELD.h / 2, FIELD.w * gs, FIELD.h * gs); else { cc.fillStyle = P.base; cc.fillRect(-bleed, 0, FIELD.w + 2 * bleed, FIELD.h); }
+    cc.fillStyle = P.tone; cc.fillRect(-bleed, 0, FIELD.w + 2 * bleed, FIELD.h); };      // 땅을 한 톤 눌러 길·발판·캐릭터가 먼저 보이게
   if (!bg) bg = document.createElement('canvas');
   bg.width = Math.ceil(FIELD.w * k); bg.height = Math.ceil(FIELD.h * k); bgKey = key;
   const c = bg.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0); c.imageSmoothingQuality = 'high';
   const hw = CELL.w / 2, hh = CELL.h / 2, seed = area * 1000;
-  if (G) c.drawImage(G, 0, 0, FIELD.w, FIELD.h); else { c.fillStyle = P.base; c.fillRect(0, 0, FIELD.w, FIELD.h); }
-  c.fillStyle = P.tone; c.fillRect(0, 0, FIELD.w, FIELD.h);      // 땅을 한 톤 눌러 길·발판·캐릭터가 먼저 보이게
+  ground(c);
   // 길
   const line = (cc, w, col, dy = 0) => { cc.save(); cc.translate(0, dy); cc.lineJoin = cc.lineCap = 'round'; cc.lineWidth = w; cc.strokeStyle = col;
     cc.beginPath(); map.path.forEach((p, i) => cc[i ? 'lineTo' : 'moveTo'](p.x, p.y)); cc.closePath(); cc.stroke(); cc.restore(); };
@@ -158,10 +161,12 @@ function background2(k, area, map) {
   for (const [n, x, y, sz] of props) { const im = v2Art(n); if (!im) continue;
     c.fillStyle = P.sh; c.beginPath(); c.ellipse(x, y - 3, sz * 0.36, sz * 0.11, 0, 0, 7); c.fill();
     c.drawImage(im, x - sz / 2, y - sz * 0.96, sz, sz); }
+  if (bleed > 0) { if (!bgW) bgW = document.createElement('canvas'); const off = Math.round(bleed * k); bgW.width = bg.width + off * 2; bgW.height = bg.height;      // 넓은 배경: 여백의 땅 + 가운데 전장
+    const wc = bgW.getContext('2d'); wc.imageSmoothingQuality = 'high'; wc.setTransform(k, 0, 0, k, off, 0); ground(wc); wc.setTransform(1, 0, 0, 1, 0, 0); wc.drawImage(bg, off, 0); return bgW; }
   return bg;
 }
-function background(k, area, map) {
-  if (V2) return background2(k, area, map);
+function background(k, area, map, bleed = 0) {
+  if (V2) return background2(k, area, map, bleed);
   const key = area + ':' + (map.id || '') + '@' + k.toFixed(3); if (bg && bgKey === key) return bg;      // 같은 지역이라도 스테이지마다 맵이 다르다
   if (!bg) bg = document.createElement('canvas');
   bg.width = Math.ceil(FIELD.w * k); bg.height = Math.ceil(FIELD.h * k); bgKey = key;
@@ -303,7 +308,9 @@ function bossImage(n) {
 
 export function draw(ctx, g, ui, quality = 2) {
   const b = g.branch, k = ctx.getTransform().a, now = performance.now() / 1000, SLOTS = g.map.slots;
-  ctx.drawImage(background(k, g.area, g.map), 0, 0, FIELD.w, FIELD.h);
+  const bleed = Math.max(0, ctx.getTransform().e / k), bgc = background(k, g.area, g.map, bleed);      // bleed: 전장 양옆의 여백(전장 단위) — 세로 화면에서 전장이 화면 폭보다 좁을 때
+  if (bleed > 0 && !V2) { ctx.fillStyle = THEMES[AREAS[g.area].theme].ground[0]; ctx.fillRect(-bleed, 0, FIELD.w + 2 * bleed, FIELD.h); }
+  if (bleed > 0 && V2) ctx.drawImage(bgc, -bleed, 0, bgc.width / k, FIELD.h); else ctx.drawImage(bgc, 0, 0, FIELD.w, FIELD.h);
   const sel = ui.sel != null ? g.units[ui.sel] : null;
   // 협동: 동료의 구역은 어둡게 덮어 내 구역과 구분한다
   if (g.duo && !g.duo.solo) { ctx.fillStyle = 'rgba(24,30,66,.46)'; SLOTS.forEach((s, i) => { if (!mine(g, i)) ctx.fillRect(s.x - CELL.w / 2, s.y - CELL.h / 2 - 8, CELL.w, CELL.h); }); }
@@ -374,11 +381,11 @@ export function draw(ctx, g, ui, quality = 2) {
   if (ui.trans) {
     const el = ui.trans.total - ui.trans.t, A = AREAS[ui.trans.area], T = THEMES[A.theme];
     const dark = el < 0.3 ? 1 : Math.max(0, 1 - (el - 0.3) / 0.7);
-    if (dark > 0) { ctx.fillStyle = `rgba(8,10,6,${dark})`; ctx.fillRect(0, 0, FIELD.w, FIELD.h); }
+    if (dark > 0) { ctx.fillStyle = `rgba(8,10,6,${dark})`; ctx.fillRect(-bleed, 0, FIELD.w + 2 * bleed, FIELD.h); }
     const inn = Math.min(1, el / 0.35), out = Math.min(1, ui.trans.t / 0.4), a = Math.min(inn, out), cy = FIELD.h * 0.42, slide = (1 - inn) * -160 + (1 - out) * 160;
     ctx.globalAlpha = a;
-    ctx.fillStyle = 'rgba(8,10,6,.86)'; ctx.fillRect(0, cy - 92, FIELD.w, 184);
-    ctx.fillStyle = T.pad[0]; ctx.fillRect(0, cy - 92, FIELD.w, 6); ctx.fillRect(0, cy + 86, FIELD.w, 6);
+    ctx.fillStyle = 'rgba(8,10,6,.86)'; ctx.fillRect(-bleed, cy - 92, FIELD.w + 2 * bleed, 184);
+    ctx.fillStyle = T.pad[0]; ctx.fillRect(-bleed, cy - 92, FIELD.w + 2 * bleed, 6); ctx.fillRect(-bleed, cy + 86, FIELD.w + 2 * bleed, 6);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = T.pad[4]; ctx.font = '800 24px ' + FONT; ctx.fillText(ui.trans.top || `작전 지역 ${ui.trans.area + 1} / ${AREAS.length}`, FIELD.w / 2 + slide, cy - 52);
     ctx.fillStyle = '#fff'; ctx.font = '900 58px ' + FONT; ctx.fillText(A.name, FIELD.w / 2 + slide, cy);

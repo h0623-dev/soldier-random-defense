@@ -20,7 +20,7 @@ const DEV = [
     const errs = []; p.on('pageerror', e => errs.push(String(e))); p.on('console', m => m.type() === 'error' && !/favicon/.test(m.text()) && errs.push(m.text()));
     await p.goto('http://localhost:8080/'); await p.click('.lplay'); await p.click('[data-act="start"]');
     await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C; g.gold = 5000; for (let i = 0; i < 9; i++) C.summon(g); });
-    const fb = await p.locator('#field').boundingBox();
+    const cb = await p.locator('#field').boundingBox(), fw0 = Math.min(cb.width, cb.height * 0.8), fb = { x: cb.x + (cb.width - fw0) / 2, y: cb.y, width: fw0, height: cb.height };      // 캔버스는 화면 폭 가득이고 전장(4:5)은 그 가운데에 있다
     const btnH = Math.round((await p.locator('#b-summon').boundingBox()).height);      // 유닛을 고르면 하단 버튼이 카드로 바뀌므로 먼저 잰다
     // 소집 자리는 무작위이므로 실제 유닛이 선 발판을 눌러 선택한다
     const sp = await p.evaluate(() => { const g = window.__srd.game, u = g.units.find(Boolean), s = g.map.slots[u.slot]; return { x: s.x / window.__srd.C.FIELD.w, y: s.y / window.__srd.C.FIELD.h }; });

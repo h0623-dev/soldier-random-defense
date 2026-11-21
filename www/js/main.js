@@ -683,7 +683,7 @@ const ACT = {
 // ── 전장 입력 ───────────────────────────────────────────
 canvas.addEventListener('pointerdown', e => {
   if (!g || g.over) return;
-  const r = canvas.getBoundingClientRect(), x = (e.clientX - r.left) * C.FIELD.w / r.width, y = (e.clientY - r.top) * C.FIELD.h / r.height;
+  const r = canvas.getBoundingClientRect(), sc = C.FIELD.h / r.height, x = (e.clientX - r.left) * sc - (r.width * sc - C.FIELD.w) / 2, y = (e.clientY - r.top) * sc;      // 캔버스가 전장보다 넓으면(양옆 여백) 전장은 가로 가운데에 있다
   const i = g.map.slots.findIndex(s => Math.abs(s.x - x) <= C.CELL.w / 2 && Math.abs(s.y - y) <= C.CELL.h / 2);
   if (i < 0) { ui.sel = ui.target = null; return; }
   if (ui.sel == null || !g.units[ui.sel]) { ui.sel = g.units[i] ? i : null; ui.target = null;
@@ -898,7 +898,7 @@ function frame(now) {
     else if (l.t === 'eliteKill') { toast(`특수 임무 성공! 보급품 +${C.CFG.eliteSupply}`); Sound.play('merge'); }
     else if (l.t === 'eliteFail') { toast('특수 임무 실패 — 표적이 빠져나갔습니다'); Sound.play('deny'); } }
   if (ui.sel != null && !g.units[ui.sel]) ui.sel = ui.target = null;
-  const k = canvas.width / C.FIELD.w; ctx.setTransform(k, 0, 0, k, 0, 0);
+  const k = canvas.height / C.FIELD.h, ox = Math.max(0, Math.round((canvas.width - C.FIELD.w * k) / 2)); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.setTransform(k, 0, 0, k, ox, 0);      // 전장은 캔버스 높이에 맞추고 가로 가운데에 둔다(ox = 양옆 여백, 기기 픽셀)
   draw(ctx, g, ui, view.quality); renderHud(); renderInfo();
   if (g.over && !g.reported) ACT.result();
 }

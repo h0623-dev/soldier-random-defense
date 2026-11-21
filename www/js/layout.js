@@ -43,7 +43,8 @@ export function initLayout(onChange) {
     const campH = land ? H - hud.offsetHeight : H - hud.offsetHeight - fh, campW = land ? W - fw : W;
     app.classList.toggle('tall', !land && campH / rem > 25.5);      // 주둔지가 넉넉하면 보스 안내를 함께 보여 준다
     let bs = clamp(Math.min((campH / rem - 8.2) / 8.4, campW / rem / 38), 0.72, 1.6), fW = fw, fH = fh;
-    const put = () => { root.style.setProperty('--bs', bs.toFixed(2)); canvas.style.width = fW + 'px'; canvas.style.height = fH + 'px'; };
+    // 세로 배치에서는 캔버스를 화면 폭 가득 편다: 전장(4:5)이 폭보다 좁으면 양옆 남는 자리에 땅 그림을 이어 그린다(render.js) — 빈 띠가 보이지 않게
+    const put = () => { root.style.setProperty('--bs', bs.toFixed(2)); canvas.style.width = (land ? fW : Math.max(fW, Math.floor(W))) + 'px'; canvas.style.height = fH + 'px'; };
     put();
     // 실제로 재서 맞춘다: 위 계산은 어림값이라(글꼴·간판 글자 수·기기마다 높이가 조금씩 다르다) 주둔지 내용이 화면 아래로 넘칠 수 있다.
     // 넘치면 ① 건물을 조금씩 줄이고 ② 그래도 넘치면 전장을 그만큼 줄인다. 넘치지 않을 때까지 몇 번 되풀이한다.
@@ -54,12 +55,12 @@ export function initLayout(onChange) {
       else { fH = Math.max(120, Math.floor(fH - o - 1)); fW = Math.floor(fH / ratio); }
       put(); }
     view.fit = { over: Math.max(0, Math.round(over())), bs: +bs.toFixed(2) };      // 검사용: 맞춘 뒤에도 넘치는 높이(0이어야 한다)
-    Object.assign(view, { scale: s, land, w: W, h: H, fieldW: fW, fieldH: fH });
+    Object.assign(view, { scale: s, land, w: W, h: H, fieldW: fW, fieldH: fH, canvasW: land ? fW : Math.max(fW, Math.floor(W)) });      // fieldW × fieldH = 전장, canvasW = 양옆 여백까지 포함한 캔버스 폭
     resizeCanvas(); if (onChange) onChange(view);
   }
   function resizeCanvas() {
     const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP[view.quality]);
-    const cw = Math.round(view.fieldW * dpr), ch = Math.round(view.fieldH * dpr);
+    const cw = Math.round((view.canvasW || view.fieldW) * dpr), ch = Math.round(view.fieldH * dpr);
     if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
     view.dpr = dpr;
   }
