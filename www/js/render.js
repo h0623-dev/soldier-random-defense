@@ -1,7 +1,7 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
 import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig, mergePreview, heroOf, branchOf, charName, mine, own } from './core.js';
-import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitRdyImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art, v2Has } from './sprites.js';
+import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitRdyImage, v2HeroArt, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art, v2Has } from './sprites.js';
 loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
@@ -388,10 +388,12 @@ function tile(ctx, s, kind, k, now, quality) {
   const t = TILES[kind]; if (!t || !s) return;
   const a = quality > 0 ? 0.2 + 0.1 * Math.sin(now * 2.4 + s.x) : 0.24;
   ctx.globalAlpha = a; ctx.fillStyle = t.color; rr(ctx, s.x - 45, s.y - 53, 90, 90, 13); ctx.fill(); ctx.globalAlpha = 1;
-  ctx.drawImage(spriteBox('tile:' + kind, k, TILE_BOX, c => {
+  const mk = V2 ? v2Art('mark_' + kind) : null;
+  ctx.drawImage(spriteBox('tile:' + kind + (mk ? ':m' : ''), k, TILE_BOX, c => {
     c.strokeStyle = 'rgba(74,47,27,.75)'; c.lineWidth = 6; rr(c, -45, -53, 90, 90, 13); c.stroke();
     c.strokeStyle = t.color; c.lineWidth = 3.4; c.stroke();
     c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.4; c.setLineDash([5, 6]); rr(c, -40, -48, 80, 80, 10); c.stroke(); c.setLineDash([]);
+    if (mk) { c.drawImage(mk, -48, -57, 31, 31); return; }      // 새 그림체: 표식 그림(속사 · 고지 · 급소)
     // 표식: 둥근 딱지 안에 종류 그림 (속사 = 겹화살, 고지 = 과녁, 급소 = 별)
     c.translate(-33, -41); c.fillStyle = t.color; c.strokeStyle = '#4a2f1b'; c.lineWidth = 2.2; c.beginPath(); c.arc(0, 0, 11, 0, 7); c.fill(); c.stroke();
     c.strokeStyle = c.fillStyle = '#4a2f1b'; c.lineWidth = 2.4; c.lineCap = 'round'; c.lineJoin = 'round';
@@ -439,6 +441,10 @@ function burst(ctx, x, y, a, r, col, rays = 6) {       // 맞은 자리에서 �
   ctx.stroke(); ctx.fillStyle = '#fff6d6'; ctx.beginPath(); ctx.arc(x, y, r * 0.38 * (1 - a), 0, 7); ctx.fill(); ctx.lineCap = 'butt';
 }
 function boom(ctx, x, y, a, R) {                       // 폭발: 불덩이가 커지며 옅어지고 연기가 위로 흩어진다
+  const bi = V2 ? v2Art('fx_boom') : null;
+  if (bi) { const w = R * 2.3 * (0.55 + a * 0.6), sm = v2Art('fx_smoke'); ctx.globalAlpha = a < 0.55 ? 1 : (1 - a) / 0.45; ctx.drawImage(bi, x - w / 2, y - w * 0.56, w, w);      // 새 그림체: 폭발 그림이 커지며 옅어지고, 연기 그림이 위로 떠오른다
+    if (sm && a > 0.35) { const sw = R * 1.3 * (0.6 + a * 0.5); ctx.globalAlpha = (1 - a) * 0.9; ctx.drawImage(sm, x - sw / 2, y - sw * 0.6 - a * R * 0.5, sw, sw); }
+    ctx.globalAlpha = 1; return; }
   ctx.globalAlpha = (1 - a) * 0.8; ctx.fillStyle = '#ff8a3c'; ctx.beginPath(); ctx.arc(x, y, R * (0.45 + a * 0.6), 0, 7); ctx.fill();
   ctx.globalAlpha = 1 - a; ctx.fillStyle = '#ffe07a'; ctx.beginPath(); ctx.arc(x, y, R * (0.28 + a * 0.4), 0, 7); ctx.fill();
   ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.globalAlpha = (1 - a) * 0.7; ctx.beginPath(); ctx.arc(x, y, R * (0.45 + a * 0.6), 0, 7); ctx.stroke();
@@ -547,7 +553,7 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   const dy = (quality > 0 ? Math.sin(now * 2.2 + u.id * 1.7) * 1.2 : 0) - fire * 6, sc = 1 + fire * 0.07;
   // 그림 고르기: 용사 전용 그림(각성하면 각성 그림) → 내 스킨 그림 → 군별·계급대 그림 → 코드 그림
   const hk = hero ? [hero.id + (u.level > hero.level ? 'aw' : ''), hero.id + (u.level > hero.level ? 'aw' : '')] : null;
-  const heroIm = hk && unitImage('hero', hk, 0), skinIm = !heroIm && skin && skinArt ? unitImage(skinArt, u.type, 0) : null;
+  const heroIm = hk && (V2 ? v2HeroArt(b.id, hero.id) : unitImage('hero', hk, 0)), skinIm = !heroIm && skin && skinArt ? unitImage(skinArt, u.type, 0) : null;
   const im = heroIm || skinIm || unitImage(b.id, u.type, grp) || sprite(['uc', b.id, tk, tier].join(':'), 62, k, c => drawSoldierFallback(c, o));
   const w = size * sc;
   const stunned = u.stunT > 0;
@@ -567,6 +573,15 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
     ctx.strokeStyle = '#ffd45e'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.x + size * 0.4, fy - 3); ctx.quadraticCurveTo(p.x, fy + 4, p.x - size * 0.4, fy - 3); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,214,94,.95)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, top + size * 0.3, size * 0.4, 0, 7); ctx.stroke();
   }
+  // 새 그림체의 계급 장식(그림): 위관 = 흰 깃발 하나, 영관 = 붉은·푸른 깃발, 장성 = 햇살 + 망토(+ 머리 위 금별). 각성한 용사 = 금빛 날개(+ 왕관). 캐릭터보다 먼저 찍어 뒤에 놓는다
+  const deco = (name, cx, by, w, flip = false) => { const im2 = v2Art(name); if (!im2) return; const f2 = fit(im2, w, k, flip); put(ctx, f2, cx - w / 2, by - w); };      // (cx, by): 그림 칸의 가로 가운데 · 아랫변
+  const awake = hero && u.level > hero.level;
+  if (V2) {
+    if (awake) deco('rank_wings', p.x, p.y + FEET - size * 0.22, size * 1.5);
+    else if (!hero && grp === 2) deco('rank_pennant', p.x + size * 0.36, p.y + FEET - size * 0.3, size * 0.62);
+    else if (!hero && grp === 3) { deco('rank_banner_r', p.x - size * 0.36, p.y + FEET - size * 0.28, size * 0.7, true); deco('rank_banner_b', p.x + size * 0.36, p.y + FEET - size * 0.28, size * 0.7); }
+    else if (!hero && grp === 4) { deco('rank_sun', p.x, p.y + FEET - size * 0.12, size * 1.3); deco('rank_cape', p.x, p.y + FEET + 2, size * 1.05); }
+  }
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
   const atk = u.atkT > 0 && !stunned ? (heroIm ? unitAtkImage('hero', hk, 0) : skinIm ? unitAtkImage(skinArt, u.type, 0) : unitAtkImage(b.id, u.type, grp)) : null;
@@ -578,7 +593,7 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
     if (u.atkT > an.last + 0.001) { an.len = Math.max(0.1, Math.min(0.26, (now - an.t) * 0.9)); an.t = now; }      // 코어가 atkT를 다시 채웠다 = 방금 공격했다
     an.last = u.atkT;
     const A = !stunned && now - an.t < an.len ? (now - an.t) / an.len : -1, dir = u.faceL ? -1 : 1;
-    const fireIm = A >= 0 ? unitAtkImage(b.id, u.type, grp) : null, rdyIm = A >= 0 ? unitRdyImage(b.id, u.type) || fireIm : null;
+    const fireIm = A < 0 ? null : heroIm ? v2HeroArt(b.id, hero.id, '_atk') : unitAtkImage(b.id, u.type, grp), rdyIm = A < 0 ? null : (heroIm ? v2HeroArt(b.id, hero.id, '_rdy') : unitRdyImage(b.id, u.type)) || fireIm;      // 용사는 용사 전용 동작 그림
     let pic = im, S = size, dx = 0, zx = 1, zy = 1;
     if (fireIm) { S = size * 1.75;
       if (A < 0.2) { const t = A / 0.2; pic = rdyIm; dx = -dir * 3 * t; zx = 1 - 0.02 * t; zy = 1 + 0.02 * t; }                       // 준비: 뒤로 살짝 당기며 늘어난다
@@ -591,11 +606,16 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, skin, OUTLINE), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
   else { const f = fit(im, size, k, false, skin, OUTLINE); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다
   ctx.globalAlpha = 1;
+  if (V2 && !stunned) {      // 머리 위: 장성의 금별, 각성 용사의 왕관 (살짝 떠서 오르내린다)
+    const bob = quality > 0 ? Math.sin(now * 3 + u.id) * 1.5 : 0;
+    if (awake) deco('rank_crown', p.x, top + size * 0.1 + bob, size * 0.36); else if (!hero && grp === 4) deco('rank_star', p.x, top + size * 0.08 + bob, size * 0.3); }
   if (grp === 4 && quality > 0) for (let i = 0; i < 3; i++) {      // 장성: 주변에서 반짝이는 빛
     const ph = now * 2.4 + i * 2.1 + u.id, a = Math.max(0, Math.sin(ph)), sx = p.x + [-0.44, 0.46, 0.1][i] * size, sy = top + [0.3, 0.18, 0.02][i] * size, r = 3 + a * 5;
     ctx.fillStyle = `rgba(255,248,200,${a})`; ctx.beginPath(); ctx.moveTo(sx, sy - r); ctx.quadraticCurveTo(sx, sy, sx + r, sy); ctx.quadraticCurveTo(sx, sy, sx, sy + r); ctx.quadraticCurveTo(sx, sy, sx - r, sy); ctx.quadraticCurveTo(sx, sy, sx, sy - r); ctx.fill();
   }
-  if (stunned) { ctx.fillStyle = '#ffd45e'; ctx.strokeStyle = '#3a2a08'; ctx.lineWidth = 1.2;     // 기절: 머리 위를 도는 별
+  if (stunned && V2 && v2Art('fx_stun')) { const w2 = size * 0.5, wob = Math.sin(now * 7 + u.id) * 3; put(ctx, fit(v2Art('fx_stun'), w2, k), p.x - w2 / 2 + wob, top - w2 * 0.75); }      // 기절: 머리 위에서 흔들리는 별 그림
+  else if (u.burnT > 0 && V2 && v2Art('fx_flame')) { const w2 = size * 0.42 * (1 + Math.sin(now * 14 + u.id) * 0.08); put(ctx, fit(v2Art('fx_flame'), size * 0.42, k), p.x - w2 / 2, top - w2 * 0.7); }      // 화염: 머리 위 불꽃 그림
+  else if (stunned) { ctx.fillStyle = '#ffd45e'; ctx.strokeStyle = '#3a2a08'; ctx.lineWidth = 1.2;     // 기절: 머리 위를 도는 별
     for (let i = 0; i < 3; i++) { const a = now * 5 + i * 2.1, sx = p.x + Math.cos(a) * 22, sy = top + 4 + Math.sin(a) * 6;
       ctx.beginPath(); for (let j = 0; j < 10; j++) { const q = -Math.PI / 2 + j * Math.PI / 5, rr2 = j % 2 ? 2.6 : 6; ctx[j ? 'lineTo' : 'moveTo'](sx + Math.cos(q) * rr2, sy + Math.sin(q) * rr2); }
       ctx.closePath(); ctx.fill(); ctx.stroke(); } }

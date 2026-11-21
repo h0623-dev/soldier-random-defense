@@ -254,7 +254,7 @@ const loading = new Set();
 // 시작할 때는 메뉴와 전장에 바로 필요한 것(군별 기본 대기 그림, 적)만 읽는다
 export function loadArt() {
   if (V2) { fetch('img/v2/manifest.json').then(r => (r.ok ? r.json() : [])).then(list => { for (const n of list) v2Set.add(n);
-    for (const n of list) if (/^(units\/|enemy_)/.test(n)) loadOne('v2/' + n);      // 유닛·적은 미리 읽고, 지역 그림(땅·길·소품)은 그 지역에 들어갈 때 읽는다
+    for (const n of list) if (/^(units\/[a-z]+_[a-z-]+|enemy_.+)$/.test(n)) loadOne('v2/' + n);      // 유닛 대기 그림 60장과 적은 미리 읽는다. 공격 동작 · 용사 · 지역 그림(땅·길·소품) · 장식은 처음 쓰일 때 읽는다(한꺼번에 읽으면 그림 메모리가 커진다)
     artState.version++; }).catch(() => {}); return; }
   fetch('img/manifest.json').then(r => (r.ok ? r.json() : [])).then(list => {
     artList = list; const byBranch = {};
@@ -281,6 +281,9 @@ const unitArt = (branchId, type, grp = 0) => (V2 ? v2Unit(branchId, type) : full
 // 공격 자세 그림(<이름>_atk): 지금 쓰는 대기 그림과 짝이 맞는 것이 있을 때만
 // 새 그림체의 공격 동작 2장: units/<군별>_<병과>_rdy(준비) · _atk(발사). 448칸 = 대기 그림의 1.75배이고, 머리의 가로 자리와 발바닥 높이가 대기 그림과 같다(art/ref/apply.py cut_anim)
 const v2Key = type => (type[0] === type[1] ? type[0] : type.join('-'));
+// 전설의 용사: units/<군별>_hero_<용사>(대기 256칸) · _rdy · _atk(448칸). kind = '' | '_rdy' | '_atk'
+export const v2HeroArt = (branchId, heroId, kind = '') => (V2 ? v2Art(`units/${branchId}_hero_${heroId}${kind}`) : null);
+export const v2HeroSrc = (branchId, heroId) => (v2Set.has(`units/${branchId}_hero_${heroId}`) ? `img/v2/units/${branchId}_hero_${heroId}.webp` : '');
 export const unitRdyImage = (branchId, type) => (V2 ? v2Art(`units/${branchId}_${v2Key(type)}_rdy`) : null);
 export const unitAtkImage = (branchId, type, grp = 0) => (V2 ? v2Art(`units/${branchId}_${v2Key(type)}_atk`) : fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
 export const enemyArt = kind => (V2 ? v2Art('enemy_' + kind) : art['enemy_' + kind]) || null;      // 지역 보스 그림(boss2 …)이 없으면 render.js의 bossImage가 기본 보스 그림을 쓴다

@@ -212,3 +212,67 @@ for k, (who, wear, *_rest) in B.items():
             "Each figure is centered inside its own cell with its feet near the bottom of the cell, nothing overlapping, nothing touching the image edges and nothing crossing into another cell. "
             "No insignia, no emblems, no flags, no letters, no numbers, no humans, original character design.", 1536 if n == 3 else 1024, 1024)
 json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장', max(len(j['prompt']) for j in jobs))
+
+# ══ 5차 (2026-11-21): 남은 그림 — 전설의 용사 · 계급 장식 · 전투 표식/효과 · 결과 화면 그림 ═══════════
+#  용사: 용사 6종 × 동물 6종. 한 장 = 동물 2종(줄) × [대기 · 준비 · 발사](칸) → 용사마다 3장, 모두 18장. units/<군별>_hero_<용사>(.webp · _rdy · _atk)
+HERO = {  # 용사 옷 · 대기 · 발사 (예전 용사 그림의 설정을 동물에 맞게 옮김)
+ 'storm': ('a round olive steel helmet with a red headband tied under it, a long olive trench coat with brass buttons and a brown leather belt with pouches, and brown boots',
+           'standing proudly with one arm resting on a big olive rocket standing upright beside',
+           'thrusting one arm forward to the right while three small olive rockets streak up and to the right with short orange flame trails and small gray smoke puffs, shouting'),
+ 'phoenix': ('a round olive helmet with a white band, an olive uniform with a white armband with a red cross, a bright red scarf, and a short cape made of red and orange feathers',
+             'holding a white first-aid bag with a red cross in one hand and a rifle at rest in the other',
+             'firing the rifle to the right with a bright orange star-shaped muzzle flash while a few glowing orange feathers swirl close around'),
+ 'hawk': ('a dark green hooded cloak with golden feather-shaped trim over an olive uniform, a brown leather strap across the chest, and brown boots',
+          'standing with a long black scoped sniper rifle held upright',
+          'kneeling on one knee and aiming the long scoped rifle to the right with a thin bright white-yellow flash at the muzzle, one eye closed'),
+ 'inferno': ('clear goggles pushed up on the forehead, a dark red fireproof suit with black gloves and black boots, and two round yellow fuel tanks on the back',
+             'holding a flame sprayer nozzle pointed down with a tiny pilot flame at its tip, daring grin',
+             'spraying a short stream of orange and yellow fire to the right from the nozzle, leaning forward'),
+ 'frost': ('a big white fur hat with ear flaps, a long light blue winter greatcoat with a white fur collar and silver buttons, white mittens, and gray boots',
+           'standing with a tall frosty blue staff topped with a snowflake crystal',
+           'swinging the staff forward to the right and sending a small wave of pale blue snowflakes and ice crystals to the right'),
+ 'marshal': ('a dark green peaked cap with a red band, a dark green dress uniform with gold buttons and a red sash across the chest, white gloves, and a small radio headset',
+             'standing tall with a short commander baton tucked under one arm, calm confident smile',
+             'pointing the baton forward to the right, with curved yellow signal arcs and small golden star sparkles close in front, shouting an order'),
+}
+HERO_PAIRS = [('army', 'navy'), ('marine', 'sf'), ('air', 'police')]
+for hid, (outfit, idle, fire) in HERO.items():
+    for a, b in HERO_PAIRS:
+        add(f'hero_{hid}_{a}_{b}.png',
+            "A game animation sprite sheet with exactly six separate chibi character illustrations arranged in a clean grid of 3 columns and 2 rows with wide empty gaps between them, on a plain solid pure white background. "
+            "No borders, no panels, no labels, no text, no arrows, no ground, no cast shadows. Art style: " + CHIBI + ". "
+            f"Both rows show the same legendary hero costume worn by two different animals. Row 1 is {B[a][0].split(':')[1].strip()}. Row 2 is {B[b][0].split(':')[1].strip()}. "
+            "Each is clearly that animal (animal head, ears, muzzle or beak, fur or feathers, tail), standing on two legs like a person, not a human. "
+            f"Instead of any ordinary uniform, both wear this hero costume: {outfit}. "
+            f"The three cells of a row are the same character in three frames. Column 1 (IDLE): facing the viewer and turned very slightly to the right, {idle}. "
+            f"Column 3 (ACTION), acting toward the right side: {fire}. "
+            "Column 2 (READY): the same character a split second before the ACTION frame, in the same place and at the same size and viewing angle, only winding up: the weapon or tool is raised and aimed or the arm is pulled back, the body leans slightly back, "
+            "the mouth is closed with a focused look, and there is absolutely NO muzzle flash, NO flame, NO smoke, NO sparkles, NO signal marks, NO snowflakes, NO motion lines. "
+            "All six figures are full body and drawn at exactly the same body size. Effects in the ACTION frames are small and stay close to the character; nothing flies far away. "
+            "Each figure is centered inside its own cell with its feet near the bottom of the cell, nothing overlapping, nothing touching the image edges and nothing crossing into another cell. "
+            "No insignia, no emblems, no flags, no letters, no numbers, no humans, original character design.", 1536, 1024)
+SHEET12 = ("A game sprite sheet with exactly twelve separate illustrations arranged in a clean grid of 4 columns and 3 rows with wide empty gaps between them, on a plain solid pure white background. "
+           "No borders, no panels, no frames, no labels, no text, no letters, no numbers, no cast shadows. Art style for every item: " + STYLE + ". ")
+SHEET12_TAIL = " Each item is centered in its own cell, all about the same visual size, nothing overlapping, nothing touching the image edges or crossing into another cell."
+# 계급 장식: 캐릭터 뒤나 위에 덧붙인다(위관 깃발 · 영관 쌍깃발 · 장성 망토/햇살/별 · 각성 용사 날개/왕관)
+add('ranks.png', SHEET12 + "These are rank decorations that a game places behind or above a small character, each shown alone with no character. "
+    "Row 1, left to right: (1) a small white triangular pennant flag on a thin wooden pole; (2) a red banner flag with a gold border and gold fringe on a wooden pole with a gold tip; "
+    "(3) a blue banner flag with a gold border and gold fringe on a wooden pole with a gold tip; (4) a wide flowing red cape with a gold border, seen from the front, spread open like a curtain with an empty gap in the middle where a character would stand. "
+    "Row 2, left to right: (5) a round golden sunburst of pointed rays, like a halo disc; (6) a golden laurel wreath ring; (7) a pair of big golden feathered wings spread open, with an empty gap between them; (8) a small golden crown with red gems. "
+    "Row 3, left to right: (9) one shiny gold five-pointed star; (10) one shiny silver five-pointed star; (11) a small bronze medal on a short ribbon; (12) a glowing white-yellow four-pointed sparkle." + SHEET12_TAIL, 1536, 1024)
+# 전투 표식과 효과: 특수 발판 표식 3종(속사 · 고지 · 급소) + 폭발 · 연기 · 회복 · 번개 · 얼음 · 불꽃 · 동전 · 반짝임 · 기절 별
+add('marks.png', SHEET12 + "These are battle markers and effect sprites for a cute tower defense game. "
+    "Row 1, left to right: (1) a round sky-blue badge with two white arrowhead chevrons pointing right (a speed symbol); (2) a round lime-green badge with a white crosshair target symbol; "
+    "(3) a round orange-red badge with a white five-pointed star; (4) a puffy orange and yellow cartoon explosion burst with a white-hot center. "
+    "Row 2, left to right: (5) a soft gray smoke puff cloud; (6) a cluster of three bright green plus signs of different sizes; (7) a bright yellow zigzag lightning bolt; (8) a pale blue ice crystal snowflake. "
+    "Row 3, left to right: (9) a small orange and yellow flame; (10) a shiny gold coin with a tiny sparkle; (11) a glowing white-yellow four-pointed sparkle star; (12) three small yellow stars arranged in a curved arc (a dizzy symbol)." + SHEET12_TAIL, 1536, 1024)
+# 결과 화면 그림 4종
+add('result.png', "A game illustration sheet with exactly four separate chibi illustrations arranged in a clean 2x2 grid with wide empty gaps between them, on a plain solid pure white background. "
+    "No borders, no panels, no labels, no text, no letters, no numbers, no ground, no cast shadows. Art style: " + CHIBI + ". "
+    "The main character in all four is the same cute anthropomorphic puppy soldier: a fluffy tan-and-cream Korean Jindo-style puppy with upright pointy ears poking out through a round olive camouflage helmet, a black button nose, a cream muzzle and a curled-up fluffy tail, in an olive camouflage uniform. "
+    "Top-left (victory): the puppy jumps for joy holding a big golden trophy cup above its head, with a few pieces of colorful confetti close around. "
+    "Top-right (defeat): the puppy sits on the ground looking sad with a white bandage patch on its helmet and a small white flag in one paw, one teardrop. "
+    "Bottom-left (stage clear): the puppy salutes proudly beside a small wooden signpost with three gold stars on top. "
+    "Bottom-right (guide): the puppy stands like a teacher holding a wooden pointer stick, pointing up to the right with a friendly smile. "
+    "Each illustration is centered in its own quadrant, about the same size, nothing overlapping, nothing touching the image edges or crossing into another quadrant. No insignia, no emblems, no flags with symbols, no humans.", 1024, 1024)
+json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장', max(len(j['prompt']) for j in jobs))

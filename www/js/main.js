@@ -3,7 +3,7 @@ import { BRANCHES, CLASS_IDS, CLASS_INFO, GRADES, GROUP_OF_LEVEL, HEROES, COMMEN
 import * as C from './core.js';
 import * as M from './meta.js';
 import { draw, areaColors, setSkin } from './render.js';
-import { insigUrl, hasArt, unitArtName, loadBranchArt, V2, v2Has, v2UnitSrc } from './sprites.js';
+import { insigUrl, hasArt, unitArtName, loadBranchArt, V2, v2Has, v2UnitSrc, v2HeroSrc } from './sprites.js';
 // 그림 주소(새 그림체 · 예전 그림 공용). 유닛: 군별 id + 병과 키('inf' · 'inf+art') · 적: 'normal' · 'boss3' …
 const upic = (bid, key) => (V2 ? v2UnitSrc(bid, key) : `img/units/${bid}_${key.replace('+', '-')}.webp`);
 const epic = kind => (V2 ? `img/v2/enemy_${/^boss\d/.test(kind) && !v2Has('enemy_' + kind) ? 'boss' : kind}.webp` : `img/enemy_${hasArt('enemy_' + kind) ? kind : /^boss/.test(kind) ? 'boss' : kind === 'elite' ? 'armor' : kind}.webp`);
@@ -148,7 +148,7 @@ let rankReq = 0;
 function applySkin() { const s = M.skinOf(meta); setSkin(s.filter, s.art); if (s.art) loadBranchArt(s.art); document.documentElement.style.setProperty('--skin', s.filter || 'none'); }
 // 유닛 초상(카드·결과 화면): 용사 전용 그림 → 내 스킨 그림 → 군별·계급대 그림
 function unitPic(b, u) {
-  if (V2) return upic(b.id, C.typeKey(u.type));      // 새 그림체: 용사·스킨·계급대 그림은 아직 없다 — 군별·병과 그림을 쓴다
+  if (V2) { const h = C.heroOf(u); return (h && v2HeroSrc(b.id, h.id)) || upic(b.id, C.typeKey(u.type)); }      // 새 그림체: 용사는 그 군별의 용사 그림, 그 밖에는 군별·병과 그림(스킨·계급대 그림은 없다)
   const h = C.heroOf(u), hn = h && `units/hero_${h.id}${u.level > h.level ? 'aw' : ''}`; if (hn && hasArt(hn)) return `img/${hn}.webp`;
   const sk = M.skinOf(meta).art, sn = sk && !h && (!g || !g.duo || C.own(g, u)) && `units/${sk}_${C.typeKey(u.type).replace('+', '-')}`; if (sn && hasArt(sn)) return `img/${sn}.webp`;
   return unitSrc(b, u.type, C.rankGroup(b, u));
@@ -484,7 +484,7 @@ const ACT = {
   skinbuy(id) { if (M.buySkin(meta, id)) { M.useSkin(meta, id); saveMeta(); applySkin(); Sound.play('merge'); ACT.skins(`${M.skinOf(meta).name} 구매 — 바로 적용했습니다`); } else Sound.play('deny'); },
   skinuse(id) { if (M.useSkin(meta, id)) { saveMeta(); applySkin(); Sound.play('camp'); ACT.skins(`${M.skinOf(meta).name} 적용`); } },
   help() {
-    show(`<h2>게임 방법</h2><div class="list">
+    show(`<h2>${V2 ? '<img class="gpic" src="img/v2/ui_guide.webp" alt="" onerror="this.remove()">' : ''}게임 방법</h2><div class="list">
       <p>털뭉치 마을에 <b>고철 군단</b>이 쳐들어왔습니다. 털뭉치 병사들을 소집하고 계급을 올려 스테이지 100개를 깨 나가세요. 스테이지 10개마다 지역이 바뀌고, 한 스테이지는 라운드 30~50개입니다.</p>
       <p><b>1. 신병 소집</b> — <b>빈 칸을 누르면 그 자리에</b>, 아래 <b>신병 소집 건물을 누르면 빈 칸 가운데 무작위 자리에</b> 군자금으로 유닛을 뽑습니다(값은 건물 간판에 적혀 있습니다). <b>군별(육군·해군·해병대·특공대·공군·의경)과 병과가 무작위</b>로 정해집니다. 군별은 동물 생김새로, 등급은 발밑 원판 색으로 구분합니다(유닛을 누르면 이름표가 뜹니다). 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 군별 · 같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 군별이 다르면 조합되지 않습니다. 유닛을 누르면 카드에 <b>같은 병과 조합</b> · <b>랜덤 조합</b> 버튼이 나와, 짝이 있으면 바로 조합됩니다(짝이 없으면 회색). 발밑 <b>원판의 색</b>이 등급입니다. 짝이 있는 유닛의 칸에는 노란 점선이 둘러집니다. 칸이 꽉 찼는데 짝이 없으면 낮은 등급 유닛을 <b>전역</b>시켜 자리를 내세요. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
@@ -629,7 +629,7 @@ const ACT = {
         <div class="list"><p>히든 계급을 조합 재료로 쓰면 일반 계급으로 진급하고 능력은 사라집니다.</p></div>` : ''}
       <h2>전설의 용사</h2>
       <p class="sub" style="text-align:left;margin:0 0 .8rem"><b>${GRADES[4].name}</b> 등급의 <b>기본 병과</b> 둘(서로 다른 병과)을 조합하면 용사가 태어납니다. 용사는 종류마다 한 명뿐이고, <b>${GRADES[5].name}</b> 등급 유닛과 조합하면 <b>${GRADES[6].name}</b>로 각성해 기술이 강해집니다.</p>
-      ${HEROES.map(h => { const k = C.typeKey(h.pair); return `<div class="wcard hero" style="border-color:${h.color}"><div class="hrc">${uimg(h.pair[0], 'ui s')}<i>+</i>${uimg(h.pair[1], 'ui s')}<i>→</i><img class="hpic" src="${V2 ? upic(b.id, k) : `img/units/hero_${h.id}.webp`}" alt="" onerror="this.style.display='none'"></div>
+      ${HEROES.map(h => { const k = C.typeKey(h.pair); return `<div class="wcard hero" style="border-color:${h.color}"><div class="hrc">${uimg(h.pair[0], 'ui s')}<i>+</i>${uimg(h.pair[1], 'ui s')}<i>→</i><img class="hpic" src="${V2 ? v2HeroSrc(b.id, h.id) || upic(b.id, k) : `img/units/hero_${h.id}.webp`}" alt="" onerror="this.style.display='none'"></div>
         <div><b>${h.name}</b> <small>${name(h.pair[0])} + ${name(h.pair[1])} → ${name(k)}</small>${meta.found[h.id] ? '<span class="tag hero">탄생시킴</span>' : ''}<p>${h.text.split(' — ')[1]}</p><p><em>각성</em> ${h.up}</p></div></div>`; }).join('')}
       <h2>작전 지역 · 보스</h2>
       ${C.AREAS.map((a, i) => `<div class="wcard${i === g.area ? ' now' : ''}">${eimg(i ? 'boss' + (i + 1) : 'boss', i + 1)}
@@ -664,7 +664,7 @@ const ACT = {
     // 최우수 유닛(누적 피해 1위)과 병과별 피해 비율
     const mvp = g.units.filter(u => u && C.own(g, u)).sort((x, y) => y.dealt - x.dealt)[0], tot = g.dealt || 1;      // 협동에서는 내 유닛 가운데
     const shares = CLASS_IDS.map(c => [c, g.dmg[c] / tot]).filter(x => x[1] > 0.005);
-    show(`<h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
+    show(`${V2 ? `<img class="respic" src="img/v2/${g.over.win ? (stg ? 'ui_clear' : 'ui_win') : 'ui_lose'}.webp" alt="" onerror="this.remove()">` : ''}<h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
       <div class="card resbox" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${stg ? `스테이지 ${g.stage}` : C.MODES.some(m => m.id === mode) ? C.MODES.find(m => m.id === mode).name : '털뭉치수비대'}</b>${stg ? ` · ${C.AREAS[g.area].name}` : ''}${g.duo ? ' · 2인 협동' : ''} · ${mode === 'rush' ? `격파한 보스 ${rec}/${C.AREAS.length}` : stg ? `라운드 ${Math.min(g.wave, g.rounds)}/${g.rounds}` : `도달 ${g.wave}라운드`} · 처치 ${g.kills}${first ? ' · <b class="nb">첫 클리어!</b>' : newBest ? ' · <b class="nb">최고 기록!</b>' : ''}</p>
         <p>${ic('medal')}훈장 <b>+${medals * (doubled ? 2 : 1)}</b>${doubled ? ' (광고 2배)' : g.duo ? ` (협동 ${M.COOP_MEDAL}배)` : ''} · ${ic('ticket')}뽑기 티켓 <b>+${tickets}</b></p>
         ${rank ? `<p>랭킹 · 이번 주 <b>${rank.week ? rank.week + '위' : '100위 밖'}</b> · 전체 <b>${rank.all ? rank.all + '위' : '100위 밖'}</b></p>` : ''}</div></div>
