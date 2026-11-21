@@ -714,6 +714,20 @@ $('b-speed').onclick = () => { if (duoLive() && !coop.host) return toast('협동
 $('b-coop').onclick = () => g && g.duo && coop && ACT.cosheet();
 document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over && !duoLive()) { saveRun(); if (!paused) ACT.menu(); } });      // 협동 중에는 멈추지 않는다
 window.addEventListener('pagehide', () => { if (g && !g.over) saveRun(); });
+// ── 하단 시스템 내비게이션 바 숨기기 (Android) ──
+// Capacitor의 SystemBars(기본 내장)가 앱이 켜질 때 시스템 바를 '보이기'로 맞춰 놓는다. 그래서 화면 쪽에서 직접 숨기라고 시키고,
+// 앱으로 돌아왔을 때 · 화면을 눌렀을 때(바를 쓸어 올려 꺼낸 뒤)에도 다시 숨긴다. 이미 깔린 앱에서도 재설치 없이 된다(SystemBars는 처음부터 들어 있다).
+let navHideAt = 0;
+function hideNavBar(force) {
+  const cap = window.Capacitor; if (!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+  const now = Date.now(); if (!force && now - navHideAt < 2500) return; navHideAt = now;
+  try { const sb = cap.Plugins && cap.Plugins.SystemBars, o = { bar: 'NavigationBar' };
+    const r = sb && sb.hide ? sb.hide(o) : cap.nativePromise ? cap.nativePromise('SystemBars', 'hide', o) : null; if (r && r.catch) r.catch(() => {}); } catch { /* 옛 기기 · 지원하지 않는 환경 */ }
+}
+hideNavBar(true); setTimeout(() => hideNavBar(true), 600); setTimeout(() => hideNavBar(true), 2000);      // 켜진 직후: 껍데기가 바를 다시 켜는 것보다 늦게 한 번 더
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => hideNavBar(true), 200); });
+window.addEventListener('focus', () => hideNavBar(true));
+document.addEventListener('pointerdown', () => hideNavBar(false), { passive: true });
 // ── 뒤로가기 (Android 뒤로 버튼) ── 앱을 빠져나가지 않고: 전투 중이면 일시정지 메뉴, 대기실이면 종료 물음, 그 밖의 화면이면 한 단계 앞으로
 function onBack() {
   if (document.getElementById('fakead')) return;                                   // 광고가 떠 있는 동안은 아무것도 하지 않는다
