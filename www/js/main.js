@@ -463,7 +463,7 @@ const ACT = {
   help() {
     show(`<h2>게임 방법</h2><div class="list">
       <p>털뭉치 마을에 <b>고철 군단</b>이 쳐들어왔습니다. 털뭉치 병사들을 소집하고 계급을 올려 100단계를 막아 내세요.</p>
-      <p><b>1. 신병 소집</b> — <b>빈 칸을 누르면 그 자리에</b> 군자금으로 유닛을 뽑습니다(값은 아래 본부 건물에 적혀 있습니다). <b>군별(육군·해군·해병대·특공대·공군·의경)과 병과가 무작위</b>로 정해집니다. 이름표 맨 앞의 네모 글자(육·해·병·특·공·경)가 군별입니다. 가끔 한두 계급 높은 유닛이 나옵니다.</p>
+      <p><b>1. 신병 소집</b> — <b>빈 칸을 누르면 그 자리에</b> 군자금으로 유닛을 뽑습니다(값은 아래 본부 건물에 적혀 있습니다). <b>군별(육군·해군·해병대·특공대·공군·의경)과 병과가 무작위</b>로 정해집니다. 이름표에 <b>군별과 계급</b>이 적혀 있습니다(예: 육군 병장). 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 군별 · 같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 군별이 다르면 조합되지 않습니다. 유닛을 누르면 카드에 <b>같은 병과 조합</b> · <b>랜덤 조합</b> 버튼이 나와, 짝이 있으면 바로 조합됩니다(짝이 없으면 회색). 발밑 <b>원판의 색</b>이 등급입니다. 짝이 있는 유닛의 칸에는 노란 점선이 둘러집니다. 칸이 꽉 찼는데 짝이 없으면 낮은 등급 유닛을 <b>전역</b>시켜 자리를 내세요. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
       <p><b>주둔지</b> — 전장 아래의 건물을 눌러 명령합니다. 왼쪽부터 <b>훈련소</b>(천막) · <b>병과 강화</b>(병기창) · <b>신병 소집</b>(연병장) · <b>보급창</b>(보급병 고용 · 선택 소집) · <b>특수 임무</b>(통신탑). 쓸 수 없는 건물은 흐리게 보이고, 특수 임무를 부를 수 있으면 통신탑이 빛납니다.</p>
       <p><b>3. 훈련소 강화</b> — 소집되는 신병의 기본 등급이 올라갑니다(최고 영웅). 그 위 등급은 조합으로만 올립니다.</p>
@@ -485,7 +485,7 @@ const ACT = {
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
       <p><b>작전 지역</b> — 10단계마다 다음 지역으로 이동합니다. 지역마다 맵 모양과 배경이 다르고, 마지막 단계에 그 지역의 보스가 나옵니다. 보스마다 특수 능력이 다릅니다(기절, 화염, 증원, 회피 등). 유닛은 그대로 따라갑니다.</p>
       <p><b>패배</b> — 전장의 적이 ${C.CFG.enemyLimit}명을 넘거나, 보스를 ${C.CFG.bossTime}초 안에 잡지 못하면 패배합니다.</p>
-      ${CLASS_IDS.map(c => `<p><span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span> ${CLASS_INFO[c].role}</p>`).join('')}
+      ${CLASS_IDS.map(c => `<p><b>${CLASS_INFO[c].name} 계열</b> — ${CLASS_INFO[c].role}</p>`).join('')}
       </div><button class="wide sec" data-act="${g ? 'menu' : 'title'}">뒤로</button>`);
   },
   // 보급창: 보급병 고용(단계마다 군자금이 들어오는 투자) + 선택 소집(보급품을 써서 원하는 기본 병과 고르기)
@@ -512,7 +512,7 @@ const ACT = {
     const b = g.branch, pct = Math.round(C.CFG.upStep * 100);
     show(`${sheetHead('병과 강화', '그 병과가 들어간 모든 유닛의 공격력이 오릅니다')}
       ${CLASS_IDS.map(c => { const cost = C.classUpCost(g, c), lv = g.up[c]; return `<div class="up"><img src="${unitSrc(b, [c, c])}" alt="">
-        <div><b><span class="chip" style="background:${CLASS_INFO[c].color}">${CLASS_INFO[c].short}</span> ${b.types[c][0]} <em>Lv${lv}</em></b>
+        <div><b>${CLASS_INFO[c].name} 계열 <em>Lv${lv}</em></b>
           <span class="pips">${Array.from({ length: 8 }, (_, i) => `<i class="${i < Math.min(lv, 8) ? 'on' : ''}"></i>`).join('')}</span>공격력 +${lv * pct}% → 다음 단계 +${pct}%</div>
         <button class="btn gold" data-act="upc" data-arg="${c}" ${g.gold < cost ? 'disabled' : ''}>${ic('coin')}${fmt(cost)}</button></div>`; }).join('')}
       <div class="sfoot"><div class="pill gold">${ic('coin')}<b>${fmt(g.gold)}</b></div><button class="btn primary" data-act="resume">전장으로</button></div>`, true);
@@ -574,24 +574,23 @@ const ACT = {
   codex(id) {
     const picked = ui.sel != null && g.units[ui.sel] ? C.branchOf(g, g.units[ui.sel]) : null, b = BRANCHES.find(x => x.id === id) || BRANCHES.find(x => x.id === cxB) || picked || BRANCHES[0], name = k => b.types[k][0]; cxB = b.id;
     const uimg = (k, cls = 'ui') => `<img class="${cls}" src="img/units/${b.id}_${k.replace('+', '-')}.webp" alt="${name(k)}" onerror="this.style.visibility='hidden'">`;
-    const chips = k => k.split('+').map(c => `<span class="chip" style="background:${CLASS_INFO[c].color};color:#111">${CLASS_INFO[c].short}</span>`).join('');
     const mixKeys = C.TYPE_KEYS.filter(k => k.includes('+'));
     const eimg = (file, n) => `<img class="ui" src="img/${file}.webp" alt="" ${n > 1 && file === 'enemy_boss' ? `style="filter:hue-rotate(${(n - 1) * 36}deg)"` : ''}>`;
     show(`<h2>조합 도감</h2><div class="tabs">${BRANCHES.map(x => `<button class="${x.id === b.id ? 'on' : ''}" data-act="codex" data-arg="${x.id}">${x.name}</button>`).join('')}</div>
       <p class="note star" style="text-align:center">${b.name} 특성 — ${b.trait.text}</p>
       <p class="sub"><b>같은 군별 · 같은 등급</b> 두 유닛을 합치면 한 등급 위 유닛이 됩니다. 군별이 다르면 조합되지 않습니다</p>
       <h3>기본 병과 4종 — 신병 소집으로 나옵니다</h3>
-      <div class="cx4">${CLASS_IDS.map(c => `<div class="ucard">${uimg(c)}<b>${name(c)}</b><small>${chips(c)} ${CLASS_INFO[c].role}</small></div>`).join('')}</div>
+      <div class="cx4">${CLASS_IDS.map(c => `<div class="ucard">${uimg(c)}<b>${name(c)}</b><small>${CLASS_INFO[c].role}</small></div>`).join('')}</div>
       <h3>같은 병과끼리 → 같은 병과로 진급</h3>
       <div class="rcp">${uimg(CLASS_IDS[0], 'ui s')}<i>+</i>${uimg(CLASS_IDS[0], 'ui s')}<i>→</i>${uimg(CLASS_IDS[0])}<span><b>${name(CLASS_IDS[0])}</b><small>한 등급 위 · 병과 유지</small></span></div>
       <h3>다른 병과끼리 → 무작위 병과로 진급</h3>
       <div class="rcp">${uimg(CLASS_IDS[0], 'ui s')}<i>+</i>${uimg(CLASS_IDS[1], 'ui s')}<i>→</i><b class="qm2">?</b><span><b>무작위 병과</b><small>한 등급 위 · 아래 10종 가운데 하나</small></span></div>
       <h3>특수 병과 6종 — 다른 병과끼리 조합할 때만 나옵니다</h3>
-      ${mixKeys.map(k => { const sk = C.typeSkill(k.split('+')); return `<div class="wcard">${uimg(k)}<div><b>${name(k)}</b> ${chips(k)}<p><em>${sk.name}</em> ${sk.text}</p></div></div>`; }).join('')}
+      ${mixKeys.map(k => { const sk = C.typeSkill(k.split('+')); return `<div class="wcard">${uimg(k)}<div><b>${name(k)}</b><p><em>${sk.name}</em> ${sk.text}</p></div></div>`; }).join('')}
       <div class="list" style="margin-top:10px">
       <p>특수 병과는 두 기본 병과의 능력을 절반씩 가지고(예: ${name('inf+art')} = ${name('inf')} + ${name('art')}), 저마다 <b>고유 기술</b>이 하나 있습니다. 기본 병과는 고유 기술이 없는 대신 <b>전설의 용사</b>의 재료가 됩니다. 원하는 병과를 지키려면 <b>같은 병과끼리</b> 조합하세요.</p></div>
       <h2>병과 · 병기</h2>
-      ${Object.entries(b.types).map(([k, [n, w]]) => `<div class="wcard">${uimg(k)}<div><b>${n}</b> ${chips(k)}
+      ${Object.entries(b.types).map(([k, [n, w]]) => `<div class="wcard">${uimg(k)}<div><b>${n}</b>
         <p><em>${GRADES[0].name}~</em> ${w[0]}</p><p><em>${GRADES[b.tiers[0]].name}~</em> ${w[1]}</p><p><em>${GRADES[b.tiers[1]].name}~</em> ${w[2]}</p></div></div>`).join('')}
       <h2>등급과 계급</h2>
       <p class="sub" style="text-align:left;margin:0 0 .8rem">같은 <b>등급(색)</b> 둘을 조합하면 한 등급 오릅니다. 한 등급 안의 계급 이름은 병과에 따라 달라질 뿐 능력은 같습니다 — 순수 병과는 아래 계급, 혼성 병과는 위 계급 이름을 씁니다.</p>
@@ -645,7 +644,7 @@ const ACT = {
       ${gains.length ? `<div class="card xpc"><small>병과 숙련 경험치 +${gains.reduce((a, x) => a + x.xp, 0)}</small><div class="xps">${gains.slice(0, 5).map(x => `<span>${BRANCHES.find(q => q.id === x.b).name} ${BRANCHES.find(q => q.id === x.b).types[x.key][0]} <b>+${x.xp}</b>${x.after > x.before ? `<em>▲${x.after}단계</em>` : ''}</span>`).join('')}</div></div>` : ''}
       ${mvp && mvp.dealt > 0 ? `<div class="card mvp"><img class="u" src="${unitPic(C.branchOf(g, mvp), mvp)}" alt="">
         <div><small>최우수 유닛</small><b>${C.branchOf(g, mvp).name} ${C.unitName(C.branchOf(g, mvp), mvp)}</b><span>누적 피해 ${fmt(mvp.dealt)} · 전체의 ${Math.round(mvp.dealt / tot * 100)}%</span></div></div>
-      <div class="share">${shares.map(([c, v]) => `<i style="flex:${v};background:${CLASS_INFO[c].color}">${v > 0.09 ? `${CLASS_INFO[c].short} ${Math.round(v * 100)}%` : ''}</i>`).join('')}</div>
+      <div class="share">${shares.map(([c, v]) => `<i style="flex:${v};background:${CLASS_INFO[c].color}">${v > 0.13 ? `${CLASS_INFO[c].name} ${Math.round(v * 100)}%` : v > 0.07 ? `${Math.round(v * 100)}%` : ''}</i>`).join('')}</div>
       <p class="sub" style="margin:.5rem 0 0">병과별 피해 비율 · 전체 피해 ${fmt(g.dealt)}</p>` : ''}
       ${g.duo ? '<button class="wide" data-act="coop">다시 협동</button>' : '<button class="wide" data-act="start">다시 도전</button>'}
       <button class="wide sec" data-act="quit">작전 본부로</button>`);
@@ -737,7 +736,7 @@ function renderInfo() {
     return;
   }
   infoKey = key;
-  const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitPic(b, u)}" alt=""><b><i class="gdot" style="background:${GRADES[u.level].color}"></i>${C.heroOf(u) ? C.rankName(b, u) : C.unitName(b, u)}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
+  const el = $('info'), portrait = (u, cls = '') => `<div class="pt ${cls}"><img class="u" src="${unitPic(b, u)}" alt=""><b><i class="gdot" style="background:${GRADES[u.level].color}"></i>${C.heroOf(u) ? C.rankName(b, u) : b.types[C.typeKey(u.type)][0]}</b><img class="ins" src="${insigUrl(C.rankInsig(b, u))}" alt=""></div>`;
   $('app').classList.toggle('sel', !!A);       // 유닛을 고른 동안에는 하단 버튼 자리까지 카드가 쓴다
   if (A && B) {
     const p = C.mergePreview(g, ui.sel, ui.target), nu = { level: p.level, type: p.type, hidden: p.hidden }, h = C.hiddenDef(b, p.hidden), gr = GRADES[p.level];
@@ -754,8 +753,8 @@ function renderInfo() {
     const h = C.hiddenDef(b, A.hidden), up = [A.dmgUp && `공격력 +${Math.round(A.dmgUp * 100)}%`, A.rangeUp && `사거리 +${Math.round(A.rangeUp * 100)}%`].filter(Boolean), tile = C.tileAt(g, A.slot), sk = C.typeSkill(A.type), ml = ownA ? C.masteryOf(g.meta, b.id, C.typeKey(A.type)) : 0;
     const bf = [g.buff.haste && `공격 속도 +${Math.round(g.buff.haste * 100)}%`, g.buff.dmg && `공격력 +${Math.round(g.buff.dmg * 100)}%`, g.buff.immune && '기절·화염 면역'].filter(Boolean);
     el.innerHTML = `<div class="card"><div class="unit"><img class="u" src="${unitPic(b, A)}" alt="">
-      <div><h3><i class="gdot" style="background:${GRADES[A.level].color}"></i><span class="btag" style="background:${b.color}">${b.name}</span>${C.unitName(b, A)}<img src="${insigUrl(C.rankInsig(b, A))}" alt="">${h ? (h.hero ? `<span class="tag hero">${A.level > h.level ? '각성 용사' : '용사'}</span>` : '<span class="tag hid">히든</span>') : ''}</h3>
-        <small><b style="color:${GRADES[A.level].color}">${GRADES[A.level].name}</b> · ${C.unitWeapon(b, A)}${ml ? ` · 숙련 ${ml}단계` : ''}</small></div><button class="more" data-do="full">자세히</button></div>
+      <div><small class="uline"><span class="btag" style="background:${b.color}">${b.name}</span>${C.unitWeapon(b, A)} · <b>${C.rankName(b, A)}</b><img src="${insigUrl(C.rankInsig(b, A))}" alt=""></small>
+        <h3>${h && h.hero ? h.name : b.types[C.typeKey(A.type)][0]}<span class="gtag" style="background:${GRADES[A.level].color}">${GRADES[A.level].name}</span>${h ? (h.hero ? `<span class="tag hero">${A.level > h.level ? '각성 용사' : '용사'}</span>` : '<span class="tag hid">히든</span>') : ''}${ml ? `<em class="mlv">숙련 ${ml}</em>` : ''}</h3></div><button class="more" data-do="full">자세히</button></div>
       ${statChips(A.stats, null, A)}
       ${h ? `<p class="note star">★ ${h.text}${h.hero ? (A.level > h.level ? ` → <b>각성: ${h.up}</b>` : ` <span class="dim">(전설 등급 유닛과 조합하면 각성 — ${h.up})</span>`) : ''}</p>` : ''}${up.length ? `<p class="note star">주변 지원: ${up.join(' · ')}</p>` : ''}
       ${sk ? `<p class="note skill"><b>${sk.name}</b> ${sk.text}</p>` : ''}${A.guard ? '<p class="note star">응급 처치 지원: 기절·화염 시간 절반</p>' : ''}

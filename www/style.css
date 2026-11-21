@@ -400,3 +400,9 @@ img.u { filter: var(--skin, none); }
 #info.c2 .acts.two { margin: 0.4rem 0 0; } #info.c2 .acts.two + .acts { margin-top: 0.4rem; } #info.c2 .acts.two .btn { height: 3.1rem; font-size: 1.25rem; box-shadow: 0 0.25rem 0 var(--ink); } #info.c2 .acts.three .btn { height: 3.1rem; box-shadow: 0 0.25rem 0 var(--ink); }
 #info.c2 .unit img.u { width: 3.4rem; height: 3.4rem; } #info.c2 .card { padding: 0.4rem 1rem 0.6rem; }
 
+/* ── 유닛 카드: 윗줄 = 군별 · 병기 · 계급, 아랫줄 = 캐릭터 이름(병종) ── */
+.unit small.uline { display: flex; align-items: center; flex-wrap: wrap; gap: 0 0.3rem; font-size: 1.2rem; color: var(--mute); margin-bottom: 0.2rem; } .unit small.uline b { color: var(--ink); font-weight: 900; } .unit small.uline img { height: 1.5rem; margin-left: 0.3rem; }
+.unit small.uline .btag { font-size: 1.1rem; margin-right: 0.3rem; vertical-align: 0; } .unit h3 { font-size: 2rem; }
+.gtag { display: inline-block; padding: 0.05rem 0.7rem; border-radius: 0.8rem; border: 0.15rem solid var(--ink); font-size: 1.1rem; font-weight: 900; color: #10140e; } .unit h3 .mlv { font-style: normal; font-size: 1.1rem; font-weight: 800; color: #b96a00; }
+#info.c2 .unit h3 { font-size: 1.6rem; } #info.c2 .unit small.uline { font-size: 1.1rem; margin-bottom: 0; flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+

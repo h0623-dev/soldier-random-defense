@@ -486,7 +486,7 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
 // 계급장(칸 오른쪽 위)과 이름표(발 아래). 캐릭터를 모두 그린 뒤에 찍는다 — 아랫줄 캐릭터의 머리가 윗줄 이름표를 가리지 않게
 function unitTags(ctx, b, u, p, k) {
   const tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u), tk = u.type.join('+');
-  const o = { branchId: b.id, mark: b.mark, bcol: b.color, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u), gcol: GRADES[Math.min(u.level, GRADES.length - 1)].color };
+  const o = { branchId: b.id, bname: b.name, bcol: b.color, type: u.type, tier, rank, hidden: !!u.hidden, insig: rankInsig(b, u), gcol: GRADES[Math.min(u.level, GRADES.length - 1)].color };
   const tkey = [b.id, tk, tier, rank, o.hidden ? 1 : 0, o.insig.join('')].join(':');
   ctx.drawImage(spriteBox('utb:' + tkey, k, BADGE_BOX, c => drawTag(c, o, 'badge')), p.x + BADGE_BOX[0], p.y + BADGE_BOX[1], BADGE_BOX[2] - BADGE_BOX[0], BADGE_BOX[3] - BADGE_BOX[1]);
   ctx.drawImage(spriteBox('utl:' + tkey, k, LABEL_BOX, c => drawTag(c, o, 'label')), p.x + LABEL_BOX[0], p.y + LABEL_BOX[1], LABEL_BOX[2] - LABEL_BOX[0], LABEL_BOX[3] - LABEL_BOX[1]);

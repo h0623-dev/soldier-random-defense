@@ -4,10 +4,10 @@
 export const CLASS_IDS = ['inf', 'art', 'med', 'sig'];
 
 export const CLASS_INFO = {
-  inf: { short: '보', color: '#58b368', role: '단일 대상 속사' },
-  art: { short: '포', color: '#f0803c', role: '광역 폭발 피해' },
-  med: { short: '의', color: '#ee6c9a', role: '주변 아군 공격속도 증가' },
-  sig: { short: '통', color: '#4aa3e8', role: '적 둔화 · 받는 피해 증가' },
+  inf: { name: '보병', short: '보', color: '#58b368', role: '단일 대상 속사' },
+  art: { name: '포병', short: '포', color: '#f0803c', role: '광역 폭발 피해' },
+  med: { name: '의무', short: '의', color: '#ee6c9a', role: '주변 아군 공격속도 증가' },
+  sig: { name: '통신', short: '통', color: '#4aa3e8', role: '적 둔화 · 받는 피해 증가' },
 };
 
 // 등급 7단계 (2026-11-20 사용자 결정). 조합·전투력은 등급(레벨)으로 정해지고, 화면에서는 색으로 구분한다.
