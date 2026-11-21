@@ -184,24 +184,31 @@ for th, (place, mid, edge, road, props) in AREA.items():
         + " Each prop is centered in its own cell, all about the same visual size, nothing overlapping, nothing touching the image edges or crossing into another cell.", 1536, 1024)
 json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장', max(len(j['prompt']) for j in jobs))
 
-# ══ 3차 (2026-11-21): 공격 자세 60종 — 군별마다 기본 병과 4종(2×2) + 조합 병과 6종(3×2) = 12장 ═══════════
-#  대기 그림과 같은 캐릭터·같은 몸 크기로, 오른쪽을 향해 공격하는 자세. 효과(총구 섬광·연기·반짝이)는 작게, 몸 가까이에. apply.py가 발 위치를 기준으로 대기 그림과 크기·자리를 맞춘다.
+# ══ 3차 (2026-11-21): 공격 동작 문구 — 예전 그림의 공격 동작 문구를 동물에 맞게 고쳐 쓴다 ═══════════
 ATK_FIX = {
  ('police', 'med-sig'): (None, 'thrusting the big yellow search flashlight forward to the right with a short bright cone of light, the tiny white search drone darting forward beside it, shouting'),
 }
-ATK_TAIL = ("Every figure is in a lively attack pose, acting and looking toward the right side, full body, and drawn at exactly the same body size as the others. "
-            "Effects such as muzzle flashes, smoke puffs, sparkles and impact stars are small and stay close to the character; nothing flies far away. "
-            "Each figure is centered inside its own cell with its feet near the bottom of the cell, nothing overlapping, nothing touching the image edges and nothing crossing into another cell. "
-            "No insignia, no emblems, no flags, no letters, no numbers, no humans, original character design.")
 def atk_text(k, m):
     outfit, pose = ATK_FIX.get((k, m)) or (S.BR[k][2][m][0], S.BR[k][2][m][2])
     return (f'wearing {outfit} instead of the usual outfit, ' if outfit else '') + animalize(pose)
+# (3차의 한 장짜리 공격 자세 12장은 4차의 두 장짜리로 바꾸며 지웠다 — 위의 atk_text 문구는 4차가 그대로 쓴다)
+
+# ══ 4차 (2026-11-21): 공격 동작 2장(준비 → 발사) — 3차의 한 장짜리 공격 자세를 대신한다 ═══════════
+#  한 그림 안에 같은 캐릭터의 두 장면을 위아래로 그린다(위 = 준비: 효과 없이 겨누거나 팔을 당긴 자세, 아래 = 발사: 섬광·연기·반짝이가 붙은 자세) → 두 장이 같은 몸·같은 자리로 나온다.
+#  군별마다 4장: [보병·포병·의무](3×2) · [통신·보+포·보+의](3×2) · [보+통·포+의](2×2) · [포+통·의+통](2×2) = 24장.  게임: 대기 → 준비 → 발사 → 준비 → 대기.
+ANIM_SETS = [['inf', 'art', 'med'], ['sig', 'inf-art', 'inf-med'], ['inf-sig', 'art-med'], ['art-sig', 'med-sig']]
 for k, (who, wear, *_rest) in B.items():
-    head = ("A game sprite sheet with exactly {n} separate chibi character illustrations arranged in a clean {grid} with wide empty gaps between them, on a plain solid pure white background. "
+    for si, ts in enumerate(ANIM_SETS):
+        n = len(ts); cols = 'three' if n == 3 else 'two'
+        add(f'anim_{k}_{si + 1}.png',
+            f"A game animation sprite sheet with exactly {n * 2} separate chibi character illustrations arranged in a clean grid of {cols} columns and 2 rows with wide empty gaps between them, on a plain solid pure white background. "
             "No borders, no panels, no labels, no text, no arrows, no ground, no cast shadows. Art style: " + CHIBI + ". "
-            f"All figures are the same {who}, standing on two legs like a person, with the same cute face. It is clearly an animal (animal head, ears, muzzle or beak, fur or feathers, tail), not a human. Unless said otherwise the character wears {wear}. ")
-    a = [atk_text(k, c) for c in ['inf', 'art', 'med', 'sig']]
-    add(f'atk_{k}.png', head.format(n='four', grid='2x2 grid') + f"Top-left: {a[0]}. Top-right: {a[1]}. Bottom-left: {a[2]}. Bottom-right: {a[3]}. " + ATK_TAIL)
-    ps = [atk_text(k, m) for m in MIX]
-    add(f'atkmix_{k}.png', head.format(n='six', grid='grid of 3 columns and 2 rows') + f"Row 1, left to right: (1) {ps[0]}; (2) {ps[1]}; (3) {ps[2]}. Row 2, left to right: (4) {ps[3]}; (5) {ps[4]}; (6) {ps[5]}. " + ATK_TAIL, 1536, 1024)
+            f"All figures are the same {who}, standing on two legs like a person, with the same cute face. It is clearly an animal (animal head, ears, muzzle or beak, fur or feathers, tail), not a human. Unless said otherwise the character wears {wear}. "
+            "Each COLUMN is one character shown in two frames of the same attack animation, acting toward the right side: the bottom cell is the ACTION frame described below, and the top cell is the READY frame of that same character a split second earlier. "
+            "In the READY frame the character has the same outfit, the same equipment, the same size, the same position in its cell and the same viewing angle as in its ACTION frame, but is only winding up: the weapon or tool is raised and aimed, or the throwing arm is pulled back, "
+            "the body leans slightly back, the mouth is closed with a focused look, anything that will be thrown is still held, and there is absolutely NO muzzle flash, NO flame, NO smoke, NO sparkles, NO signal marks, NO beams, NO motion lines and NO impact stars. "
+            + ' '.join(f"Column {i + 1} ACTION frame (bottom): {atk_text(k, t)}." for i, t in enumerate(ts))
+            + " All figures are full body and drawn at exactly the same body size. Effects in the ACTION frames are small and stay close to the character; nothing flies far away. "
+            "Each figure is centered inside its own cell with its feet near the bottom of the cell, nothing overlapping, nothing touching the image edges and nothing crossing into another cell. "
+            "No insignia, no emblems, no flags, no letters, no numbers, no humans, original character design.", 1536 if n == 3 else 1024, 1024)
 json.dump(jobs, open(HERE + '/jobs.json', 'w'), ensure_ascii=False, indent=1); print(len(jobs), '장', max(len(j['prompt']) for j in jobs))

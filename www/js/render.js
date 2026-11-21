@@ -1,7 +1,7 @@
 // 전장 그리기 — 위에서 비스듬히 내려다본 느낌. 바닥은 두께가 있는 발판, 캐릭터는 그 위에 서 있고 아래쪽 줄이 위쪽 줄을 가린다.
 import { CLASS_INFO, GRADES } from './data.js';
 import { FIELD, CELL, CFG, AREAS, TILES, unitRange, rankGroup, canMerge, sameType, rankName, rankInsig, mergePreview, heroOf, branchOf, charName, mine, own } from './core.js';
-import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art, v2Has } from './sprites.js';
+import { drawTag, drawSoldierFallback, unitImage, unitAtkImage, unitRdyImage, unitArtTier, ENEMY_DRAW, ENEMY_R, sprite, spriteBox, enemyArt, loadArt, V2, v2Art, v2Has } from './sprites.js';
 loadArt();
 
 const DEPTH = 18;                                      // 발판 블록 옆면 두께 (높이감)
@@ -504,6 +504,7 @@ function shot(ctx, f, quality) {
   ctx.restore(); ctx.globalAlpha = 1;
 }
 
+const anim = new WeakMap();      // 유닛마다 공격 동작의 시작 시각(화면용, 실제 시간) — 유닛이 사라지면 같이 사라진다
 function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내 유닛이면 내 스킨을 입힌다(협동에서 동료 유닛은 기본 모습)
   const tier = u.level >= b.tiers[1] ? 2 : u.level >= b.tiers[0] ? 1 : 0, rank = rankName(b, u);
   const lv = Math.min(u.level, GRADES.length - 1), gcol = GRADES[lv].color;
@@ -569,9 +570,23 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
   const atk = u.atkT > 0 && !stunned ? (heroIm ? unitAtkImage('hero', hk, 0) : skinIm ? unitAtkImage(skinArt, u.type, 0) : unitAtkImage(b.id, u.type, grp)) : null;
-  if (V2 && im.naturalWidth) { const br = stunned || quality === 0 ? 0 : Math.sin(now * 2.6 + u.id * 1.7) * 0.022, sx = (1 + br) * sc, sy = (1 - br) * sc + fire * 0.05;      // 숨쉬듯 통통: 발을 기준으로 가로세로가 번갈아 늘었다 준다. 쏠 때는 위로 튄다
-    const am = u.atkT > 0 && !stunned ? unitAtkImage(b.id, u.type, grp) : null, S = am ? size * 1.5 : size, f = fit(am || im, S, k, !!u.faceL, false, OUTLINE);      // 공격 직후에는 공격 자세 그림(1.5배 칸, 발 위치가 같다)
-    ctx.drawImage(f.cv, p.x + (f.x - S / 2) * sx, p.y + FEET - fire * 5 + (f.y - S) * sy, f.w * sx, f.h * sy); }
+  if (V2 && im.naturalWidth) {
+    // 공격 동작: 대기 → 준비(겨눔, 몸을 살짝 뒤로) → 발사(앞으로 튀며 커졌다 돌아옴) → 준비(되돌아옴) → 대기. 그림 세 장을 바꿔 찍고 그 사이는 밀고 당기는 움직임으로 잇는다.
+    //  A: 동작이 흐른 정도(0 → 1). 게임 시간이 아니라 실제 시간으로 흐른다 — 배속을 올려도 동작이 눈에 보이게(게임 시간으로 하면 ×1에서 0.15초, ×3에서 0.05초 만에 지나간다).
+    //  길이는 0.26초, 공격이 그보다 잦으면 공격 간격의 90%. 준비·발사 그림은 1.75배 칸이고 머리 자리와 발 높이가 대기 그림과 같아, 같은 발 자리에 겹쳐 찍으면 몸이 제자리에 있다.
+    let an = anim.get(u); if (!an) anim.set(u, an = { t: -9, last: 0, len: 0.26 });
+    if (u.atkT > an.last + 0.001) { an.len = Math.max(0.1, Math.min(0.26, (now - an.t) * 0.9)); an.t = now; }      // 코어가 atkT를 다시 채웠다 = 방금 공격했다
+    an.last = u.atkT;
+    const A = !stunned && now - an.t < an.len ? (now - an.t) / an.len : -1, dir = u.faceL ? -1 : 1;
+    const fireIm = A >= 0 ? unitAtkImage(b.id, u.type, grp) : null, rdyIm = A >= 0 ? unitRdyImage(b.id, u.type) || fireIm : null;
+    let pic = im, S = size, dx = 0, zx = 1, zy = 1;
+    if (fireIm) { S = size * 1.75;
+      if (A < 0.2) { const t = A / 0.2; pic = rdyIm; dx = -dir * 3 * t; zx = 1 - 0.02 * t; zy = 1 + 0.02 * t; }                       // 준비: 뒤로 살짝 당기며 늘어난다
+      else if (A < 0.6) { const t = (A - 0.2) / 0.4, e = 1 - t; pic = fireIm; dx = dir * (5 * e * e - 1); zx = 1 + 0.07 * e * e; zy = 1 - 0.035 * e * e; }      // 발사: 앞으로 튀며 옆으로 늘었다 돌아온다
+      else { const t = (A - 0.6) / 0.4; pic = rdyIm; dx = -dir * 2 * (1 - t); zx = 1; zy = 1 + 0.015 * (1 - t); } }                      // 되돌아옴
+    const br = stunned || quality === 0 || fireIm ? 0 : Math.sin(now * 2.6 + u.id * 1.7) * 0.022, sx = (1 + br) * zx, sy = (1 - br) * zy;      // 가만히 있을 때: 숨쉬듯 통통(발을 기준으로 가로세로가 번갈아 늘었다 준다)
+    const hop = fireIm ? 0 : fire * 5, f = fit(pic, S, k, !!u.faceL, false, OUTLINE);      // 공격 그림이 아직 없을 때만 위로 튄다
+    ctx.drawImage(f.cv, p.x + dx + (f.x - S / 2) * sx, p.y + FEET - hop + (f.y - S) * sy, f.w * sx, f.h * sy); }
   else if (atk) put(ctx, fit(atk, size * 2, k, u.faceL, skin, OUTLINE), p.x - size, p.y + FEET + dy - size * 2);
   else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, skin, OUTLINE), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
   else { const f = fit(im, size, k, false, skin, OUTLINE); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다

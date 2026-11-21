@@ -42,32 +42,69 @@ cut('enemies', 3, 2, ['enemy_' + n for n in 'normal fast armor elite boss scrap'
 cut('bosses_a', 3, 2, ['enemy_boss%d' % n for n in range(2, 8)], 256); cut('bosses_b', 2, 2, ['enemy_boss8', 'enemy_boss9', 'enemy_boss10', 'enemy_dummy'], 256)
 for b in 'army navy marine sf air police'.split():
     cut('units_' + b, 2, 2, [f'{b}_{c}' for c in 'inf art med sig'.split()], 256, 'units/'); cut('mix_' + b, 3, 2, [f'{b}_{m}' for m in MIX], 256, 'units/')
-# 공격 자세(atk_<군별> 2×2 · atkmix_<군별> 3×2) → units/<이름>_atk.webp (384×384 = 대기 그림의 1.5배 칸).
-#  · 한 장 안의 캐릭터는 몸 크기가 같으므로, 그 장의 가운데 키(중앙값)가 대기 그림의 키와 같아지게 줄인다(섬광·연기로 칸이 커져도 몸 크기는 그대로).
-#  · 그림의 가로 무게중심을 칸의 가로 가운데에, 발바닥을 대기 그림과 같은 높이에 둔다 → 게임에서 대기 그림과 같은 자리에 겹쳐 찍으면 된다.
-def cut_atk(sheet, cols, rows, names, size=384, base=256, pad=0.04):
+# 공격 동작 2장(anim_<군별>_<1~4>: 열 = 병과, 위 = 준비 · 아래 = 발사) → units/<이름>_rdy.webp · <이름>_atk.webp (448×448 = 대기 그림의 1.75배 칸).
+#  · 크기: 머리(가장 큰 둥근 덩어리)의 크기를 재서 대기 그림의 머리와 같아지게 줄인다 — 한 장 안에서도 캐릭터가 조금씩 다른 크기로 그려지고, 웅크리거나 벌려 선 자세는 키로는 맞출 수 없다.
+#  · 자리: 머리 가운데가 대기 그림의 머리 가운데와 같은 가로 자리에 오게 놓는다 — 옆에 포·기관총이 생겨도 몸은 제자리다(전에는 그림 전체의 무게중심으로 놓아 몸이 옆으로 밀렸다). 발바닥은 대기 그림과 같은 높이.
+#  · 칸 나누기는 이어진 덩어리 단위(옆 칸으로 넘어간 섬광·연기가 남의 그림에 끼지 않게).   필요: pip install opencv-python-headless
+ANIM_SETS = [['inf', 'art', 'med'], ['sig', 'inf-art', 'inf-med'], ['inf-sig', 'art-med'], ['art-sig', 'med-sig']]
+ASIZE, BASE, APAD = 448, 256, 0.04
+def _flat(im):      # RGBA → 흰 바탕 BGR 배열
+    bg = Image.new('RGB', im.size, (255, 255, 255)); bg.paste(im, mask=im.getchannel('A')); return np.array(bg)[:, :, ::-1].copy()
+def _bbox(im): return im.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()
+def _find(img, tpl, margin=60):      # img 안에서 tpl을 찾는다(둘레에 흰 여백을 덧대 가장자리에 걸친 것도 찾는다) → (점수, x, y)
+    import cv2
+    big = cv2.copyMakeBorder(img, margin, margin, margin, margin, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+    if big.shape[0] < tpl.shape[0] or big.shape[1] < tpl.shape[1]: return -1, 0, 0
+    r = cv2.matchTemplate(big, tpl, cv2.TM_CCOEFF_NORMED); _, sc, _, loc = cv2.minMaxLoc(r); return sc, loc[0] - margin, loc[1] - margin
+def _head(im):      # 머리: 2등신 캐릭터에서 가장 크고 둥근 덩어리 → 위쪽 65%에서 '가장 큰 안쪽 원'의 반지름과 그 가운데의 가로 자리 (자세·표정·옆에 놓인 장비에 흔들리지 않는다)
+    import cv2
+    m = (np.array(im.getchannel('A')) > 24).astype(np.uint8); m[int(m.shape[0] * 0.65):] = 0
+    d = cv2.distanceTransform(np.pad(m, 1), cv2.DIST_L2, 5)[1:-1, 1:-1]; r = float(d.max()); ys, xs = np.where(d >= r * 0.92)
+    return r, float(xs.mean())
+def cut_anim(sheet, types, bname, log):
     p = os.path.join(RAW, sheet + '.png')
     if not os.path.exists(p): return
     im = matte(Image.open(p).convert('RGB')); im = im[0] if isinstance(im, tuple) else im
-    W, H = im.size; cw, ch = W / cols, H / rows; cells = []
-    for i, n in enumerate(names):
-        c = im.crop((round(i % cols * cw), round(i // cols * ch), round((i % cols + 1) * cw), round((i // cols + 1) * ch)))
-        bb = c.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()
-        cells.append((n, c.crop(bb)) if bb else (n, None))
-    hs = sorted(c.height for _, c in cells if c); med = (hs[(len(hs) - 1) // 2] + hs[len(hs) // 2]) / 2
-    for n, c in cells:
-        if not c: print('빈 칸:', n); continue
-        idle = os.path.join(OUT, 'units', n + '.webp'); ih = base * (1 - pad * 2)
-        if os.path.exists(idle): bb = Image.open(idle).getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox(); ih = bb[3] - bb[1]
-        k = ih / med
-        col = (np.array(c.getchannel('A')) > 24).sum(0).cumsum(); fx = float(np.searchsorted(col, col[-1] / 2))      # 가로 기준점: 그림 넓이의 절반이 왼쪽에 오는 자리(몸 + 장비의 무게중심) — 옆에 놓인 포·섬광 때문에 몸이 칸 밖으로 밀리지 않게
-        k = min(k, (size - 8) / c.height, (size / 2 - 4) / max(1.0, fx), (size / 2 - 4) / max(1.0, c.width - fx))      # 칸을 넘으면 그만큼 더 줄인다
-        c2 = c.resize((max(1, round(c.width * k)), max(1, round(c.height * k))), Image.LANCZOS)
-        o = Image.new('RGBA', (size, size), (0, 0, 0, 0)); o.paste(c2, (round(size / 2 - fx * k), size - round(base * pad) - c2.height), c2)
-        o.save(os.path.join(OUT, 'units', n + '_atk.webp'), quality=88)
-    print(sheet, len(names))
+    W, H = im.size; n = len(types); cw, ch = W / n, H / 2
+    # 칸 나누기: 격자로 자르면 옆 칸으로 넘어간 섬광·연기 조각이 남의 칸에 끼어든다 → 이어진 덩어리 단위로 주인을 정한다.
+    #  칸마다 가장 큰 덩어리가 몸이고, 떨어져 있는 작은 덩어리(반짝이·날아가는 붕대·연기)는 같은 줄에서 가장 가까운 몸의 것으로 친다(동작이 오른쪽을 향하므로 왼쪽 몸을 2.5배 더 가깝게 친다).
+    import cv2
+    al = (np.array(im.getchannel('A')) > 24).astype(np.uint8); cnt, lab, st, cen = cv2.connectedComponentsWithStats(al, 8)
+    body = {}
+    for j in range(1, cnt):
+        key = (min(n - 1, int(cen[j][0] // cw)), min(1, int(cen[j][1] // ch)))
+        if key not in body or st[j][4] > st[body[key]][4]: body[key] = j
+    owner = {j: key for key, j in body.items()}
+    for j in range(1, cnt):
+        if j in owner or st[j][4] < 12: continue
+        row = min(1, int(cen[j][1] // ch)); x0, x1 = st[j][0], st[j][0] + st[j][2]; best = None
+        for (c, r), bj in body.items():
+            if r != row: continue
+            b0, b1 = st[bj][0], st[bj][0] + st[bj][2]; gap = max(0, x0 - b1) if x0 >= b0 else max(0, b0 - x1) * 2.5 + 1
+            if best is None or gap < best[0]: best = (gap, (c, r))
+        if best: owner[j] = best[1]
+    def cell(col, row):
+        ids = [j for j, key in owner.items() if key == (col, row)]
+        if not ids: return None
+        c = im.copy(); c.putalpha(Image.fromarray((np.isin(lab, ids) * np.array(im.getchannel('A'))).astype(np.uint8))); bb = _bbox(c); c = c.crop(bb); c.left = bb[0]; return c      # left: 시트에서의 가로 자리(준비·발사 장면의 자리를 견주는 데 쓴다)
+    rdy = [cell(i, 0) for i in range(n)]; act = [cell(i, 1) for i in range(n)]
+    hs = sorted(c.height for c in rdy if c); med = (hs[(len(hs) - 1) // 2] + hs[len(hs) // 2]) / 2
+    for i, t in enumerate(types):
+        name = f'{bname}_{t}'; idle = Image.open(os.path.join(OUT, 'units', name + '.webp')).convert('RGBA'); ib = _bbox(idle)
+        if not rdy[i] or not act[i]: print('빈 칸:', name); continue
+        ir, ix = _head(idle.crop(ib)); rr_, rx = _head(rdy[i]); ar, ax = _head(act[i])
+        k = ir / ((rr_ + ar) / 2)      # 머리 크기가 대기 그림과 같아지는 배율 (두 장면은 같은 배율)
+        if abs(rr_ - ar) > 0.12 * rr_: k = ir / rr_; ax = rx + (rdy[i].left - act[i].left)      # 발사 장면의 머리를 잘못 쟀으면(섬광·연기 덩어리) 준비 장면을 따르고, 자리는 시트에서의 자리대로
+        left = ASIZE // 2 + (ib[0] + ix - BASE // 2)      # 대기 그림의 머리 가운데가 448칸에서 놓일 가로 자리 (대기 칸 가운데 = 448칸 가운데)
+        for src, hx, suffix in ((rdy[i], rx, '_rdy'), (act[i], ax, '_atk')):
+            im2 = src.resize((max(1, round(src.width * k)), max(1, round(src.height * k))), Image.LANCZOS)
+            o = Image.new('RGBA', (ASIZE, ASIZE), (0, 0, 0, 0)); o.paste(im2, (round(left - hx * k), ASIZE - round(BASE * APAD) - im2.height), im2)
+            o.save(os.path.join(OUT, 'units', name + suffix + '.webp'), quality=88)
+        log.append(f'{name} ×{k:.2f}' + ('*' if abs(rr_ - ar) > 0.12 * rr_ else ''))
+alog = []
 for b in 'army navy marine sf air police'.split():
-    cut_atk('atk_' + b, 2, 2, [f'{b}_{c}' for c in 'inf art med sig'.split()]); cut_atk('atkmix_' + b, 3, 2, [f'{b}_{m}' for m in MIX])
+    for si, ts in enumerate(ANIM_SETS): cut_anim(f'anim_{b}_{si + 1}', ts, b, alog)
+if alog: print('공격 동작', len(alog), '종 ·', ' | '.join(alog))
 p = os.path.join(RAW, 'title.png')
 if os.path.exists(p): Image.open(p).convert('RGB').resize((768, 1152), Image.LANCZOS).save(os.path.join(OUT, 'title.webp'), quality=84); print('title')
 names = sorted(os.path.relpath(os.path.join(d, f), OUT)[:-5].replace(os.sep, '/') for d, _, fs in os.walk(OUT) for f in fs if f.endswith('.webp'))      # 게임이 읽을 그림 목록

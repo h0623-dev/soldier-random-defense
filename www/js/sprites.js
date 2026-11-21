@@ -279,8 +279,10 @@ export function unitArtName(branchId, type, grp = 0) {
 export const unitArtTier = (branchId, type, grp = 0) => { const m = /_t(\d)$/.exec(unitArtName(branchId, type, grp)); return m ? +m[1] : 0; };
 const unitArt = (branchId, type, grp = 0) => (V2 ? v2Unit(branchId, type) : fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp)] : null) || null;
 // 공격 자세 그림(<이름>_atk): 지금 쓰는 대기 그림과 짝이 맞는 것이 있을 때만
-// 새 그림체의 공격 자세: units/<군별>_<병과>_atk (384칸 = 대기 그림의 1.5배, 발 위치가 칸 가로 가운데 · 발바닥 높이는 대기 그림과 같다)
-export const unitAtkImage = (branchId, type, grp = 0) => (V2 ? v2Art(`units/${branchId}_${type[0] === type[1] ? type[0] : type.join('-')}_atk`) : fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
+// 새 그림체의 공격 동작 2장: units/<군별>_<병과>_rdy(준비) · _atk(발사). 448칸 = 대기 그림의 1.75배이고, 머리의 가로 자리와 발바닥 높이가 대기 그림과 같다(art/ref/apply.py cut_anim)
+const v2Key = type => (type[0] === type[1] ? type[0] : type.join('-'));
+export const unitRdyImage = (branchId, type) => (V2 ? v2Art(`units/${branchId}_${v2Key(type)}_rdy`) : null);
+export const unitAtkImage = (branchId, type, grp = 0) => (V2 ? v2Art(`units/${branchId}_${v2Key(type)}_atk`) : fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
 export const enemyArt = kind => (V2 ? v2Art('enemy_' + kind) : art['enemy_' + kind]) || null;      // 지역 보스 그림(boss2 …)이 없으면 render.js의 bossImage가 기본 보스 그림을 쓴다
 export const hasArt = name => !!art[name];     // 그림 파일이 준비됐는지 (도감에서 <img> 주소를 고를 때 쓴다)
 
