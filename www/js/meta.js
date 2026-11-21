@@ -1,11 +1,13 @@
 // 전투 밖 성장 — 병과 숙련도 · 부대 표창 · 출석 · 일일 임무 · 보급 뽑기판 (화면과 분리된 순수 로직, node 테스트 가능)
 // 여기의 함수들은 기기에 저장되는 meta 객체를 고친다. 날짜는 화면 쪽에서 'YYYY-MM-DD' 글자로 넘겨준다(기기 시계 기준).
 import { BRANCHES, COMMENDS, CM_NEED } from './data.js';
-import { TYPE_KEYS, DIFFS, MODES, masteryInfo, reached } from './core.js';
+import { TYPE_KEYS, DIFFS, MODES, STAGES, masteryInfo, reached } from './core.js';
 
 export const ENERGY = { max: 10, regenMs: 3600e3 };
 export const META_DEFAULT = () => ({
-  medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, bestE: {}, bestR: {}, bestC: {}, diff: 0, mode: 'normal', found: {}, foundM: {}, mute: false,
+  medals: 0, atk: 0, gold: 0, bounty: 0, best: {}, bestD: {}, bestE: {}, bestR: {}, bestC: {}, diff: 0, mode: 'stage', found: {},
+  stage: 0, stageSel: 1, stageC: 0,          // 스테이지: 깬 스테이지 수(다음에 할 스테이지 = stage + 1) · 고른 스테이지 · 협동으로 깬 가장 높은 스테이지
+  foundM: {}, mute: false,
   xp: {},                                   // 병과 숙련도 경험치 { 군별: { 병과 키: 값 } }
   cmN: {}, cm: {},                          // 부대 표창: 모은 장수 · 단계(장수에서 계산해 둔 값 — core가 읽는다)
   tickets: 0, flips: 0, board: null,        // 뽑기판: 티켓 · 누적 뒤집은 수 · 지금 판
@@ -25,7 +27,8 @@ export function fillMeta(saved) {
   for (const k of ['best', 'bestD', 'bestE', 'bestR', 'bestC', 'found', 'foundM', 'xp', 'cmN', 'cm', 'att', 'daily', 'energy', 'ad', 'skins']) if (!m[k] || typeof m[k] !== 'object') m[k] = d[k];
   m.att = { ...d.att, ...m.att }; m.daily = { ...d.daily, ...m.daily }; m.energy = { ...d.energy, ...m.energy }; m.ad = { ...d.ad, ...m.ad }; m.skins = { ...d.skins, ...m.skins };
   if (!SKINS.some(x => x.id === m.skins.on)) m.skins.on = 'base';
-  if (!MODES.some(x => x.id === m.mode)) m.mode = 'normal';
+  if (!MODES.some(x => x.id === m.mode)) m.mode = 'stage';
+  m.stage = Math.max(0, Math.min(STAGES, m.stage | 0)); m.stageSel = Math.max(1, Math.min(stageOpen(m), m.stageSel | 0 || stageOpen(m)));
   syncCm(m); return m;
 }
 const rint = (rand, n) => Math.floor(rand() * n);
@@ -108,7 +111,11 @@ export function bestMap(meta, mode, diff) {
 }
 // 지금까지 가 본 가장 높은 단계 (기본·무한 작전 통틀어)
 export const topWave = meta => Math.max(0, ...Object.values(meta.best), ...Object.values(meta.bestE), ...Object.values(meta.bestC), ...Object.values(meta.bestD).flatMap(o => Object.values(o)));
-export const modeOpen = (meta, id) => { const m = MODES.find(x => x.id === id); return !!m && (!m.need || topWave(meta) >= m.need); };
+// 모드가 열렸는가: 스테이지를 needStage개 깼거나, 예전(100단계 시절) 기록이 need단계 이상이면
+export const modeOpen = (meta, id) => { const m = MODES.find(x => x.id === id); return !!m && (!m.needStage || meta.stage >= m.needStage || topWave(meta) >= m.need); };
+// 스테이지: 지금 할 수 있는 가장 높은 스테이지(깬 수 + 1). 깨면 다음이 열린다
+export const stageOpen = meta => Math.min(STAGES, (meta.stage | 0) + 1);
+export function stageClear(meta, n) { const first = n === (meta.stage | 0) + 1; if (first) meta.stage = Math.min(STAGES, n); return first; }      // 바로 다음 스테이지를 깼을 때만 앞으로 간다(협동에서 건너뛰지 않게)
 
 // ── 랭킹 · 협동에 쓰는 이름 ──────────────────────────────
 // 기기마다 무작위 식별값과 별명을 하나 만든다(처음 쓸 때). 개인 정보는 담지 않는다
@@ -119,15 +126,15 @@ export function ensureId(meta, rand = Math.random) {
 }
 export const cleanName = s => String(s || '').replace(/[\u0000-\u001f<>&"'`\\]/g, '').trim().slice(0, 10);
 // 랭킹 판 이름: 기본 작전은 난이도별, 그 밖은 모드별
-export const rankBoard = g => (g.duo ? 'coop' : g.mode === 'normal' ? 'normal-' + (g.diff || 0) : g.mode);
-export const RANK_BOARDS = [['normal-0', '보통'], ['normal-1', '어려움'], ['normal-2', '지옥'], ['endless', '무한'], ['rush', '보스 러시'], ['coop', '2인 협동']];
+export const rankBoard = g => (g.duo ? 'coop' : g.mode === 'normal' ? 'normal-' + (g.diff || 0) : g.mode);      // 스테이지 판은 'stage'(점수 = 깬 스테이지 번호)
+export const RANK_BOARDS = [['stage', '스테이지'], ['endless', '무한'], ['rush', '보스 러시'], ['coop', '2인 협동']];
 export const COOP_MEDAL = 1.2;      // 협동 판의 훈장 배수
 // 협동을 시작할 때 동료 기기에 넘기는 값: 전투 계산에 쓰이는 것만 (영구 강화 · 표창 단계 · 그 군별의 숙련도). 두 기기가 같은 값으로 계산해야 한다
 export const metaLite = meta => ({ atk: meta.atk || 0, gold: meta.gold || 0, bounty: meta.bounty || 0, cm: { ...(meta.cm || {}) }, xp: JSON.parse(JSON.stringify(meta.xp || {})) });      // 협동 상대에게 보내는 내 성장 값(여섯 군별 숙련도 모두)
 
 // ── 병과 숙련도 ─────────────────────────────────────────
 // 한 판의 경험치 = 도달 단계 × 10 × 난이도 훈장 배수 (보스 러시는 보스 하나에 100). 그 판에서 준 피해 비율대로 병과에 나눈다
-export const runXp = g => Math.round((g.mode === 'rush' ? reached(g) * 100 : reached(g) * 10) * DIFFS[g.diff || 0].medal);
+export const runXp = g => Math.round((g.mode === 'stage' ? reached(g) * (g.eco || 1) * 10 : g.mode === 'rush' ? reached(g) * 100 : reached(g) * 10) * DIFFS[g.diff || 0].medal);      // 스테이지: 라운드 하나가 예전 단계 eco개 값
 export function addRunXp(meta, g) {
   const total = runXp(g), sum = Object.values(g.dmgT || {}).reduce((a, b) => a + b, 0), out = [];
   if (!(total > 0) || !(sum > 0)) return out;
@@ -171,8 +178,8 @@ export const rewardText = r => [r.m && `훈장 ${r.m}개`, r.t && `뽑기 티켓
 export const DAILY_POOL = [
   { id: 'run1', key: 'runs', need: 1, text: '작전 1회 마치기' },
   { id: 'run3', key: 'runs', need: 3, text: '작전 3회 마치기' },
-  { id: 'w40', key: 'wave', need: 40, max: true, text: '한 판에서 40단계 도달' },
-  { id: 'w70', key: 'wave', need: 70, max: true, text: '한 판에서 70단계 도달' },
+  { id: 'w25', key: 'wave', need: 25, max: true, text: '한 판에서 25라운드 도달' },
+  { id: 'clear1', key: 'clears', need: 1, text: '스테이지 1개 클리어' },
   { id: 'k800', key: 'kills', need: 800, text: '적 800명 처치' },
   { id: 'boss5', key: 'bosses', need: 5, text: '보스 5마리 격파' },
   { id: 'hero2', key: 'heroes', need: 2, text: '전설의 용사 2명 탄생' },
@@ -193,6 +200,7 @@ export function dailyRecord(meta, date, g) {
   const d = today(meta, date), p = d.prog, add = (k, v) => { p[k] = (p[k] || 0) + v; };
   add('runs', 1); add('kills', g.kills || 0); add('bosses', g.bossKills || 0); add('heroes', g.heroGot || 0); add('elites', (g.elite && g.elite.n) || 0); add('depot', g.depot || 0);
   if (g.mode !== 'rush') p.wave = Math.max(p.wave || 0, reached(g));
+  if (g.mode === 'stage' && g.over && g.over.win) add('clears', 1);
 }
 export function dailyState(meta, date) {
   const d = meta.daily.date === date ? meta.daily : { prog: {}, got: {} };
@@ -227,4 +235,4 @@ export function flip(meta, i, rand) {
 }
 export function resetBoard(meta, rand) { if (!boardDone(meta.board)) return false; meta.board = newBoard(rand); return true; }
 // 판을 마치고 받는 티켓
-export const runTickets = g => (g.mode === 'rush' ? Math.floor(reached(g) / 2) : Math.min(5, Math.floor(reached(g) / 20)));
+export const runTickets = g => (g.mode === 'rush' ? Math.floor(reached(g) / 2) : Math.min(5, Math.floor(reached(g) / (g.mode === 'stage' ? 10 : 20))));      // 스테이지: 10라운드마다 1장

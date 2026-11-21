@@ -11,7 +11,7 @@ import { DurableObject } from 'cloudflare:workers';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400' };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...CORS } });
 // 랭킹 판: 이름 → 올릴 수 있는 가장 큰 점수(도달 단계 · 잡은 보스 수)
-export const BOARDS = { 'normal-0': 100, 'normal-1': 100, 'normal-2': 100, endless: 2000, rush: 10, coop: 100 };
+export const BOARDS = { stage: 100, 'normal-0': 100, 'normal-1': 100, 'normal-2': 100, endless: 2000, rush: 10, coop: 100 };      // stage: 깬 스테이지 번호. normal-*는 스테이지가 생기기 전(100단계 시절)의 판 — 옛 앱이 올릴 수 있어 남겨 둔다
 const KEEP = 100, SHOW = 50;
 export const cleanName = s => String(s || '').replace(/[\u0000-\u001f<>&"'`\\]/g, '').trim().slice(0, 10) || '이름없음';
 // 주간 판의 이름: 그 주 월요일(UTC)의 날짜

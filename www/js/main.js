@@ -48,21 +48,21 @@ function coopLost() {      // 동료가 나갔거나 연결이 끊겼다 → 남
 }
 const myInfo = () => ({ branchId: BRANCHES[0].id, name: meta.name, meta: M.metaLite(meta) });      // branchId는 예전 판과 말이 통하게 남겨 둔 값(쓰지 않는다)
 const okPlayer = p => !!(p && BRANCHES.some(b => b.id === p.branchId) && p.meta && typeof p.meta === 'object');
-function coopBegin(players, seed, me, sp) {
+function coopBegin(players, seed, me, sp, stage = 1) {
   if (!players.every(okPlayer)) { coopLeave(); return ACT.coop('시작하지 못했습니다 — 다시 해 보세요'); }
   if (!M.spendEnergy(meta, Date.now())) { coopLeave(); return ACT.noenergy(); }
   saveMeta(); for (const x of BRANCHES) loadBranchArt(x.id);
   players = players.map(pl => ({ ...pl, name: M.cleanName(pl.name) || '동료' }));
-  g = C.createDuo({ players, seed, me });
+  g = C.createDuo({ players, seed, me, stage: C.stageInfo(stage).n });
   Object.assign(coop, { me, tick: 0, goal: 0, q: [], seq: 0, sums: {}, mine: {}, acc: 0, beat: performance.now(), beatSent: 0, need: false });
-  enter(); setSpeed(sp); hide(); toast(`${peerP().name}와(과) 협동 작전 시작! ${me === 0 ? '위쪽' : '아래쪽'} 발판이 내 구역입니다`, 3400);
+  enter(); setSpeed(sp); hide(); toast(`${peerP().name}와(과) 스테이지 ${g.stage} 협동 시작! ${me === 0 ? '위쪽' : '아래쪽'} 발판이 내 구역입니다`, 3400);
 }
 function coopMsg(m) {
   if (m.t === 'refused') { coopLeave(); ACT.coop(m.why === 'full' ? '방이 가득 찼습니다' : '없는 방 번호입니다'); }
   else if (m.t === 'hello') { coop.host = !!m.host; coop.peer = m.peer; if (m.peer) coop.conn.send({ t: 'me', p: myInfo() }); if (!g) ACT.cowait(); }
   else if (m.t === 'peer') { coop.peer = m.peer; coop.conn.send({ t: 'me', p: myInfo() }); if (!g) ACT.cowait(); }
-  else if (m.t === 'me') { if (coop.host && !g && okPlayer(m.p)) { const seed = Math.floor(Math.random() * 2 ** 31), ps = [myInfo(), m.p]; coop.conn.send({ t: 'start', seed, speed: 2, p: ps }); coopBegin(ps, seed, 0, 2); } }
-  else if (m.t === 'start') { if (!coop.host && !g && Array.isArray(m.p) && m.p.length === 2) coopBegin(m.p, m.seed >>> 0, 1, okSpeed(m.speed)); }
+  else if (m.t === 'me') { if (coop.host && !g && okPlayer(m.p)) { const seed = Math.floor(Math.random() * 2 ** 31), ps = [myInfo(), m.p]; const stage = Math.min(M.stageOpen(meta), meta.stageSel | 0 || 1); coop.conn.send({ t: 'start', seed, speed: 2, p: ps, stage }); coopBegin(ps, seed, 0, 2, stage); } }      // 스테이지는 방장이 고른 것
+  else if (m.t === 'start') { if (!coop.host && !g && Array.isArray(m.p) && m.p.length === 2) coopBegin(m.p, m.seed >>> 0, 1, okSpeed(m.speed), m.stage | 0 || 1); }
   else if (m.t === 'left') coopLost();
   else if (!duoLive()) return;
   else if (m.t === 'emote') { if (EMOTES[m.i]) { toast(`${peerP().name}: ${EMOTES[m.i]}`, 2400); Sound.play('summon'); } }
@@ -161,8 +161,8 @@ async function watchAd(then) {
   const was = paused; paused = true; const ok = await Ads.showRewarded(); paused = was; last = performance.now();
   if (ok) then(); else toast('광고를 끝까지 봐야 보상을 받습니다');
 }
-const curMode = () => (M.modeOpen(meta, meta.mode) ? meta.mode : 'normal');
-const recText = (mode, n) => (mode === 'rush' ? `보스 ${n}/${C.AREAS.length}` : `최고 ${n}단계`);
+const curMode = () => (M.modeOpen(meta, meta.mode) ? meta.mode : 'stage');
+const recText = (mode, n) => (mode === 'rush' ? `보스 ${n}/${C.AREAS.length}` : `최고 ${n}라운드`);
 // 난이도별 최고 기록: 보통은 meta.best, 그 위는 meta.bestD[난이도]. 위 난이도는 바로 아래 난이도에서 need 단계까지 가면 열린다
 const bestOf = d => M.bestMap(meta, 'normal', d);
 const diffOpen = d => d === 0 || Math.max(0, ...Object.values(bestOf(d - 1))) >= C.DIFFS[d].need;
@@ -171,8 +171,8 @@ const RUN_KEY = 'srd_run';
 function saveRun() { try { const o = C.saveGame(g); if (o) localStorage.setItem(RUN_KEY, JSON.stringify(o)); } catch { /* 저장 불가 환경 */ } }
 function clearRun() { try { localStorage.removeItem(RUN_KEY); } catch { /* 저장 불가 환경 */ } }
 function peekRun() { try { const o = JSON.parse(localStorage.getItem(RUN_KEY) || 'null'); const b = o && BRANCHES.find(x => x.id === o.branchId);
-  return b && o.wave >= 0 ? { o, name: o.only ? b.name + ' ' : 'only' in o ? '' : b.name + ' ', wave: o.wave, diff: C.DIFFS[o.diff] ? o.diff : 0, mode: o.mode || 'normal' } : null; } catch { return null; } }
-const runLabel = run => `${run.name}${run.mode === 'rush' ? `보스 ${run.wave}/${C.AREAS.length}` : run.wave + '단계'}${run.mode !== 'normal' ? ' · ' + C.MODES.find(m => m.id === run.mode).name : ''}${run.diff ? ' · ' + C.DIFFS[run.diff].name : ''}`;
+  return b && o.wave >= 0 ? { o, name: o.only ? b.name + ' ' : 'only' in o ? '' : b.name + ' ', wave: o.wave, diff: C.DIFFS[o.diff] ? o.diff : 0, mode: o.mode || 'normal', stage: o.stage | 0 } : null; } catch { return null; } }
+const runLabel = run => (run.mode === 'stage' ? `스테이지 ${run.stage} · ${run.wave}라운드` : `${run.name}${run.mode === 'rush' ? `보스 ${run.wave}/${C.AREAS.length}` : run.wave + '라운드'}${C.MODES.some(m => m.id === run.mode) ? ' · ' + C.MODES.find(m => m.id === run.mode).name : ''}${run.diff ? ' · ' + C.DIFFS[run.diff].name : ''}`);
 const saveMeta = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(meta)); } catch { /* 저장 불가 환경 */ } };
 // 빌드 번호(커밋 시각, 초)를 '11.19 21:08 빌드'처럼 읽기 쉽게
 const buildLabel = b => { const d = new Date(b * 1000), z = n => String(n).padStart(2, '0');
@@ -200,8 +200,8 @@ const TABS = [['shop', 'cart', '상점', 'nav_shop'], ['mastery', 'paw', '부대
 const pic = (name, icon) => `<span class="pic"><img src="img/ic/${name}.webp" alt="" onerror="this.remove()">${ic(icon)}</span>`;      // 그림 아이콘(없으면 기호)
 const navBar = cur => { const day = today(), dots = { shop: M.adLeft(meta, day, 'gem') > 0, commend: meta.medals >= M.CM_BOX, board: meta.tickets > 0 };
   return `<nav class="nav5">${TABS.map(([act, icon, label, img]) => `<button class="${act === cur ? 'on' : ''}" data-act="${act}">${pic(img, icon)}<b>${label}</b>${dots[act] && act !== cur ? '<i class="dot"></i>' : ''}</button>`).join('')}</nav>`; };
-const topBar = self => { M.ensureId(meta); const top = M.topWave(meta);
-  return `<div class="ltop"><button class="lprof" data-act="rank"><img src="img/icon-192.png" alt=""><span><b>${esc(meta.name)}</b><small>${top ? `최고 ${top}단계` : '첫 출격 전'}</small></span></button>
+const topBar = self => { M.ensureId(meta);
+  return `<div class="ltop"><button class="lprof" data-act="rank"><img src="img/icon-192.png" alt=""><span><b>${esc(meta.name)}</b><small>${meta.stage >= C.STAGES ? '스테이지 100 완료' : `스테이지 ${M.stageOpen(meta)} · ${C.stageInfo(M.stageOpen(meta)).name}`}</small></span></button>
     <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="${self}" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${pic(meta.mute ? 'mute' : 'sound', 'sound')}</button>
     <button class="hbtn" data-act="settings" aria-label="설정">${ic('menu')}</button></div>${resBar()}`; };
 // tab: 아래 탭에서 불이 켜질 자리, self: 이 화면을 다시 그리는 ACT 이름, sub: 내용과 탭 사이에 붙는 줄(하위 메뉴·실행 버튼), keep: 스크롤 자리 유지
@@ -221,7 +221,7 @@ overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'
   else if (e.target === overlay && overlay.classList.contains('sheet')) hide(); });   // 시트 바깥(어두운 부분)을 누르면 닫힌다
 
 // 게임에 들어갈 때(새로 출격·이어하기) 화면 쪽 상태를 처음으로 돌린다
-function enter() { loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area } }; infoKey = ''; setSpeed(SPEEDS[0]); $('app').classList.remove('sel'); }
+function enter() { loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area, ...(g.mode === 'stage' ? { top: `스테이지 ${g.stage} · 라운드 ${g.rounds}`, label: `보스 — ${C.AREAS[g.area].boss.name}` } : {}) } }; infoKey = ''; setSpeed(SPEEDS[0]); $('app').classList.remove('sel'); }
 
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {
@@ -253,26 +253,39 @@ const ACT = {
       </div>
       <button class="wide sec" data-act="title">뒤로</button>`);
   },
-  branches() {
-    if (!diffOpen(meta.diff)) meta.diff = 0;
-    const run = peekRun(), mode = curMode(), best = M.bestMap(meta, mode, meta.diff);
-    show(`<h2>작전</h2><div class="diffs">${C.MODES.map(m => { const open = M.modeOpen(meta, m.id); return `<button class="${m.id === mode ? 'on' : ''}" data-act="mode" data-arg="${m.id}" ${open ? '' : 'disabled'}>
-        <b>${m.name}</b><small>${open ? m.text : `${m.need}단계 도달 시 열림`}</small></button>`; }).join('')}</div>
-      <h2>난이도</h2><div class="diffs">${C.DIFFS.map((d, i) => `<button class="${i === meta.diff ? 'on' : ''}" data-act="diff" data-arg="${i}" ${diffOpen(i) ? '' : 'disabled'}>
-        <b>${d.name}</b><small>${diffOpen(i) ? d.text : `${C.DIFFS[i - 1].name} ${d.need}단계 도달 시 열림`}</small></button>`).join('')}</div>
-      <div class="mixinfo"><div class="mixrow">${BRANCHES.map(b => `<span style="background:${b.color}"><img src="img/units/${b.id}_inf.webp" alt=""><b>${b.name}</b></span>`).join('')}</div>
-        <p>여섯 군별의 병사가 <b>섞여서</b> 소집됩니다. <b>조합은 같은 군별 · 같은 등급끼리만</b> 됩니다.</p></div>
-      <button class="wide go" data-act="start">${ic('play')}출격 <small>${ic('bolt')}1 · ${recText(mode, Math.max(0, ...Object.values(best)))}</small></button>
-      ${run ? `<p class="sub" style="margin-top:1.4rem">새로 출격하면 이어하던 게임(${runLabel(run)})은 사라집니다</p>` : ''}
-      <button class="wide sec" data-act="title">뒤로</button>`);
+  // 출격 화면: 작전 종류(스테이지 · 무한 작전 · 보스 러시). 스테이지는 지역 10곳 × 10개 — 지역을 넘겨 보며 고른다
+  branches(areaArg) {
+    meta.diff = 0;
+    const run = peekRun(), mode = curMode(), open = M.stageOpen(meta);
+    meta.stageSel = Math.max(1, Math.min(open, meta.stageSel | 0 || open));
+    const modes = `<div class="diffs">${C.MODES.map(m => { const ok = M.modeOpen(meta, m.id); return `<button class="${m.id === mode ? 'on' : ''}" data-act="mode" data-arg="${m.id}" ${ok ? '' : 'disabled'}>
+        <b>${m.name}</b><small>${ok ? m.text : `스테이지 ${m.needStage} 클리어 시 열림`}</small></button>`; }).join('')}</div>`;
+    const foot = `${run ? `<p class="sub" style="margin-top:1.4rem">새로 출격하면 이어하던 게임(${runLabel(run)})은 사라집니다</p>` : ''}<button class="wide sec" data-act="title">뒤로</button>`;
+    if (mode !== 'stage') { const best = M.bestMap(meta, mode, 0);
+      return show(`<h2>작전</h2>${modes}
+        <div class="mixinfo"><p style="margin:0">${mode === 'rush' ? '지역 10곳의 보스를 차례로 상대합니다. 보스를 잡을 때마다 다음 판 군자금을 받습니다.' : '끝없이 몰려오는 적을 얼마나 오래 막는지 겨룹니다. 10라운드마다 지역이 바뀝니다.'}</p></div>
+        <button class="wide go" data-act="start">${ic('play')}출격 <small>${ic('bolt')}1 · ${recText(mode, Math.max(0, ...Object.values(best)))}</small></button>${foot}`); }
+    const sel = C.stageInfo(meta.stageSel), a = areaArg != null && areaArg !== '' ? Math.max(0, Math.min(C.AREAS.length - 1, +areaArg)) : sel.area, col = areaColors(a), first = a * 10 + 1;
+    const mini = st => `<div class="smap" style="background:${areaColors(st.area).ground[0]}">${st.map.rows.map(r => [...r].map(ch => `<i style="${ch === 'P' ? `background:${areaColors(st.area).pad[0]}` : ch === 'R' ? 'background:#c9ad74' : ''}"></i>`).join('')).join('')}</div>`;
+    show(`<h2>작전</h2>${modes}
+      <div class="sarea" style="background:${col.ground[0]}"><button data-act="branches" data-arg="${a - 1}" ${a > 0 ? '' : 'disabled'} aria-label="앞 지역">◀</button>
+        <div><small>지역 ${a + 1} / ${C.AREAS.length} · 스테이지 ${first}~${first + 9}</small><b>${C.AREAS[a].name}</b></div>
+        <button data-act="branches" data-arg="${a + 1}" ${a < C.AREAS.length - 1 ? '' : 'disabled'} aria-label="다음 지역">▶</button></div>
+      <div class="sgrid5">${Array.from({ length: 10 }, (_, i) => { const n = first + i, done = n <= meta.stage, can = n <= open;
+        return `<button class="st${n === meta.stageSel ? ' on' : ''}${done ? ' done' : can ? ' now' : ' lock'}" data-act="stagesel" data-arg="${n}" ${can ? '' : 'disabled'}><b>${n}</b><small>${done ? '클리어' : can ? '도전' : '잠김'}</small></button>`; }).join('')}</div>
+      <div class="sinfo">${mini(sel)}<div><b>스테이지 ${sel.n}</b><small>${sel.name} · 라운드 ${sel.rounds}</small>
+        <p>보스 <b>${sel.boss.name}</b> — 10라운드마다, 그리고 마지막 라운드</p><p class="dim">${sel.boss.text}</p></div></div>
+      <button class="wide go" data-act="start">${ic('play')}스테이지 ${sel.n} 출격 <small>${ic('bolt')}1 · 라운드 ${sel.rounds}</small></button>
+      <p class="sub" style="margin:1rem 0 0">여섯 군별이 섞여 나오고, 조합은 같은 군별 · 같은 등급끼리 됩니다</p>${foot}`);
   },
+  stagesel(n) { n = +n; if (n >= 1 && n <= M.stageOpen(meta)) { meta.stageSel = n; saveMeta(); } ACT.branches(C.stageInfo(n).area); },
   diff(i) { if (diffOpen(+i)) { meta.diff = +i; saveMeta(); } ACT.branches(); },
   mode(id) { if (M.modeOpen(meta, id)) { meta.mode = id; saveMeta(); } ACT.branches(); },
   start() {
     if (!M.spendEnergy(meta, Date.now())) return ACT.noenergy();      // 한 판에 행동력 1 (이어하기는 들지 않는다)
     saveMeta(); for (const x of BRANCHES) loadBranchArt(x.id); clearRun();
-    g = C.createGame({ meta, diff: diffOpen(meta.diff) ? meta.diff : 0, mode: curMode() }); enter();
-    hide(); toast(g.mode === 'rush' ? `보스 러시 — ${C.CFG.rushPrep}초 뒤 첫 보스가 옵니다. 받은 군자금으로 부대를 꾸리세요` : '빈 칸을 누르면 그 자리에 신병이 소집됩니다', g.mode === 'rush' ? 3200 : 1400);
+    const mode = curMode(); g = C.createGame({ meta, mode, stage: Math.min(M.stageOpen(meta), meta.stageSel | 0 || 1) }); enter();
+    hide(); toast(g.mode === 'rush' ? `보스 러시 — ${C.CFG.rushPrep}초 뒤 첫 보스가 옵니다. 받은 군자금으로 부대를 꾸리세요` : '빈 칸을 누르면 그 자리에 신병이 소집됩니다', g.mode === 'rush' ? 3200 : 1800);
   },
   cont() {      // 저장해 둔 게임 이어하기
     const run = peekRun(), loaded = run && C.loadGame(run.o, meta);
@@ -289,9 +302,10 @@ const ACT = {
   async coop(msg) {
     M.ensureId(meta); if (!meta.lastBranch) meta.lastBranch = BRANCHES[0].id; saveMeta(); if (coop && !g) coopLeave();
     const on = await Net.on(), busy = msg === '연결하는 중…';
-    show(`<h2>2인 협동</h2><p class="sub">한 전장을 둘이 나눠 맡아 100단계를 함께 막습니다 · 행동력 1</p>
+    show(`<h2>2인 협동</h2><p class="sub">한 전장을 둘이 나눠 맡아 스테이지를 함께 깹니다 · 행동력 1</p>
       <div class="list"><p>· <b>발판을 위아래로 나눕니다</b> — 방장은 위쪽 ${C.CFG.duoSplit}칸, 손님은 아래쪽 ${C.SLOT_COUNT - C.CFG.duoSplit}칸. 자기 구역에만 소집·배치하고 자기 유닛만 조합합니다.</p>
-        <p>· 적과 단계, 임무는 함께 씁니다. <b>누가 잡든 두 사람 모두 보상</b>을 받고, 군자금·훈련소·병과 강화는 각자입니다. 여섯 군별이 섞여 나오고 조합은 같은 군별끼리만 됩니다. 용사의 전체 효과와 주변 지원은 동료에게도 미칩니다.</p>
+        <p>· <b>스테이지는 방장이 고른 것</b>으로 합니다(내가 방장이면 스테이지 ${Math.min(M.stageOpen(meta), meta.stageSel | 0 || 1)} — 출격 화면에서 바꿉니다). 바로 다음 스테이지를 깨면 내 진행도 앞으로 갑니다.</p>
+        <p>· 적과 라운드, 임무는 함께 씁니다. <b>누가 잡든 두 사람 모두 보상</b>을 받고, 군자금·훈련소·병과 강화는 각자입니다. 여섯 군별이 섞여 나오고 조합은 같은 군별끼리만 됩니다. 용사의 전체 효과와 주변 지원은 동료에게도 미칩니다.</p>
         <p>· 군자금을 보내거나 한마디를 건넬 수 있습니다. 배속은 방장이 정합니다. 훈장 ${M.COOP_MEDAL}배. 중간 저장은 되지 않습니다.</p></div>
       <h3>별명 (동료와 랭킹에 보입니다)</h3><div class="namerow"><input id="nm" maxlength="10" value="${esc(meta.name)}" autocomplete="off"><button class="btn" data-act="setname" data-arg="coop">저장</button></div>
       <p class="note cmmsg">${on ? msg || '빠른 매칭은 기다리는 사람과 바로 이어 줍니다' : '서버가 아직 연결되지 않아 협동을 할 수 없습니다 (서버 배포 대기)'}</p>
@@ -326,9 +340,9 @@ const ACT = {
   // ── 랭킹 ── arg = '판 이름|주간(1)·전체(0)'
   async rank(arg) {
     M.ensureId(meta); saveMeta();
-    const [board, wk] = (typeof arg === 'string' && arg.includes('|') ? arg : 'normal-0|1').split('|'), week = wk === '1', req = ++rankReq, unit = board === 'rush' ? '마리' : '단계';
+    const [board, wk] = (typeof arg === 'string' && arg.includes('|') ? arg : 'stage|1').split('|'), week = wk === '1', req = ++rankReq, unit = board === 'rush' ? '마리' : board === 'endless' ? '라운드' : ' 스테이지';
     const page = body => show(`<h2>랭킹</h2>
-      <div class="tabs t3">${M.RANK_BOARDS.map(([k, n]) => `<button class="${k === board ? 'on' : ''}" data-act="rank" data-arg="${k}|${wk}">${n}</button>`).join('')}</div>
+      <div class="tabs t3 t4">${M.RANK_BOARDS.map(([k, n]) => `<button class="${k === board ? 'on' : ''}" data-act="rank" data-arg="${k}|${wk}">${n}</button>`).join('')}</div>
       <div class="tabs t2"><button class="${week ? 'on' : ''}" data-act="rank" data-arg="${board}|1">이번 주</button><button class="${week ? '' : 'on'}" data-act="rank" data-arg="${board}|0">전체</button></div>
       ${body}
       <h3>내 별명</h3><div class="namerow"><input id="nm" maxlength="10" value="${esc(meta.name)}" autocomplete="off"><button class="btn" data-act="setname" data-arg="rank">저장</button></div>
@@ -339,7 +353,7 @@ const ACT = {
       if (!(await Net.on())) { if (req === rankReq) page('<p class="note cmmsg">서버가 아직 연결되지 않아 랭킹을 볼 수 없습니다 (서버 배포 대기)</p>'); return; }
       const r = await Net.rank(board, week, meta.uid); if (req !== rankReq || !overlay.querySelector('.tabs.t3')) return;
       page(`${r.top.length ? `<div class="rks">${r.top.map((e, i) => { const eb = BRANCHES.find(x => x.id === e.branch);
-        return `<div class="rk${e.me ? ' me' : ''}"><i class="${i < 3 ? 'top' : ''}">${i + 1}</i><span>${esc(e.name)}</span><small>${eb ? eb.name : ''}</small><b>${e.score}${unit}</b></div>`; }).join('')}</div>` : '<p class="note cmmsg">아직 기록이 없습니다 — 첫 기록을 남겨 보세요</p>'}
+        return `<div class="rk${e.me ? ' me' : ''}"><i class="${i < 3 ? 'top' : ''}">${i + 1}</i><span>${esc(e.name)}</span><small>${eb ? eb.name : ''}</small><b>${board === 'stage' || board === 'coop' ? '스테이지 ' + e.score : e.score + unit}</b></div>`; }).join('')}</div>` : '<p class="note cmmsg">아직 기록이 없습니다 — 첫 기록을 남겨 보세요</p>'}
         <p class="sub" style="margin:.8rem 0 0">${r.rank ? `내 순위 ${r.rank}위` : '내 기록 없음'} · 상위 ${r.top.length}명 표시</p>`);
     } catch { if (req === rankReq) page('<p class="note cmmsg">랭킹을 불러오지 못했습니다 — 연결을 확인하세요</p>'); }
   },
@@ -391,7 +405,7 @@ const ACT = {
       <div class="bgrid">${bd.cells.map((c, i) => (c.open ? `<div class="bc open ${c.r}"><b>${BOARD_LABEL[c.r][0]}</b><small>${BOARD_LABEL[c.r][1]}</small></div>`
         : `<button class="bc" data-act="flip" data-arg="${i}" ${meta.tickets < 1 || done ? 'disabled' : ''}>?</button>`)).join('')}</div>
       <p class="note cmmsg">${typeof msg === 'string' && msg ? msg : (done ? '이 판은 끝났습니다 — 새 판을 까세요' : meta.tickets < 1 ? '티켓이 없습니다' : '뒤집을 칸을 고르세요')}</p>
-      <p class="sub" style="margin:0">남은 칸 · 특등 ${left('big')} · 표창 ${left('cm')} · 훈장 3개 ${left('m3')} · 훈장 1개 ${left('m1')} · 숙련 교본 ${left('xp')}<br>${M.BOARD_BONUS}칸을 뒤집을 때마다 표창 1장을 더 받습니다. <b>특등</b>을 찾으면 새 판을 깔 수 있습니다<br>티켓은 판을 마치거나(20단계마다 1장, 최대 5장) 일일 임무 · 출석으로 얻습니다</p>`,
+      <p class="sub" style="margin:0">남은 칸 · 특등 ${left('big')} · 표창 ${left('cm')} · 훈장 3개 ${left('m3')} · 훈장 1개 ${left('m1')} · 숙련 교본 ${left('xp')}<br>${M.BOARD_BONUS}칸을 뒤집을 때마다 표창 1장을 더 받습니다. <b>특등</b>을 찾으면 새 판을 깔 수 있습니다<br>티켓은 판을 마치거나(10라운드마다 1장, 최대 5장) 일일 임무 · 출석으로 얻습니다</p>`,
       `<button class="go ad" data-act="ad" data-arg="ticket" data-back="board" ${adl ? '' : 'disabled'}>${ic('play')}광고로 티켓 ${adl}/${M.AD_PLACES.ticket.limit}</button>${done ? '<button class="go" data-act="newboard">새 판 깔기</button>' : ''}`, msg != null);
   },
   flip(i) {
@@ -402,11 +416,11 @@ const ACT = {
   },
   newboard() { if (M.resetBoard(meta, rnd)) { saveMeta(); Sound.play('camp'); } ACT.board(); },
   // 기록: 군별 × (난이도 3 + 무한 작전 + 보스 러시)
-  records() {      // 기록: 난이도 3 + 무한 작전 + 보스 러시 + 2인 협동. 군별을 고르지 않으므로 칸마다 최고 기록 하나(예전 군별 기록도 친다)
-    const cols = [...C.DIFFS.map((d, i) => [d.name, M.bestMap(meta, 'normal', i), 100]), ['무한 작전', meta.bestE, 0], ['보스 러시', meta.bestR, C.AREAS.length], ['2인 협동', meta.bestC, 100]];
+  records() {      // 기록: 스테이지 진행 · 무한 작전 · 보스 러시 · 2인 협동
+    const top = o => Math.max(0, ...Object.values(o)), cols = [['스테이지', meta.stage, C.STAGES, '/100'], ['무한 작전', top(meta.bestE), 0, '라운드'], ['보스 러시', top(meta.bestR), C.AREAS.length, '/10'], ['2인 협동', meta.stageC | 0, C.STAGES, '스테이지']];
     show(`<h2>기록</h2><p class="sub">최고 기록 · 마친 작전 ${meta.runs}회</p>
-      <div class="rec2">${cols.map(c => { const v = Math.max(0, ...Object.values(c[1])); return `<div class="${c[2] && v >= c[2] ? 'top' : v ? '' : 'none'}"><small>${c[0]}</small><b>${v || '-'}</b></div>`; }).join('')}</div>
-      <p class="sub" style="margin-top:1rem">보통 · 어려움 · 지옥 · 무한 작전 · 2인 협동은 막아 낸 단계, 보스 러시는 잡은 보스 수(10이 끝)</p>
+      <div class="rec2 r4">${cols.map(c => `<div class="${c[2] && c[1] >= c[2] ? 'top' : c[1] ? '' : 'none'}"><small>${c[0]}</small><b>${c[1] || '-'}</b><small>${c[3]}</small></div>`).join('')}</div>
+      <p class="sub" style="margin-top:1rem">스테이지는 깬 수, 무한 작전은 막아 낸 라운드, 보스 러시는 잡은 보스 수, 2인 협동은 함께 깬 가장 높은 스테이지${M.topWave(meta) ? `<br>예전(100단계 시절) 최고 기록 ${M.topWave(meta)}단계` : ''}</p>
       <div class="list"><p>조합 도감 발견: 히든 계급 ${['wonsa', 'junwi'].filter(k => meta.found[k]).length}/2 · 전설의 용사 ${HEROES.filter(h => meta.found[h.id]).length}/${HEROES.length} · 히든 임무 ${Object.keys(meta.foundM).length}/${C.MISSIONS.filter(m => m.hidden).length}</p></div>
       <button class="wide sec" data-act="title">뒤로</button>`);
   },
@@ -414,7 +428,7 @@ const ACT = {
     tabPage('mastery', 'upgrades', `<p class="note cmmsg">보유 훈장 ${meta.medals}개</p>
       ${UPGRADES.map(u => { const lv = meta[u.key], cost = 2 + lv * 2; return `<div class="up"><div><b>${u.name} <em>Lv${lv}/${u.max}</em></b><br>${u.desc}</div>
         <button class="btn gold" data-act="buy" data-arg="${u.key}" ${lv >= u.max || meta.medals < cost ? 'disabled' : ''}>${lv >= u.max ? '최대' : `${ic('medal')}${cost}`}</button></div>`; }).join('')}
-      <p class="sub">훈장은 5단계마다 1개, 100단계 방어 시 +20개</p>`, unitSub('upgrades'), keep === true);
+      <p class="sub">훈장은 5라운드마다 1개, 스테이지를 깨면 +10개(뒤 스테이지일수록 더 많이)</p>`, unitSub('upgrades'), keep === true);
   },
   buy(key) { const lv = meta[key], cost = 2 + lv * 2; if (meta.medals >= cost) { meta.medals -= cost; meta[key]++; saveMeta(); } ACT.upgrades(true); },
   // 행동력이 없을 때
@@ -463,7 +477,7 @@ const ACT = {
   skinuse(id) { if (M.useSkin(meta, id)) { saveMeta(); applySkin(); Sound.play('camp'); ACT.skins(`${M.skinOf(meta).name} 적용`); } },
   help() {
     show(`<h2>게임 방법</h2><div class="list">
-      <p>털뭉치 마을에 <b>고철 군단</b>이 쳐들어왔습니다. 털뭉치 병사들을 소집하고 계급을 올려 100단계를 막아 내세요.</p>
+      <p>털뭉치 마을에 <b>고철 군단</b>이 쳐들어왔습니다. 털뭉치 병사들을 소집하고 계급을 올려 스테이지 100개를 깨 나가세요. 스테이지 10개마다 지역이 바뀌고, 한 스테이지는 라운드 30~50개입니다.</p>
       <p><b>1. 신병 소집</b> — <b>빈 칸을 누르면 그 자리에</b> 군자금으로 유닛을 뽑습니다(값은 아래 본부 건물에 적혀 있습니다). <b>군별(육군·해군·해병대·특공대·공군·의경)과 병과가 무작위</b>로 정해집니다. 이름표에 <b>군별과 계급</b>이 적혀 있습니다(예: 육군 병장). 가끔 한두 계급 높은 유닛이 나옵니다.</p>
       <p><b>2. 조합</b> — 유닛을 누른 뒤 <b>같은 군별 · 같은 등급(같은 색)</b>의 다른 유닛을 누르면 한 등급 위 유닛으로 진급합니다. 군별이 다르면 조합되지 않습니다. 유닛을 누르면 카드에 <b>같은 병과 조합</b> · <b>랜덤 조합</b> 버튼이 나와, 짝이 있으면 바로 조합됩니다(짝이 없으면 회색). 발밑 <b>원판의 색</b>이 등급입니다. 짝이 있는 유닛의 칸에는 노란 점선이 둘러집니다. 칸이 꽉 찼는데 짝이 없으면 낮은 등급 유닛을 <b>전역</b>시켜 자리를 내세요. 등급은 노말 · 매직 · 레어 · 영웅 · 유니크 · 전설 · 초월 7단계입니다. <b>같은 병과끼리</b> 조합하면 그 병과가 유지되고, <b>다른 병과끼리</b> 조합하면 병과가 무작위로 정해집니다.</p>
       <p><b>주둔지</b> — 전장 아래의 건물을 눌러 명령합니다. 왼쪽부터 <b>훈련소</b>(천막) · <b>병과 강화</b>(병기창) · <b>신병 소집</b>(연병장) · <b>보급창</b>(보급병 고용 · 선택 소집) · <b>특수 임무</b>(통신탑). 쓸 수 없는 건물은 흐리게 보이고, 특수 임무를 부를 수 있으면 통신탑이 빛납니다.</p>
@@ -474,7 +488,7 @@ const ACT = {
       <p><b>보급품</b> — 보스 격파, 특수 임무, 임무 완수로 얻습니다. <b>선택 소집</b>(원하는 병과 고르기), <b>진급 심사</b>(유닛 선택 후 도전: 등급이 낮을수록 잘 붙고, 15%는 강등. 전설 등급부터는 받을 수 없음), <b>병과 교체</b>(유닛 선택 후: 등급은 그대로 두고 병과만 다시 뽑기)에 씁니다.</p>
       <p><b>특수 발판</b> — 지역마다 발판 ${C.CFG.tileCount}칸이 빛납니다. ${Object.values(C.TILES).map(t => `<b style="color:${t.color};-webkit-text-stroke:.03em #4a2f1b">${t.name}</b>(${t.text})`).join(' · ')}. 그 위에 선 유닛만 효과를 받으니 가장 강한 유닛을 올려 두세요. 다음 지역으로 넘어가면 자리가 바뀝니다.</p>
       <p><b>히든 임무</b> — 임무 창 아래쪽에 조건이 가려진 임무가 있습니다. 이것저것 시도하다 보면 달성되고, 한 번 달성한 임무는 다음 판부터 조건이 보입니다.</p>
-      <p><b>보급병</b> — 보급창에서 군자금으로 고용합니다(최대 ${C.CFG.depotMax}명). 단계가 시작될 때마다 군자금을 가져오고, ${C.CFG.depotSupPer}명마다 ${C.CFG.depotSupEvery}단계에 한 번 보급품도 가져옵니다. 일찍 고용할수록 오래 받지만 그만큼 초반 전력이 줄어듭니다.</p>
+      <p><b>보급병</b> — 보급창에서 군자금으로 고용합니다(최대 ${C.CFG.depotMax}명). 라운드가 시작될 때마다 군자금을 가져오고, ${C.CFG.depotSupPer}명마다 ${C.CFG.depotSupEvery}라운드에 한 번 보급품도 가져옵니다. 일찍 고용할수록 오래 받지만 그만큼 초반 전력이 줄어듭니다.</p>
       <p><b>병과 강화</b> — 군자금으로 한 병과의 공격력을 계속 올립니다. 주력 병과에 집중하세요.</p>
       <p><b>특수 임무</b> — 정예 표적을 직접 불러냅니다. ${C.CFG.eliteTime}초 안에 잡으면 큰 보상, 못 잡으면 빠져나갑니다. 성공할수록 다음 표적이 강해집니다.</p>
       <p><b>대기실</b> — 처음 화면입니다. 아래 탭으로 오갑니다: <b>상점</b>(광고 보상·보석) · <b>부대</b>(병과 숙련도 — 판을 마치면 싸운 병과에 경험치, 스킨, 영구 강화) · <b>전투</b>(출격) · <b>표창</b>(모든 판에 적용되는 영구 효과) · <b>뽑기</b>(티켓으로 칸 뒤집기). <b>임무</b> 버튼에서 출석과 일일 임무 보상을 받습니다.</p>
@@ -482,9 +496,9 @@ const ACT = {
       <p><b>랭킹</b> — 판을 마치면 기록이 자동으로 올라갑니다(이번 주 · 전체). 별명은 랭킹 화면에서 바꿉니다.</p>
       <p><b>행동력</b> — 한 판을 시작할 때 1이 듭니다(이어하기는 들지 않음). 1시간에 1씩 차고 최대 ${M.ENERGY.max}까지 모입니다. 광고나 보석으로 더 받을 수 있습니다.</p>
       <p><b>보급 상점</b> — 광고를 끝까지 보면 보석·행동력·티켓을 받습니다(하루 횟수 제한). 보석으로 행동력·티켓·훈장·스킨을 사고 고급 보급 상자(표창·스킨)를 엽니다. 상자의 확률은 상점에 적혀 있습니다.</p>
-      <p><b>작전 종류</b> — <b>기본 작전</b>(100단계) · <b>무한 작전</b>(100단계를 넘어 끝없이, ${C.MODES[1].need}단계 도달 시 열림) · <b>보스 러시</b>(보스 10종만 연달아, ${C.MODES[2].need}단계 도달 시 열림). 출격 화면에서 고릅니다.</p>
+      <p><b>작전 종류</b> — <b>스테이지</b>(100개, 깨면 다음이 열림) · <b>무한 작전</b>(끝없이, 스테이지 ${C.MODES[1].needStage} 클리어 시 열림) · <b>보스 러시</b>(보스 10종만 연달아, 스테이지 ${C.MODES[2].needStage} 클리어 시 열림). 출격 화면에서 고릅니다.</p>
       <p><b>4. 배치</b> — 유닛을 누른 뒤 빈 칸을 누르면 이동합니다. 사거리가 짧은 유닛은 바깥쪽, 포병·의무는 안쪽이 유리합니다.</p>
-      <p><b>작전 지역</b> — 10단계마다 다음 지역으로 이동합니다. 지역마다 맵 모양과 배경이 다르고, 마지막 단계에 그 지역의 보스가 나옵니다. 보스마다 특수 능력이 다릅니다(기절, 화염, 증원, 회피 등). 유닛은 그대로 따라갑니다.</p>
+      <p><b>스테이지와 지역</b> — 스테이지 10개가 한 지역입니다(1~10 도토리 초원, 11~20 조개껍데기 해변 …). 같은 지역이라도 스테이지마다 맵(길 모양)이 다릅니다. 한 스테이지는 라운드 30~50개이고, 10라운드마다와 마지막 라운드에 그 지역의 보스가 나옵니다. 보스마다 특수 능력이 다릅니다(기절, 화염, 증원, 회피 등). 스테이지마다 유닛 없이 처음부터 시작합니다.</p>
       <p><b>패배</b> — 전장의 적이 ${C.CFG.enemyLimit}명을 넘거나, 보스를 ${C.CFG.bossTime}초 안에 잡지 못하면 패배합니다.</p>
       ${CLASS_IDS.map(c => `<p><b>${CLASS_INFO[c].name} 계열</b> — ${CLASS_INFO[c].role}</p>`).join('')}
       </div><button class="wide sec" data-act="${g ? 'menu' : 'title'}">뒤로</button>`);
@@ -492,12 +506,12 @@ const ACT = {
   // 보급창: 보급병 고용(단계마다 군자금이 들어오는 투자) + 선택 소집(보급품을 써서 원하는 기본 병과 고르기)
   pick() {
     const b = g.branch, sc = C.summonCost(b, g.camp, g.meta), can = g.supply >= C.CFG.pickSupply && g.gold >= sc && C.hasFree(g);
-    const dc = C.depotCost(g), full = g.depot >= C.CFG.depotMax, inc = C.depotIncome(g), nextInc = C.depotIncome({ depot: g.depot + 1, wave: g.wave, mode: g.mode, meta: g.meta }), sup = C.depotSupply(g);
-    show(`${sheetHead('보급창', '보급병을 고용하면 단계마다 군자금이 들어옵니다')}
+    const dc = C.depotCost(g), full = g.depot >= C.CFG.depotMax, inc = C.depotIncome(g), nextInc = C.depotIncome(g, undefined, g.depot + 1), sup = C.depotSupply(g);
+    show(`${sheetHead('보급창', '보급병을 고용하면 라운드마다 군자금이 들어옵니다')}
       <div class="up depot"><div><b>보급병 <em>${g.depot}/${C.CFG.depotMax}명</em></b>
         <span class="pips">${Array.from({ length: C.CFG.depotMax }, (_, i) => `<i class="${i < g.depot ? 'on' : ''}"></i>`).join('')}</span>
-        ${g.depot ? `단계마다 ${ic('coin')}<b>+${fmt(inc)}</b>${sup ? ` · ${C.CFG.depotSupEvery}단계마다 ${ic('box')}<b>+${sup}</b>` : ''}` : '아직 고용한 보급병이 없습니다'}${full ? '' : ` → 고용하면 ${ic('coin')}<b>+${fmt(nextInc)}</b>`}
-        <small>단계가 오를수록 수입도 늘어납니다 · 보급병 ${C.CFG.depotSupPer}명마다 ${C.CFG.depotSupEvery}단계에 보급품 1개${g.depotGold ? ` · 지금까지 ${fmt(g.depotGold)} 벌었습니다` : ''}</small></div>
+        ${g.depot ? `라운드마다 ${ic('coin')}<b>+${fmt(inc)}</b>${sup ? ` · ${C.CFG.depotSupEvery}라운드마다 ${ic('box')}<b>+${sup}</b>` : ''}` : '아직 고용한 보급병이 없습니다'}${full ? '' : ` → 고용하면 ${ic('coin')}<b>+${fmt(nextInc)}</b>`}
+        <small>라운드가 오를수록 수입도 늘어납니다 · 보급병 ${C.CFG.depotSupPer}명마다 ${C.CFG.depotSupEvery}라운드에 보급품 1개${g.depotGold ? ` · 지금까지 ${fmt(g.depotGold)} 벌었습니다` : ''}</small></div>
         <button class="btn gold" data-act="hire" ${full || g.gold < dc ? 'disabled' : ''}>${full ? '최대' : `고용 ${ic('coin')}${fmt(dc)}`}</button></div>
       <div class="up"><div><b>지원 요청</b><br>광고를 보면 군자금 ${ic('coin')}<b>+${fmt(C.adSupportGold(g))}</b> · 판마다 한 번${Ads.testing ? ' · 시험 광고' : ''}</div><button class="btn gold" data-act="adgold" ${g.adGold || duoLive() ? 'disabled' : ''}>${g.adGold ? '받음' : `${ic('play')}광고`}</button></div>
       <h3 class="hmh">선택 소집 <small>원하는 병과를 골라 소집 · 보급품 ${C.CFG.pickSupply}개 + 군자금 ${fmt(sc)}</small></h3>
@@ -532,7 +546,7 @@ const ACT = {
       <div class="sfoot"><div class="pill sup">${ic('box')}<b>${g.supply}</b></div><button class="btn primary" data-act="resume">전장으로</button></div>`, true);
   },
   menu() {      // 일시정지 메뉴 (톱니 버튼 · 뒤로가기 버튼)
-    show(`${sheetHead('일시정지', `${g.wave}단계 · ${C.AREAS[g.area].name}`)}
+    show(`${sheetHead('일시정지', `${g.mode === 'stage' ? `스테이지 ${g.stage} · ` : ''}${g.wave}라운드 · ${C.AREAS[g.area].name}`)}
       <button class="wide" data-act="resume">${ic('play')}계속하기</button>
       <div class="mgrid">
         <button class="wide sec" data-act="missions">${ic('list')}임무</button><button class="wide sec" data-act="codex">${ic('book')}조합 도감</button>
@@ -544,12 +558,14 @@ const ACT = {
   // 재시작: 이 판을 버리고 같은 군별 · 작전 · 난이도로 처음부터. 새 판이므로 행동력 1이 든다
   restart() {
     const en = M.energyNow(meta, Date.now());
-    show(`${sheetHead('재시작', `${g.wave}단계`)}
-      <p class="sub" style="margin:.4rem 0 1rem">이 판을 버리고 처음부터 다시 시작합니다. 행동력 1이 듭니다(지금 ${en}).${en < 1 ? '<br><b>행동력이 없어 재시작할 수 없습니다</b>' : ''}</p>
+    show(`${sheetHead('재시작', `${g.mode === 'stage' ? `스테이지 ${g.stage} · ` : ''}${g.wave}라운드`)}
+      <p class="sub" style="margin:.4rem 0 1rem">이 판을 버리고 ${g.mode === 'stage' ? `스테이지 ${g.stage}를 ` : ''}처음부터 다시 시작합니다. 행동력 1이 듭니다(지금 ${en}).${en < 1 ? '<br><b>행동력이 없어 재시작할 수 없습니다</b>' : ''}</p>
       <button class="wide" data-act="restartgo" ${en < 1 ? 'disabled' : ''}>${ic('play')}재시작 <small>${ic('bolt')}1</small></button>
       <button class="wide sec" data-act="menu">취소</button>`, true); paused = true; scr = 'sub';
   },
-  restartgo() { if (!g || g.duo) return; meta.mode = g.mode; meta.diff = g.diff || 0; ACT.start(); },
+  restartgo() { if (!g || g.duo) return; meta.mode = g.mode; if (g.mode === 'stage') meta.stageSel = g.stage; ACT.start(); },
+  nextstage() { meta.mode = 'stage'; meta.stageSel = M.stageOpen(meta); saveMeta(); ACT.start(); },      // 결과 화면의 '다음 스테이지'
+  again() { if (g && g.mode === 'stage') { meta.mode = 'stage'; meta.stageSel = Math.min(M.stageOpen(meta), g.stage); } ACT.start(); },
   // 설정: 전투 중에는 시트로, 대기실에서는 화면으로
   settings() {
     const inGame = !!g && !g.over, body = `
@@ -609,36 +625,40 @@ const ACT = {
         <div><b>${h.name}</b> <small>${name(h.pair[0])} + ${name(h.pair[1])} → ${name(k)}</small>${meta.found[h.id] ? '<span class="tag hero">탄생시킴</span>' : ''}<p>${h.text.split(' — ')[1]}</p><p><em>각성</em> ${h.up}</p></div></div>`; }).join('')}
       <h2>작전 지역 · 보스</h2>
       ${C.AREAS.map((a, i) => `<div class="wcard${i === g.area ? ' now' : ''}">${eimg(hasArt('enemy_boss' + (i + 1)) ? 'enemy_boss' + (i + 1) : 'enemy_boss', i + 1)}
-        <div><b>${a.boss.name}</b> <small>${(i + 1) * 10}단계 · ${a.name}${i === g.area ? ' · 현재 지역' : ''}</small><p>${a.boss.text}</p></div></div>`).join('')}
+        <div><b>${a.boss.name}</b> <small>스테이지 ${i * 10 + 1}~${i * 10 + 10} · ${a.name}${i === g.area ? ' · 현재 지역' : ''}</small><p>${a.boss.text}</p></div></div>`).join('')}
       <h2>적</h2>
-      <div class="cx4">${[['enemy_normal', '적 보병', '기본'], ['enemy_fast', '드론', '빠름 · 3의 배수 단계'], ['enemy_armor', '장갑차', '단단함 · 5의 배수 단계'], [hasArt('enemy_elite') ? 'enemy_elite' : 'enemy_armor', '정예 표적', '특수 임무']]
+      <div class="cx4">${[['enemy_normal', '적 보병', '기본'], ['enemy_fast', '드론', '빠름 · 3의 배수 라운드'], ['enemy_armor', '장갑차', '단단함 · 5의 배수 라운드'], [hasArt('enemy_elite') ? 'enemy_elite' : 'enemy_armor', '정예 표적', '특수 임무']]
         .map(([f, n, t]) => `<div class="ucard">${eimg(f, 0)}<b>${n}</b><small>${t}</small></div>`).join('')}</div>
       <button class="wide" data-act="resume">전장으로</button>`);
   },
   result() {
-    const medals = Math.floor(C.medalsFor(g) * (g.duo ? M.COOP_MEDAL : 1)), b = g.branch, d = g.diff || 0, mode = g.mode, best = M.bestMap(meta, g.duo ? 'coop' : mode, d), nextWasOpen = d + 1 < C.DIFFS.length && diffOpen(d + 1);
-    const bk = g.only || 'all', modesBefore = C.MODES.map(m => M.modeOpen(meta, m.id)), rec = C.reached(g), newBest = rec > Math.max(0, ...Object.values(best)), tickets = M.runTickets(g);      // 기록 칸: 군별을 고르지 않으므로 'all' (예전 군별 기록도 최고 기록으로 친다)
-    // 판을 마친 보상: 훈장 · 뽑기 티켓 · 병과 숙련 경험치 · 일일 임무 진행 · 최고 기록
-    meta.medals += medals; meta.tickets += tickets; best[bk] = Math.max(best[bk] || 0, rec);
+    const stg = g.mode === 'stage', win = !!(g.over && g.over.win), medals = Math.floor(C.medalsFor(g) * (g.duo ? M.COOP_MEDAL : 1)), d = g.diff || 0, mode = g.mode;
+    const modesBefore = C.MODES.map(m => M.modeOpen(meta, m.id)), rec = C.reached(g), tickets = M.runTickets(g);
+    // 판을 마친 보상: 훈장 · 뽑기 티켓 · 병과 숙련 경험치 · 일일 임무 진행 · 기록
+    meta.medals += medals; meta.tickets += tickets;
+    let newBest = false, first = false;
+    if (stg) { if (win) { first = M.stageClear(meta, g.stage); if (g.duo) meta.stageC = Math.max(meta.stageC | 0, g.stage); if (first) meta.stageSel = M.stageOpen(meta); } }      // 스테이지: 바로 다음 것을 깼으면 진행이 앞으로 간다
+    else { const best = M.bestMap(meta, g.duo ? 'coop' : mode, d), bk = g.only || 'all'; newBest = rec > Math.max(0, ...Object.values(best)); best[bk] = Math.max(best[bk] || 0, rec); }
     const gains = M.addRunXp(meta, g); M.dailyRecord(meta, today(), g); meta.runs++; if (g.only) meta.lastBranch = g.only; saveMeta(); clearRun();
-    const opened = d + 1 < C.DIFFS.length && !nextWasOpen && diffOpen(d + 1), modesOpened = C.MODES.filter((m, i) => !modesBefore[i] && M.modeOpen(meta, m.id));
-    g.res = { medals, tickets, gains, opened, modesOpened, newBest, rec, doubled: false, rank: null }; g.reported = true;
-    Sound.play(g.over.win ? 'win' : 'lose'); ACT.resultView();
-    // 랭킹에 올린다(서버가 연결돼 있을 때). 순위가 오면 결과 화면에 적는다
-    if (rec >= 1) { M.ensureId(meta); saveMeta(); const run = g;
-      Net.on().then(on => on && Net.submit({ board: M.rankBoard(run), id: meta.uid, name: meta.name, score: rec, time: Math.round(run.time), branch: run.only || 'mix' }))
+    const modesOpened = C.MODES.filter((m, i) => !modesBefore[i] && M.modeOpen(meta, m.id));
+    g.res = { medals, tickets, gains, opened: false, modesOpened, newBest, first, rec, doubled: false, rank: null }; g.reported = true;
+    Sound.play(win ? 'win' : 'lose'); ACT.resultView();
+    // 랭킹에 올린다(서버가 연결돼 있을 때). 스테이지는 깼을 때만(점수 = 스테이지 번호), 그 밖에는 도달한 라운드 · 잡은 보스 수. 순위가 오면 결과 화면에 적는다
+    const score = stg ? (win ? g.stage : 0) : rec;
+    if (score >= 1) { M.ensureId(meta); saveMeta(); const run = g;
+      Net.on().then(on => on && Net.submit({ board: M.rankBoard(run), id: meta.uid, name: meta.name, score, time: Math.round(run.time), branch: run.only || 'mix' }))
         .then(r => { if (r && r.rank && g === run) { run.res.rank = r.rank; if (overlay.classList.contains('on') && overlay.querySelector('.resbox')) ACT.resultView(); } }).catch(() => {}); }
   },
   // 광고를 보면 이번 판 훈장을 한 번 더 받는다
   adx2() { if (!g || !g.res || g.res.doubled) return; watchAd(() => { g.res.doubled = true; meta.medals += g.res.medals; saveMeta(); Sound.play('merge'); ACT.resultView(); }); },
   resultView() {
-    const b = g.branch, d = g.diff || 0, mode = g.mode, { medals, tickets, gains, opened, modesOpened, newBest, rec, doubled, rank } = g.res;
+    const b = g.branch, d = g.diff || 0, mode = g.mode, stg = mode === 'stage', { medals, tickets, gains, opened, modesOpened, newBest, first, rec, doubled, rank } = g.res;
     // 최우수 유닛(누적 피해 1위)과 병과별 피해 비율
     const mvp = g.units.filter(u => u && C.own(g, u)).sort((x, y) => y.dealt - x.dealt)[0], tot = g.dealt || 1;      // 협동에서는 내 유닛 가운데
     const shares = CLASS_IDS.map(c => [c, g.dmg[c] / tot]).filter(x => x[1] > 0.005);
     show(`<h1>${g.over.win ? '승리' : '패배'}</h1><p class="sub">${g.over.reason}</p>
-      <div class="card resbox" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${g.only ? b.name : '털뭉치수비대'}</b>${g.duo ? ' · 2인 협동' : ''}${mode !== 'normal' ? ` · ${C.MODES.find(m => m.id === mode).name}` : ''}${d ? ` · ${C.DIFFS[d].name}` : ''} · ${mode === 'rush' ? `격파한 보스 ${rec}/${C.AREAS.length}` : `도달 ${g.wave}단계`} · 처치 ${g.kills}${newBest ? ' · <b class="nb">최고 기록!</b>' : ''}</p>
-        <p>${ic('medal')}훈장 <b>+${medals * (doubled ? 2 : 1)}</b>${doubled ? ' (광고 2배)' : g.duo ? ` (협동 ${M.COOP_MEDAL}배)` : d ? ` (${C.DIFFS[d].name} ${C.DIFFS[d].medal}배)` : ''} · ${ic('ticket')}뽑기 티켓 <b>+${tickets}</b></p>
+      <div class="card resbox" style="text-align:center;margin:1rem 0"><div class="list"><p><b>${stg ? `스테이지 ${g.stage}` : C.MODES.some(m => m.id === mode) ? C.MODES.find(m => m.id === mode).name : '털뭉치수비대'}</b>${stg ? ` · ${C.AREAS[g.area].name}` : ''}${g.duo ? ' · 2인 협동' : ''} · ${mode === 'rush' ? `격파한 보스 ${rec}/${C.AREAS.length}` : stg ? `라운드 ${Math.min(g.wave, g.rounds)}/${g.rounds}` : `도달 ${g.wave}라운드`} · 처치 ${g.kills}${first ? ' · <b class="nb">첫 클리어!</b>' : newBest ? ' · <b class="nb">최고 기록!</b>' : ''}</p>
+        <p>${ic('medal')}훈장 <b>+${medals * (doubled ? 2 : 1)}</b>${doubled ? ' (광고 2배)' : g.duo ? ` (협동 ${M.COOP_MEDAL}배)` : ''} · ${ic('ticket')}뽑기 티켓 <b>+${tickets}</b></p>
         ${rank ? `<p>랭킹 · 이번 주 <b>${rank.week ? rank.week + '위' : '100위 밖'}</b> · 전체 <b>${rank.all ? rank.all + '위' : '100위 밖'}</b></p>` : ''}</div></div>
       ${medals > 0 && !doubled ? `<button class="wide sec adx" data-act="adx2">${ic('play')}광고 보고 훈장 한 번 더 <b>+${medals}</b></button>` : ''}
       ${opened || modesOpened.length ? `<div class="unlock">${opened ? `<p>🔓 <b>${C.DIFFS[d + 1].name}</b> 난이도가 열렸습니다</p>` : ''}${modesOpened.map(m => `<p>🔓 <b>${m.name}</b>${iga(m.name)} 열렸습니다</p>`).join('')}</div>` : ''}
@@ -647,7 +667,7 @@ const ACT = {
         <div><small>최우수 유닛 · ${C.branchOf(g, mvp).name} ${C.rankName(C.branchOf(g, mvp), mvp)}</small><b>${C.charName(C.branchOf(g, mvp), mvp)} <em>${C.typeName(C.branchOf(g, mvp), mvp)}</em></b><span>누적 피해 ${fmt(mvp.dealt)} · 전체의 ${Math.round(mvp.dealt / tot * 100)}%</span></div></div>
       <div class="share">${shares.map(([c, v]) => `<i style="flex:${v};background:${CLASS_INFO[c].color}">${v > 0.13 ? `${CLASS_INFO[c].name} ${Math.round(v * 100)}%` : v > 0.07 ? `${Math.round(v * 100)}%` : ''}</i>`).join('')}</div>
       <p class="sub" style="margin:.5rem 0 0">병과별 피해 비율 · 전체 피해 ${fmt(g.dealt)}</p>` : ''}
-      ${g.duo ? '<button class="wide" data-act="coop">다시 협동</button>' : '<button class="wide" data-act="start">다시 도전</button>'}
+      ${g.duo ? '<button class="wide" data-act="coop">다시 협동</button>' : stg && g.over.win && g.stage < C.STAGES && M.stageOpen(meta) > g.stage ? `<button class="wide" data-act="nextstage">${ic('play')}다음 스테이지 ${M.stageOpen(meta)}</button><button class="wide sec" data-act="again">스테이지 ${g.stage} 다시 하기</button>` : '<button class="wide" data-act="again">다시 도전</button>'}
       <button class="wide sec" data-act="quit">작전 본부로</button>`);
   },
 };
@@ -790,10 +810,10 @@ const putW = (id, pct) => { const v = Math.round(pct) + '%', k = id + ':w'; if (
 const putOff = (id, off) => { const k = id + ':d'; if (hudVal[k] !== off) { hudVal[k] = off; hud(id).disabled = off; } };
 const putCls = (id, cls, on) => { const k = id + ':' + cls; if (hudVal[k] !== on) { hudVal[k] = on; hud(id).classList.toggle(cls, on); } };
 // 지금 지역의 보스가 몇 단계에 나오는지 (보스 러시는 몇 번째 보스인지)
-const bossLabel = () => (g.mode === 'rush' ? `${g.area + 1}번째 보스` : `${(Math.floor(Math.max(0, g.wave - 1) / 10) + 1) * 10}단계 보스`);
+const bossLabel = () => (g.mode === 'rush' ? `${g.area + 1}번째 보스` : `${Math.min(C.maxWaveOf(g), (Math.floor(Math.max(0, g.wave - 1) / 10) + 1) * 10)}라운드 보스`);
 function renderHud() {
   const b = g.branch, lim = C.CFG.enemyLimit;
-  put('h-area', C.AREAS[g.area].name);
+  put('h-area', g.mode === 'stage' ? `스테이지 ${g.stage}` : C.AREAS[g.area].name);
   put('h-wave', g.wave);
   const maxW = C.maxWaveOf(g), rush = g.mode === 'rush', fight = rush && g.enemies.some(e => e.kind === 'boss'), gap = rush ? (g.wave ? C.CFG.rushGap : C.CFG.rushPrep) : C.CFG.waveGap;
   put('h-max', maxW === Infinity ? '/∞' : '/' + maxW);
@@ -810,7 +830,7 @@ function renderHud() {
   const nw = g.wave < maxW ? C.waveOf(g, g.wave + 1) : null, ar = C.AREAS[g.area], bossAt = bossLabel();
   const co = !!(g.duo && coop); if (hudVal.co !== co) { hudVal.co = co; $('b-coop').hidden = !co; }
   if (duoLive()) put('t-info', !coop.host && performance.now() - coop.beat > 2000 ? '방장을 기다리는 중…' : `동료 ${peerP().name} · 군자금 ${fmt(peerP().gold)} · 훈련소 Lv${peerP().camp + 1}`);
-  else put('t-info', !nw ? '마지막 단계입니다' : rush ? `다음 보스 ${g.wave + 1}/${maxW} · ${nw.name}` : `다음 ${g.wave + 1}단계 ${nw.name} ${nw.count}기 · ${bossAt} ${ar.boss.name}`);
+  else put('t-info', !nw ? '마지막 라운드입니다' : rush ? `다음 보스 ${g.wave + 1}/${maxW} · ${nw.name}` : `다음 ${g.wave + 1}라운드 ${nw.name} ${nw.count}기 · ${bossAt} ${ar.boss.name}`);
   // 주둔지 땅과 건물 판은 지금 지역의 전장과 같은 색
   if (hudVal.area !== g.area + bossAt) { hudVal.area = g.area + bossAt; const col = areaColors(g.area), st = $('app').style; st.setProperty('--g1', col.ground[0]); st.setProperty('--g2', col.ground[1]); st.setProperty('--p1', col.pad[0]); st.setProperty('--p3', col.pad[3]);
     // 이 지역 보스 안내 (세로로 긴 화면에서만 보인다)
@@ -821,7 +841,7 @@ function renderHud() {
   putCls('b-pick', 'hot', g.depot < C.CFG.depotMax && g.depot < 3 && g.wave >= 3 && g.gold >= C.depotCost(g) * 3);      // 여유가 있는데 보급병이 거의 없으면 보급창이 빛난다
   put('c-up', `합계 Lv${CLASS_IDS.reduce((n, c) => n + g.up[c], 0)}`);
   const es = C.eliteState(g), el = g.enemies.find(e => e.kind === 'elite');
-  put('c-elite', es === 'ready' ? '출동 가능' : es === 'active' ? `진행 ${Math.ceil(el ? el.life : 0)}초` : es === 'cd' ? `대기 ${Math.ceil(g.elite.cd)}초` : es === 'off' ? '러시 중 불가' : '1단계부터');
+  put('c-elite', es === 'ready' ? '출동 가능' : es === 'active' ? `진행 ${Math.ceil(el ? el.life : 0)}초` : es === 'cd' ? `대기 ${Math.ceil(g.elite.cd)}초` : es === 'off' ? '러시 중 불가' : '1라운드부터');
   putOff('b-elite', es !== 'ready'); putCls('b-elite', 'hot', es === 'ready');
   const ms = C.missionList(g).filter(m => !m.hidden); put('c-mission', `${ms.filter(m => g.done[m.id]).length}/${ms.length}`);
 }

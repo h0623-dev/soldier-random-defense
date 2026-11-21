@@ -72,7 +72,7 @@ function grain() {
 // ── 배경(움직이지 않는 부분)은 지역마다 한 번만 그려 두고 복사한다 ──────────
 let bg = null, bgKey = '';
 function background(k, area, map) {
-  const key = area + '@' + k.toFixed(3); if (bg && bgKey === key) return bg;
+  const key = area + ':' + (map.id || '') + '@' + k.toFixed(3); if (bg && bgKey === key) return bg;      // 같은 지역이라도 스테이지마다 맵이 다르다
   if (!bg) bg = document.createElement('canvas');
   bg.width = Math.ceil(FIELD.w * k); bg.height = Math.ceil(FIELD.h * k); bgKey = key;
   const c = bg.getContext('2d'); c.setTransform(k, 0, 0, k, 0, 0);
@@ -273,7 +273,7 @@ export function draw(ctx, g, ui, quality = 2) {
     ctx.fillStyle = 'rgba(8,10,6,.86)'; ctx.fillRect(0, cy - 92, FIELD.w, 184);
     ctx.fillStyle = T.pad[0]; ctx.fillRect(0, cy - 92, FIELD.w, 6); ctx.fillRect(0, cy + 86, FIELD.w, 6);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = T.pad[4]; ctx.font = '800 24px sans-serif'; ctx.fillText(`작전 지역 ${ui.trans.area + 1} / ${AREAS.length}`, FIELD.w / 2 + slide, cy - 52);
+    ctx.fillStyle = T.pad[4]; ctx.font = '800 24px sans-serif'; ctx.fillText(ui.trans.top || `작전 지역 ${ui.trans.area + 1} / ${AREAS.length}`, FIELD.w / 2 + slide, cy - 52);
     ctx.fillStyle = '#fff'; ctx.font = '900 58px sans-serif'; ctx.fillText(A.name, FIELD.w / 2 + slide, cy);
     ctx.fillStyle = '#ffb3a8'; ctx.font = '700 22px sans-serif'; ctx.fillText(ui.trans.label || `${(ui.trans.area + 1) * 10}단계 보스 — ${A.boss.name}`, FIELD.w / 2 - slide, cy + 54);
     ctx.globalAlpha = 1;

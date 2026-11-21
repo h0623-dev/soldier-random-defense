@@ -295,7 +295,7 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
 {
   let seed = 7; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const m = M.fillMeta({ medals: 1, best: { army: 34 } }); assert.equal(m.tickets, 0); assert.deepEqual(m.att, { last: '', n: 0 });
-  assert.equal(M.topWave(m), 34); assert.equal(M.modeOpen(m, 'normal'), true); assert.equal(M.modeOpen(m, 'rush'), true); assert.equal(M.modeOpen(m, 'endless'), false); m.bestD.hard = { navy: 51 }; assert.equal(M.modeOpen(m, 'endless'), true);
+  assert.equal(M.topWave(m), 34); assert.equal(M.modeOpen(m, 'stage'), true); assert.equal(M.modeOpen(m, 'rush'), true); assert.equal(M.modeOpen(m, 'endless'), false); m.bestD.hard = { navy: 51 }; assert.equal(M.modeOpen(m, 'endless'), true);
   assert.equal(M.bestMap(m, 'normal', 1), m.bestD.hard); assert.equal(M.bestMap(m, 'rush', 2), m.bestR);
   // 출석: 하루 한 번, 7일 주기
   assert.equal(M.canAttend(m, '2026-11-20'), true); const a = M.attend(m, '2026-11-20', rand); assert.deepEqual(a.reward, M.ATTEND[0]); assert.equal(m.medals, 1 + M.ATTEND[0].m);
@@ -304,11 +304,11 @@ for (const b of BRANCHES) { assert.equal(b.grades.length, 7, b.name); assert.equ
   // 일일 임무: 날마다 3개(종류가 겹치지 않음), 같은 날은 같은 목록, 진행은 판이 끝날 때 쌓이고 날이 바뀌면 처음부터
   for (let d = 1; d <= 28; d++) { const l = M.dailyList('2026-12-' + String(d).padStart(2, '0')); assert.equal(l.length, 3); assert.equal(new Set(l.map(x => x.key)).size, 3); }
   assert.deepEqual(M.dailyList('2026-11-20'), M.dailyList('2026-11-20')); assert.ok(new Set(Array.from({ length: 20 }, (_, i) => M.dailyList('2027-01-' + (i + 10)).map(x => x.id).join())).size > 8);
-  const day = '2026-11-22', ids = M.dailyList(day).map(x => x.id); assert.deepEqual(ids, ['w40', 'hero2', 'dep8']);
-  assert.equal(M.dailyClaim(m, day, 'w40', rand), null);
+  const day = '2026-11-22', ids = M.dailyList(day).map(x => x.id); assert.deepEqual(ids, ['w25', 'hero2', 'clear1']);
+  assert.equal(M.dailyClaim(m, day, 'w25', rand), null);
   M.dailyRecord(m, day, { mode: 'normal', wave: 46, kills: 300, bossKills: 4, heroGot: 1, elite: { n: 2 }, depot: 8, over: { win: false } });
-  let st = M.dailyState(m, day); assert.deepEqual(st.map(x => x.done), [true, false, true]); assert.equal(st[1].cur, 1);
-  const t0 = m.tickets, md0 = m.medals; assert.deepEqual(M.dailyClaim(m, day, 'w40', rand), M.DAILY_REWARD); assert.equal(M.dailyClaim(m, day, 'w40', rand), null); assert.equal(M.dailyClaim(m, day, 'hero2', rand), null);
+  let st = M.dailyState(m, day); assert.deepEqual(st.map(x => x.done), [true, false, false]); assert.equal(st[1].cur, 1);      // 스테이지 클리어 임무는 스테이지를 깨야 찬다
+  const t0 = m.tickets, md0 = m.medals; assert.deepEqual(M.dailyClaim(m, day, 'w25', rand), M.DAILY_REWARD); assert.equal(M.dailyClaim(m, day, 'w25', rand), null); assert.equal(M.dailyClaim(m, day, 'hero2', rand), null);
   assert.equal(m.tickets, t0 + 1); assert.equal(m.medals, md0 + 2);
   M.dailyRecord(m, day, { mode: 'normal', wave: 12, kills: 50, bossKills: 1, heroGot: 1, elite: { n: 0 }, depot: 0, over: { win: false } }); assert.equal(M.dailyState(m, day)[1].done, true); assert.equal(M.dailyState(m, day)[0].got, true);
   assert.deepEqual(M.dailyState(m, '2026-11-23').map(x => x.cur), [0, 0, 0]);
@@ -444,6 +444,34 @@ console.log('규칙·데이터 검사 통과');
   const army = BRANCHES[0]; assert.equal(C.charName(army, { level: 0, type: ['inf', 'inf'], hidden: null }), '바둑이'); assert.equal(C.charName(army, { level: 6, type: ['inf', 'inf'], hidden: null }), '바둑이');
   assert.equal(C.charName(army, { level: 5, type: ['inf', 'art'], hidden: 'storm' }), '강철비'); assert.equal(C.typeName(army, { level: 0, type: ['art', 'inf'], hidden: null }), '박격포병');
 }
+// 3-18) 스테이지: 100개, 10개마다 한 지역, 한 지역의 열 스테이지는 맵이 모두 다르다. 라운드 30~50개, 10라운드마다와 마지막 라운드에 보스
+{
+  assert.equal(C.STAGES, 100); assert.equal(C.STAGE_MAPS.length >= 10, true); assert.equal(new Set(C.STAGE_MAPS.map(m => m.rows.join('/'))).size, C.STAGE_MAPS.length, '맵이 서로 달라야 한다');
+  for (let a = 0; a < 10; a++) { const st = Array.from({ length: 10 }, (_, k) => C.stageInfo(a * 10 + k + 1));
+    assert.ok(st.every(x => x.area === a && x.name === C.AREAS[a].name)); assert.equal(new Set(st.map(x => x.map.id)).size, 10, `지역 ${a + 1}: 스테이지마다 맵이 달라야 한다`); }
+  assert.notEqual(C.stageInfo(1).map.id, C.stageInfo(11).map.id); assert.equal(C.stageInfo(0).n, 1); assert.equal(C.stageInfo(999).n, 100);
+  for (let n = 1; n <= 100; n++) { const st = C.stageInfo(n); assert.ok(st.rounds >= 30 && st.rounds <= 50, `스테이지 ${n} 라운드 ${st.rounds}`); if (n > 1) assert.ok(st.depth >= C.stageInfo(n - 1).depth && st.rounds >= C.stageInfo(n - 1).rounds); }
+  assert.equal(C.stageRounds(1), 30); assert.equal(C.stageRounds(100), 50);
+  const g = C.createGame({ mode: 'stage', stage: 23, seed: 4, fx: false }); assert.equal(g.stage, 23); assert.equal(g.area, 2); assert.equal(g.map, C.stageInfo(23).map); assert.equal(C.maxWaveOf(g), 35); assert.equal(g.rounds, 35);
+  const w = n => C.waveOf(g, n); assert.equal(w(10).kind, 'boss'); assert.equal(w(30).kind, 'boss'); assert.equal(w(35).kind, 'boss', '마지막 라운드는 보스'); assert.equal(w(10).name, C.AREAS[2].boss.name); assert.equal(w(5).kind, 'armor'); assert.equal(w(3).kind, 'fast'); assert.equal(w(1).kind, 'normal');
+  assert.ok(w(34).hp > w(1).hp * 20); assert.ok(Math.abs(w(34).hp - C.CFG.hpBase * C.CFG.hpGrowth ** (34 * g.depth / 35 - 1)) < 1e-6 * w(34).hp);
+  // 지역과 맵은 스테이지 내내 그대로다. 마지막 라운드까지 막으면 클리어
+  g.wave = 20; g.nextWave = 0; g.spawn = { left: 0 }; C.step(g, 0.05); assert.equal(g.wave, 21); assert.equal(g.area, 2); assert.equal(g.map, C.stageInfo(23).map);
+  g.enemies.length = 0; g.wave = 35; g.spawn = { left: 0 }; g.nextWave = 99; C.step(g, 0.05); assert.equal(g.over.win, true); assert.equal(g.over.reason, '스테이지 23 클리어!'); assert.equal(C.reached(g), 35);
+  assert.equal(C.medalsFor(g), Math.floor((7 + 10) * C.stageMedal(23))); assert.equal(M.runTickets(g), 3); assert.ok(M.runXp(g) > 350);
+  assert.ok(C.missionList(g).some(m => m.id === 'w30' && m.text(g) === '18라운드 도달'));
+  // 저장 · 이어하기
+  const h = C.createGame({ mode: 'stage', stage: 57, seed: 9, fx: false }); h.gold = 999; C.summon(h, 3); const ld = C.loadGame(JSON.parse(JSON.stringify(C.saveGame(h))), {});
+  assert.equal(ld.mode, 'stage'); assert.equal(ld.stage, 57); assert.equal(ld.rounds, 40); assert.equal(ld.map, C.stageInfo(57).map); assert.equal(ld.area, 5); assert.ok(ld.units[3]);
+  // 진행: 깨면 다음이 열린다. 모드는 스테이지를 깬 수로 열린다
+  { const d0 = M.fillMeta({}); for (const k of ['found', 'foundM', 'best', 'bestE', 'bestR', 'bestC', 'xp', 'cmN']) assert.equal(typeof d0[k], 'object', `기본값 ${k}`); assert.equal(d0.mute, false); assert.equal(d0.stage, 0); assert.equal(d0.stageC, 0); }
+  const m = M.fillMeta({}); assert.equal(m.mode, 'stage'); assert.equal(M.stageOpen(m), 1); assert.equal(M.stageClear(m, 1), true); assert.equal(M.stageClear(m, 1), false); assert.equal(M.stageOpen(m), 2); assert.equal(M.modeOpen(m, 'rush'), false);
+  m.stage = 5; assert.equal(M.modeOpen(m, 'rush'), true); assert.equal(M.modeOpen(m, 'endless'), false); m.stage = 100; assert.equal(M.stageOpen(m), 100); assert.equal(M.modeOpen(m, 'endless'), true);
+  assert.equal(M.rankBoard(g), 'stage'); const dm = M.fillMeta({}); M.dailyRecord(dm, '2026-11-22', g); assert.equal(dm.daily.prog.clears, 1);
+  // 협동도 스테이지로
+  const d = C.createDuo({ players: [{ meta: {} }, { meta: {} }], seed: 3, fx: false, stage: 12 }); assert.equal(d.mode, 'stage'); assert.equal(d.stage, 12); assert.equal(d.area, 1); assert.equal(C.maxWaveOf(d), 30);
+  const snap = JSON.parse(JSON.stringify(C.duoSnap(d))), d2 = C.createDuo({ players: [{ meta: {} }, { meta: {} }], seed: 3, me: 1, fx: false, stage: 12 }); assert.equal(C.duoLoad(d2, snap), true); assert.equal(d2.map, C.stageInfo(12).map);
+}
 if (process.env.HPG) C.CFG.hpGrowth = +process.env.HPG;
 if (process.env.HERO === '0') C.setHeroes(false);      // 용사 없이 돌려 비교
 if (process.env.SKILL === '0') C.setSkills(false);     // 병과 고유 기술 없이 돌려 비교
@@ -452,9 +480,12 @@ const SELL = process.env.SELL !== '0';      // 봇이 짝 없는 유닛을 전�
 const DPR = process.env.DPR != null ? +process.env.DPR : 0.15;    // 봇이 보급병 고용에 쓰는 군자금 비율 (0이면 고용하지 않음)
 // 4) 봇 플레이. 발판이 비면 소집하고 꽉 차면 낮은 계급부터 조합한다.
 //    smart면 쓴 돈의 일정 비율 안에서 훈련소(30%)와 병과 강화(UPR)를 산다 — 보스가 멀고 전장이 조용할 때는 소집을 멈추고 모은다. 특수 임무와 진급 심사도 쓴다.
-function play(branchId, seed, smart = true) {
+function play(branchId, seed, smart = true, stageN = 0, metaIn = {}) {
   const DUO = process.env.MODE === 'duo';      // MODE=duo: 둘이 한 전장을 나눠 쓰는 협동
-  const g = DUO ? C.createDuo({ players: [{ branchId }, { branchId }], seed, fx: false }) : C.createGame({ branchId, seed, fx: false, diff: +process.env.DIFF || 0, mode: process.env.MODE || 'normal' });      // DIFF=1 어려움, 2 지옥 · MODE=rush|endless
+  const STG = +stageN || 0;      // 스테이지 번호를 주면 그 스테이지를 한다
+  const g = DUO ? C.createDuo({ players: [{ branchId, meta: metaIn }, { branchId, meta: metaIn }], seed, fx: false, stage: STG }) : C.createGame({ branchId, seed, fx: false, meta: metaIn, diff: +process.env.DIFF || 0, ...(STG ? { mode: 'stage', stage: STG } : { mode: process.env.MODE || 'normal' }) });      // DIFF=1 어려움, 2 지옥 · MODE=rush|endless
+  if (STG && process.env.ROUNDS) g.rounds = +process.env.ROUNDS;
+  if (STG && process.env.DEPTH) { g.depth = +process.env.DEPTH; g.eco = g.depth / g.rounds; }      // 난이도 맞추기용: 깊이를 바꿔 돌려 본다
   let acc = 0, spent = 0, upSpent = 0, depSpent = 0; g.first = [];
   const book = [0, 1].map(() => ({ spent: 0, upSpent: 0, depSpent: 0 }));      // 협동: 플레이어마다 쓴 돈을 따로 센다
   const pay = (cost, f) => { const ok = f(); if (ok) spent += cost; return ok; };
@@ -517,6 +548,17 @@ const SEEDS = +process.env.SEEDS || 8, med = xs => [...xs].sort((x, y) => x - y)
     '| 등급 첫 등장(중앙)', GRADES.slice(2).map((gr, i) => `${gr.name} ${med(rs.map(g => g.first[i + 2] || 999))}`).join(' · '),
     '| 끝 초월', med(rs.map(g => g.units.filter(u => u && u.level === 6).length)) + '명',
     '| 강화', CLASS_IDS.map(c => rs[0].up[c]).join('·'), '| 특수임무', rs.map(g => g.elite.n).join('/'), '| 용사', rs.map(g => g.heroGot).join('/'), '| 보급병', rs.map(g => g.depot).join('/'), '| 전역', rs.map(g => g.sells || 0).join('/'));
+}
+// 스테이지 봇: 성장이 없는 계정 · 중간쯤 큰 계정 · 다 큰 계정으로 스테이지를 돌려 본다. STAGE=1,10,50 처럼 고르면 그 스테이지만
+{
+  const xpAll = v => Object.fromEntries(BRANCHES.map(b => [b.id, Object.fromEntries(C.TYPE_KEYS.map(k => [k, v]))])), cmAll = lv => Object.fromEntries(COMMENDS.map(c => [c.id, lv]));
+  const METAS = { '성장 없음': {}, '중간': { atk: 8, gold: 4, bounty: 8, cm: cmAll(2), xp: xpAll(700) }, '다 큼': { atk: 20, gold: 10, bounty: 20, cm: cmAll(5), xp: xpAll(1e6) } };
+  const list = (process.env.STAGE || '1,10,20,30,40,50,60,70,80,90,100').split(',').map(Number), N = +process.env.SEEDS || 6;
+  for (const n of list) { const st = C.stageInfo(n), out = [];
+    for (const [name, meta] of Object.entries(METAS)) { if (process.env.META && process.env.META !== name) continue; const rs = Array.from({ length: N }, (_, i) => play(null, i + 1, true, n, meta));
+      out.push(`${name} ${rs.filter(g => g.over?.win).length}/${N}승(진 판 ${rs.filter(g => !g.over?.win).map(g => g.wave).join('·') || '-'})`); }
+    console.log(`스테이지 ${String(n).padStart(3)} · ${st.name} · 라운드 ${st.rounds} · 깊이 ${st.depth} |`, out.join(' | '));
+  }
 }
 // 견줌용: 한 군별만 나오는 판(예전 규칙). MONO=1일 때만 돌린다
 const only = process.argv[2];

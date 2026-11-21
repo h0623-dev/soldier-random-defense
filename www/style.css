@@ -411,3 +411,17 @@ img.u { filter: var(--skin, none); }
 .ci small u { display: block; text-decoration: none; font-weight: 700; font-size: 1rem; color: var(--mute); } .card.mvp b em { font-style: normal; font-size: 0.6em; font-weight: 800; color: var(--mute); }
 .wcard b + small, .ucard small { color: var(--mute); }
 
+/* ── 스테이지 선택 (출격 화면) ── */
+.sarea { display: flex; align-items: center; gap: 0.8rem; margin: 1.6rem 0 1rem; padding: 0.7rem; border-radius: 1.6rem; border: var(--ln); box-shadow: 0 0.3rem 0 var(--ink); color: #fff; }
+.sarea > div { flex: 1; min-width: 0; text-align: center; } .sarea small { display: block; font-size: 1.1rem; font-weight: 800; opacity: .9; } .sarea b { display: block; font-size: 2rem; font-weight: 900; -webkit-text-stroke: 0.5rem var(--ink); paint-order: stroke fill; }
+.sarea button { flex: none; width: 4.6rem; height: 4.6rem; border-radius: 1.3rem; border: var(--ln); background: var(--paper); color: var(--ink); font-size: 1.8rem; font-weight: 900; box-shadow: 0 0.25rem 0 var(--ink); } .sarea button:disabled { opacity: 0.35; }
+.sgrid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem 0.6rem; }
+.st { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1rem; height: 6.2rem; border-radius: 1.4rem; border: var(--ln); background: var(--paper); box-shadow: 0 0.35rem 0 var(--ink); color: var(--ink); }
+.st b { font-size: 2.2rem; font-weight: 900; line-height: 1; } .st small { font-size: 1rem; font-weight: 800; color: var(--mute); }
+.st.done { background: #cfeec0; } .st.done small { color: #2f7d2a; } .st.now { background: #fff3c9; } .st.now small { color: #b96a00; } .st.lock { background: var(--soft); box-shadow: none; opacity: 0.6; }
+.st.on { outline: 0.4rem solid var(--orange); outline-offset: 0.1rem; }
+.sinfo { display: flex; align-items: center; gap: 1.2rem; margin-top: 1.4rem; padding: 1rem; border-radius: 1.6rem; border: var(--ln); background: var(--paper); box-shadow: 0 0.3rem 0 var(--ink); }
+.sinfo > div:last-child { flex: 1; min-width: 0; } .sinfo b { font-size: 1.9rem; font-weight: 900; } .sinfo small { display: block; font-size: 1.2rem; font-weight: 800; color: #b96a00; } .sinfo p { margin: 0.4rem 0 0; font-size: 1.15rem; line-height: 1.4; } .sinfo p b { font-size: 1.15rem; } .sinfo .dim { color: var(--mute); }
+.smap { flex: none; display: grid; grid-template-columns: repeat(7, 1.3rem); grid-auto-rows: 1.3rem; padding: 0.3rem; border-radius: 0.9rem; border: var(--ln); } .smap i { display: block; } .smap i[style] { border-radius: 0.2rem; }
+.tabs.t4 { grid-template-columns: repeat(4, 1fr); } .rec2.r4 { grid-template-columns: repeat(2, 1fr); }
+

@@ -48,7 +48,7 @@
 | 주소 | 내용 |
 |---|---|
 | `GET /` | 상태 확인 |
-| `GET /rank?board=&week=1&id=` | 랭킹 상위 50명과 내 순위. board = `normal-0`·`normal-1`·`normal-2`(난이도) · `endless` · `rush` · `coop` |
+| `GET /rank?board=&week=1&id=` | 랭킹 상위 50명과 내 순위. board = `stage`(깬 스테이지 번호) · `endless` · `rush` · `coop`(함께 깬 스테이지 번호). `normal-0~2`는 스테이지가 생기기 전의 판(옛 앱용) |
 | `POST /rank` | 기록 올리기 `{ board, id, name, score, time, branch }`. 한 사람은 판마다 가장 좋은 기록 하나. 전체 판과 이번 주 판에 함께 적는다 |
 | `POST /room` | 협동 방 만들기 → 네 자리 방 번호 |
 | `GET /match` | 빠른 매칭 → 기다리는 방이 있으면 그 방, 없으면 새 방 |

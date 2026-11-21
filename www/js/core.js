@@ -56,7 +56,35 @@ function buildMap(rows, name) {
     return { x: path[0].x, y: path[0].y, dx: 1, dy: 0 }; };
   return { slots, decor, path, len, pathPos, padSet: new Set(slots.map(t => key(t.r, t.c))) };
 }
-export const MAPS = AREAS.map(a => buildMap(a.layout, a.name));
+export const MAPS = AREAS.map((a, i) => Object.assign(buildMap(a.layout, a.name), { id: 'a' + i }));
+
+// ── 스테이지 (2026-11-21 사용자 결정) ─────────────────────────
+// 스테이지 100개. 10개마다 한 지역(AREAS)이고, 한 지역 안의 열 스테이지는 배경이 같되 맵(길 모양)이 모두 다르다.
+// 한 스테이지 = 라운드 30~50개(뒤 지역일수록 길다). 10라운드마다, 그리고 마지막 라운드에 그 지역의 보스가 나온다. 매 스테이지는 유닛 없이 처음부터 시작한다.
+// 난이도: 스테이지마다 '깊이'(depth)가 있다 — 그 스테이지의 마지막 라운드가 예전 100단계 게임의 몇 단계에 해당하는지. 라운드 w의 적은 예전 단계 w × depth ÷ rounds 의 적이고,
+//  라운드 수가 적은 만큼 수입(처치 보상 · 라운드 보너스)을 depth ÷ rounds 배로 준다. 그래서 '예전 게임을 depth단계까지 가는 것'과 비슷한 어려움이 라운드 30~50개에 담긴다.
+const LAYOUTS = [L_S, L_NOTCH, L_SIDE, L_ZIG, flipH(L_S), flipV(L_NOTCH), flipH(L_SIDE), flipH(L_ZIG), flipV(L_S), flipV(L_SIDE), flipV(flipH(L_S)), flipV(flipH(L_SIDE))];      // 서로 다른 맵 12가지
+export const STAGE_MAPS = LAYOUTS.map((rows, i) => Object.assign(buildMap(rows, '스테이지 맵 ' + (i + 1)), { id: 's' + i, rows }));
+export const STAGES = 100, STAGE_PER_AREA = 10;
+export const stageRounds = n => 30 + 5 * Math.floor((n - 1) / 20);                              // 1~20: 30 · 21~40: 35 · 41~60: 40 · 61~80: 45 · 81~100: 50
+export const stageDepth = n => +(CFG.stageD0 + CFG.stageD1 * (1 - Math.exp(-(n - 1) / CFG.stageDk)) + CFG.stageD2 * (n - 1)).toFixed(2);
+export const stageMedal = n => 1 + CFG.stageMedal * (n - 1);                                     // 훈장 배수: 뒤 스테이지일수록 많이
+export function stageInfo(n) {
+  n = Math.max(1, Math.min(STAGES, Math.floor(n) || 1));
+  const area = Math.floor((n - 1) / STAGE_PER_AREA), k = (n - 1) % STAGE_PER_AREA, rounds = stageRounds(n), depth = stageDepth(n);
+  return { n, area, k, rounds, depth, eco: depth / rounds, map: STAGE_MAPS[(k + area * 5) % STAGE_MAPS.length], boss: AREAS[area].boss, name: AREAS[area].name };      // 한 지역의 열 스테이지는 맵이 모두 다르고, 지역마다 시작 맵이 다르다
+}
+// 스테이지의 라운드 w에 나오는 적
+function stageWave(g, w) {
+  const v = Math.max(1, w * g.depth / g.rounds), hp = CFG.hpBase * CFG.hpGrowth ** (v - 1), bounty = CFG.bountyBase * CFG.bountyGrowth ** (v - 1) * g.eco, b = AREAS[g.area].boss;
+  if (w % 10 === 0 || w === g.rounds) return { kind: 'boss', boss: g.area + 1, fly: !!b.fly, skill: b.skill, name: b.name, count: 1, hp: hp * CFG.bossHp * STAGE_BOSS[g.area], speed: b.speed, bounty: bounty * 25, gap: 1 };
+  if (w % 5 === 0) return { kind: 'armor', name: '고철 장갑차', count: 14, hp: hp * 2.3, speed: 52, bounty: bounty * 1.5, gap: 0.85 };
+  if (w % 3 === 0) return { kind: 'fast', name: '고철 드론 떼', count: 26, hp: hp * 0.6, speed: 105, bounty: bounty * 0.75, gap: 0.42 };
+  return { kind: 'normal', name: '고철 병정', count: 20, hp, speed: 70, bounty, gap: 0.6 };
+}
+// 스테이지에서 쓰는 지역별 보스 체력 배수. 예전 게임의 boss.hpMul은 그 보스가 나오던 단계 하나에 맞춘 값이라, 스테이지(같은 보스가 여러 깊이에서 나온다)에서는 봇으로 다시 맞췄다 — 같은 깊이면 어느 지역이든 비슷하게 어렵도록
+export const STAGE_BOSS = [0.8, 0.88, 0.88, 0.67, 0.95, 1.0, 0.78, 1.0, 0.92, 0.85];
+export const mapOf = g => (g.mode === 'stage' ? stageInfo(g.stage).map : MAPS[g.area]);
 
 export const CFG = {
   maxWave: 100, enemyLimit: 50, bossTime: 55, waveGap: 24, prepTime: 8,
@@ -67,6 +95,7 @@ export const CFG = {
   // (2026-11-20 기획안 1단계를 넣으며 5.9% → 6.4%. 봇 기준: 전부 쓰면 대부분 승리, 용사 없이는 100단계 보스에서 막힌다). 훈련소를 올리면 같은 전력을 20%씩 싸게 산다(summonGrowth 1.6 < 2).
   baseDmg: 10, summonBase: 20, summonGrowth: 1.6, campBase: 120, campGrowth: 2.4,
   hpBase: 26, hpGrowth: 1.064, bountyBase: 0.3, bountyGrowth: 1.055,
+  stageD0: 30, stageD1: 72, stageDk: 14, stageD2: 0.26, stageMedal: 0.03,      // 스테이지 깊이 = D0 + D1 × (1 − e^(−(n−1)/Dk)) + D2 × (n−1): 처음에는 빨리, 뒤로 갈수록 천천히 깊어진다
   startGold: 100, waveBonus: 15, sellRate: 0.4, auraRadius: 150,   // 옆·위아래·대각선 이웃 발판까지 닿는 거리
   // 병과 강화: 단계당 그 병과 공격력 +upStep, 비용은 upBase × upGrowth^단계
   upBase: 50, upGrowth: 1.35, upStep: 0.08,
@@ -159,14 +188,14 @@ export const typeSkill = type => TYPE_SKILLS[typeKey(type)] || null;
 
 // 모드: 기본 작전(100단계) · 무한 작전(100단계를 넘어 끝없이) · 보스 러시(보스 10종만 연달아). need = 어느 모드·난이도에서든 이 단계까지 가 본 적이 있어야 열린다
 export const MODES = [
-  { id: 'normal', name: '기본 작전', text: '100단계를 막아 내면 승리' },
-  { id: 'endless', name: '무한 작전', need: 50, text: '100단계를 넘어 끝없이 — 최고 기록 도전' },
-  { id: 'rush', name: '보스 러시', need: 30, text: '보스 10종을 연달아 격파' },
+  { id: 'stage', name: '스테이지', text: '스테이지 100개 · 지역 10곳' },
+  { id: 'endless', name: '무한 작전', need: 50, needStage: 10, text: '끝없이 몰려오는 적 — 최고 기록 도전' },
+  { id: 'rush', name: '보스 러시', need: 30, needStage: 5, text: '보스 10종을 연달아 격파' },
 ];
-export const maxWaveOf = g => (g.mode === 'endless' ? Infinity : g.mode === 'rush' ? AREAS.length : CFG.maxWave);
+export const maxWaveOf = g => (g.mode === 'stage' ? g.rounds : g.mode === 'endless' ? Infinity : g.mode === 'rush' ? AREAS.length : CFG.maxWave);
 // 모드에 맞는 단계 정보 · 지역. 보스 러시의 n번째 판 = 기본 작전 10n단계의 보스
-export const waveOf = (g, wave) => (g.mode === 'rush' ? waveInfo(wave * 10) : waveInfo(wave));
-export const areaOf = (g, wave) => (g.mode === 'rush' ? Math.min(AREAS.length - 1, Math.max(0, wave - 1)) : areaOfWave(wave));
+export const waveOf = (g, wave) => (g.mode === 'stage' ? stageWave(g, wave) : g.mode === 'rush' ? waveInfo(wave * 10) : waveInfo(wave));
+export const areaOf = (g, wave) => (g.mode === 'stage' ? g.area : g.mode === 'rush' ? Math.min(AREAS.length - 1, Math.max(0, wave - 1)) : areaOfWave(wave));
 // 보스 러시에서 n번째 보스 앞에 주는 군자금 = 기본 작전에서 그 앞 아홉 단계 동안 버는 돈(단계 보너스 + 처치 보상)
 export function rushStipend(n) {
   let sum = CFG.waveBonus;
@@ -186,7 +215,8 @@ export function waveInfo(wave) {
 // 군별: 한 판에 여섯 군별의 유닛이 섞여 나온다(2026-11-21 사용자 결정). 유닛마다 제 군별(u.b)이 있고, **조합은 같은 군별끼리만** 된다.
 //  branchId를 주면 그 군별 유닛만 나오는 판이 된다(g.only) — 검사와, 군별을 고르던 시절에 저장한 판을 이어 할 때 쓴다.
 //  g.branch는 군별에 상관없는 값(등급 수, 소집·훈련소 비용)을 읽는 기준일 뿐이다. 유닛의 군별은 branchOf(g, u)로 읽는다.
-export function createGame({ branchId = null, meta = {}, seed = Date.now(), fx = true, diff = 0, mode = 'normal' }) {
+// mode 'stage'면 stage(1~100)번 스테이지를 한다. 'normal'은 예전의 100단계 한 판(검사 · 옛 저장 · 무한 작전의 바탕)
+export function createGame({ branchId = null, meta = {}, seed = Date.now(), fx = true, diff = 0, mode = 'normal', stage = 1 }) {
   const only = branchById(branchId) ? branchId : null, branch = branchById(only) || BRANCHES[0], rush = mode === 'rush';
   const g = {
     branch, only, meta, rand: rng(seed), fx, diff, mode, hpMul: DIFFS[diff].hp, dealt: 0, dmg: { inf: 0, art: 0, med: 0, sig: 0 }, time: 0, wave: 0, nextWave: rush ? CFG.rushPrep : CFG.prepTime,
@@ -197,7 +227,9 @@ export function createGame({ branchId = null, meta = {}, seed = Date.now(), fx =
     depot: 0, depotGold: 0,                                        // 보급병 수 · 보급 기지로 번 군자금 합계
     duo: null,      // 2인 협동이면 { ps: [방장, 손님], me, cur } (아래 '2인 협동'). 혼자 하는 판은 null
     heroGot: 0, zones: [], buff: { haste: 0, dmg: 0, immune: false },   // 용사 탄생 횟수 · 화염 지대 · 용사가 아군 전체에 주는 효과
+    stage: 0, rounds: 0, depth: 0, eco: 1,                              // 스테이지 번호 · 라운드 수 · 깊이 · 수입 배수 (스테이지 모드에서만)
   };
+  if (mode === 'stage') { const st = stageInfo(stage); Object.assign(g, { stage: st.n, rounds: st.rounds, depth: st.depth, eco: st.eco, area: st.area, map: st.map }); }
   rollTiles(g); return g;
 }
 // 특수 발판을 새로 정한다 (게임을 시작할 때와 다음 지역으로 넘어갈 때)
@@ -304,9 +336,9 @@ export function reroll(g, a) {
 // 보급 기지: 보급병 한 명이 단계마다 가져오는 군자금 = depotFlat + 그 단계 기본 수입(단계 보너스 + 적 부대 처치 보상)의 depotRate.
 // 일찍 고용할수록 오래 받지만 그만큼 초반 전력이 준다. 5단계마다 보급병 5명당 보급품 1개
 export const depotCost = g => Math.round(CFG.depotBase * CFG.depotGrowth ** g.depot);
-export function depotIncome(g, wave = Math.max(1, g.wave + 1)) {
-  const w = waveInfo(wave), base = g.mode === 'rush' ? rushStipend(Math.min(wave, AREAS.length)) : CFG.waveBonus + w.count * w.bounty;      // 보스 러시는 판마다 받는 군자금이 기준
-  return Math.round(g.depot * (CFG.depotFlat + CFG.depotRate * base) * (1 + cmOf(g.meta, 'depot') / 100));
+export function depotIncome(g, wave = Math.max(1, g.wave + 1), depot = g.depot) {      // depot: 보급병 수를 바꿔 계산해 볼 때(다음 고용의 수입 미리보기)
+  const w = g.mode === 'stage' ? stageWave(g, Math.min(wave, g.rounds)) : waveInfo(wave), base = g.mode === 'rush' ? rushStipend(Math.min(wave, AREAS.length)) : CFG.waveBonus * (g.eco || 1) + w.count * w.bounty;      // 보스 러시는 판마다 받는 군자금이 기준
+  return Math.round(depot * (CFG.depotFlat + CFG.depotRate * base) * (1 + cmOf(g.meta, 'depot') / 100));
 }
 export const depotSupply = g => Math.floor(g.depot / CFG.depotSupPer);
 export function hireDepot(g) {
@@ -316,22 +348,24 @@ export function hireDepot(g) {
 }
 // 지원 요청(보상형 광고): 판마다 한 번, 지금 단계 수입의 세 단계분을 받는다 (보스 러시는 판 군자금의 30%)
 export const adSupportGold = g => { const w = waveOf(g, Math.max(1, g.wave));
-  return Math.round(g.mode === 'rush' ? rushStipend(Math.min(AREAS.length, Math.max(1, g.wave))) * 0.3 : 3 * (CFG.waveBonus + w.count * w.bounty)); };
+  return Math.round(g.mode === 'rush' ? rushStipend(Math.min(AREAS.length, Math.max(1, g.wave))) * 0.3 : 3 * (CFG.waveBonus * (g.eco || 1) + w.count * w.bounty)); };
 export function adSupport(g) { if (g.over || g.adGold) return 0; const v = adSupportGold(g); g.adGold = 1; g.gold += v; return v; }
 export const eliteState = g => (g.mode === 'rush' ? 'off' : g.elite.active ? 'active' : g.wave < 1 ? 'wait' : g.elite.cd > 0 ? 'cd' : 'ready');      // 보스 러시에는 특수 임무가 없다
 export function callElite(g) {
   if (g.over || eliteState(g) !== 'ready') return false;
-  const w = g.wave - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * CFG.eliteHp * CFG.eliteHpGrowth ** g.elite.n * g.hpMul;
-  g.enemies.push({ id: g.uid++, s: 0, hp, maxHp: hp, speed: 55, bounty: CFG.bountyBase * CFG.bountyGrowth ** w * CFG.eliteBounty * (1 + cmOf(g.meta, 'elite') / 100), kind: 'elite',
+  const w = (g.mode === 'stage' ? Math.max(1, g.wave * g.depth / g.rounds) : g.wave) - 1, hp = CFG.hpBase * CFG.hpGrowth ** w * CFG.eliteHp * CFG.eliteHpGrowth ** g.elite.n * g.hpMul;
+  g.enemies.push({ id: g.uid++, s: 0, hp, maxHp: hp, speed: 55, bounty: CFG.bountyBase * CFG.bountyGrowth ** w * CFG.eliteBounty * (g.eco || 1) * (1 + cmOf(g.meta, 'elite') / 100), kind: 'elite',
     life: CFG.eliteTime, slowT: 0, slow: 0, vulnT: 0, vuln: 0 });
   g.elite.active = true; return true;
 }
 // ── 임무: 조건을 채우면 자동으로 완수되고 보급품을 받는다 ───────
+const midWave = g => (g.mode === 'stage' ? [Math.round(g.rounds / 2), g.rounds - 5] : [30, 60]);      // 도달 임무의 기준: 스테이지는 절반 · 끝에서 다섯 라운드 앞
+const bigKill = g => (g.mode === 'stage' ? g.rounds * 15 : 1000);
 const lvCount = (g, lv) => g.units.filter(u => u && u.level >= lv).length;
 export const MISSIONS = [
   { id: 'k50', sup: 1, text: () => '적 50명 처치', ok: g => g.kills >= 50 },
   { id: 'k300', not: 'rush', sup: 2, text: () => '적 300명 처치', ok: g => g.kills >= 300 },
-  { id: 'k1000', not: 'rush', sup: 3, text: () => '적 1000명 처치', ok: g => g.kills >= 1000 },
+  { id: 'k1000', not: 'rush', sup: 3, text: g => `적 ${bigKill(g)}명 처치`, ok: g => g.kills >= bigKill(g) },
   { id: 'four', sup: 1, text: () => '기본 병과 4종을 모두 배치', ok: g => CLASS_IDS.every(c => g.units.some(u => u && u.type[0] === c && u.type[1] === c)) },
   { id: 'mix3', sup: 2, text: () => '혼성 병과 3종을 동시에 보유', ok: g => new Set(g.units.filter(u => u && u.type[0] !== u.type[1]).map(u => typeKey(u.type))).size >= 3 },
   { id: 'full', sup: 1, text: () => '배치 칸 25칸을 모두 채우기', ok: g => !g.units.includes(null) },      // 협동에서는 둘이 함께 채운다
@@ -344,8 +378,8 @@ export const MISSIONS = [
   { id: 'hid', sup: 2, text: () => '히든 계급 획득', ok: g => g.hiddenGot > 0, only: g => g.branch.hidden.length > 0 },
   { id: 'hero1', sup: 3, text: () => '전설의 용사 탄생', ok: g => g.heroGot > 0 },
   { id: 'depot5', sup: 2, text: () => '보급병 5명 고용', ok: g => g.depot >= 5 },
-  { id: 'w30', not: 'rush', sup: 2, text: () => '30단계 도달', ok: g => g.wave >= 30 },
-  { id: 'w60', not: 'rush', sup: 3, text: () => '60단계 도달', ok: g => g.wave >= 60 },
+  { id: 'w30', not: 'rush', sup: 2, text: g => `${midWave(g)[0]}라운드 도달`, ok: g => g.wave >= midWave(g)[0] },
+  { id: 'w60', not: 'rush', sup: 3, text: g => `${midWave(g)[1]}라운드 도달`, ok: g => g.wave >= midWave(g)[1] },
   // 히든 임무: 달성하기 전에는 조건이 보이지 않는다 (한 번 달성하면 다음 판부터는 조건이 보인다 — 화면 쪽에서 기억)
   { id: 'h_mono', hidden: true, sup: 3, text: () => '같은 병과 유닛 8명을 동시에 보유', ok: g => Math.max(0, ...Object.values(typeCounts(g))) >= 8 },
   { id: 'h_all', hidden: true, sup: 4, text: () => '10개 병과를 모두 동시에 보유', ok: g => Object.keys(typeCounts(g)).length >= TYPE_KEYS.length },
@@ -422,7 +456,7 @@ function startWave(g) {
   if (w.kind === 'boss') g.bossTimer = g.bossT0 = CFG.bossTime + cmShared(g, 'time');
   g.log.push({ t: 'wave', wave: g.wave, name: w.name });
   each(g, isMe => {      // 단계 보너스와 보급 도착은 플레이어마다
-    if (g.mode !== 'rush') g.gold += CFG.waveBonus;      // 보스 러시는 보스를 잡을 때 다음 판 군자금을 한꺼번에 받는다
+    if (g.mode !== 'rush') g.gold += CFG.waveBonus * (g.eco || 1);      // 보스 러시는 보스를 잡을 때 다음 판 군자금을 한꺼번에 받는다
     if (!(g.depot > 0)) return;
     const gold = depotIncome(g, g.wave), sup = g.wave % CFG.depotSupEvery === 0 ? depotSupply(g) : 0;
     g.gold += gold; g.depotGold += gold; g.supply += sup;
@@ -509,8 +543,8 @@ function heroCast(g, u, k, p, base) {
 //  그래서 혼자 하는 판의 규칙 코드를 그대로 쓴다. 평소 cur는 이 기기의 플레이어(me)이고, 명령을 실행할 때는 act()로, 모두에게 줄 때는 each()로 잠깐 바꾼다.
 //  두 기기가 똑같이 계산해야 하므로(방장의 걸음과 명령을 손님이 그대로 따라 한다) step() 안에서는 cur에 기대지 않는다 — 플레이어별 값은 each()나 유닛의 주인(u.o)으로만 읽는다.
 const PF = ['gold', 'supply', 'camp', 'up', 'depot', 'depotGold', 'branch', 'meta', 'dmgT', 'adGold'];
-export function createDuo({ players, seed, me = 0, fx = true }) {
-  const g = createGame({ meta: players[0].meta || {}, seed, fx });      // 협동도 여섯 군별이 섞여 나온다(플레이어가 군별을 고르지 않는다)
+export function createDuo({ players, seed, me = 0, fx = true, stage = 0 }) {      // stage를 주면 그 스테이지를 둘이 한다(안 주면 예전의 100단계 판 — 검사용)
+  const g = createGame({ meta: players[0].meta || {}, seed, fx, ...(stage ? { mode: 'stage', stage } : {}) });      // 협동도 여섯 군별이 섞여 나온다(플레이어가 군별을 고르지 않는다)
   const ps = players.map(p => { const m = p.meta || {}; return { branch: g.branch, meta: m, name: p.name || '', gold: CFG.startGold + 40 * (m.gold || 0), supply: cmOf(m, 'supply'),
     camp: 0, up: { inf: 0, art: 0, med: 0, sig: 0 }, depot: 0, depotGold: 0, dmgT: {}, adGold: 0 }; });
   g.duo = { ps, me, cur: me, solo: false }; g.hpMul *= CFG.duoHp;
@@ -561,10 +595,10 @@ export function duoSnap(g) {
   return JSON.parse(JSON.stringify(o, (k, v) => (k === 'stats' ? undefined : v)));
 }
 export function duoLoad(g, o) {
-  if (!g.duo || !o || !Array.isArray(o.ps) || !Array.isArray(o.units) || o.units.length !== SLOT_COUNT || !MAPS[o.area]) return false;
+  if (!g.duo || !o || !Array.isArray(o.ps) || !Array.isArray(o.units) || o.units.length !== SLOT_COUNT || !AREAS[o.area]) return false;
   for (const k in o) if (k !== 'seed' && k !== 'ps') g[k] = o[k];
   o.ps.forEach((p, i) => { const P = g.duo.ps[i]; for (const k of PF) if (k !== 'branch' && k !== 'meta' && p[k] !== undefined) P[k] = p[k]; });
-  g.rand = rng(o.seed); g.map = MAPS[g.area]; g.effects = []; g.sfx = [];
+  g.rand = rng(o.seed); g.map = mapOf(g); g.effects = []; g.sfx = [];
   for (const u of g.units) if (u) { const P = g.duo.ps[u.o === 1 ? 1 : 0]; u.stats = unitStats(BR[u.b] || P.branch, u.level, u.type, P.meta, P.up); u.flash = 0; }
   g.auraDirty = true; return true;
 }
@@ -680,11 +714,12 @@ export function step(g, dt) {
   const boss = g.enemies.some(e => e.kind === 'boss');
   if (boss) { g.bossTimer -= dt; if (g.bossTimer <= 0) g.over = { win: false, reason: '보스를 제한 시간 안에 막지 못했습니다' }; }
   if (g.enemies.length > CFG.enemyLimit) g.over = { win: false, reason: `적이 ${CFG.enemyLimit}명을 넘어 방어선이 무너졌습니다` };
-  if (!g.over && fieldClear(g)) g.over = { win: true, reason: g.mode === 'rush' ? '보스 10종 격파!' : '100단계 방어 성공!' };
+  if (!g.over && fieldClear(g)) g.over = { win: true, reason: g.mode === 'stage' ? `스테이지 ${g.stage} 클리어!` : g.mode === 'rush' ? '보스 10종 격파!' : '100단계 방어 성공!' };
 }
 
 // 훈장: 5단계마다 1개(보스 러시는 보스 하나에 2개), 승리하면 +20(보스 러시 +10). 난이도 배수와 모범 부대 표창이 곱해진다
-export const medalsFor = g => Math.floor((g.mode === 'rush' ? (g.bossKills || 0) * 2 + (g.over && g.over.win ? 10 : 0) : Math.floor(g.wave / 5) + (g.over && g.over.win ? 20 : 0))
+export const medalsFor = g => Math.floor((g.mode === 'stage' ? (Math.floor(g.wave / 5) + (g.over && g.over.win ? 10 : 0)) * stageMedal(g.stage)      // 스테이지: 5라운드마다 1개 + 클리어 10개, 스테이지 배수
+  : g.mode === 'rush' ? (g.bossKills || 0) * 2 + (g.over && g.over.win ? 10 : 0) : Math.floor(g.wave / 5) + (g.over && g.over.win ? 20 : 0))
   * DIFFS[g.diff || 0].medal * (1 + cmOf(g.meta, 'medal') / 100));
 // 기록에 남는 도달 단계: 승리하면 끝 단계, 아니면 막아 낸 마지막 단계. 보스 러시는 잡은 보스 수
 export const reached = g => (g.mode === 'rush' ? g.bossKills || 0 : g.over && g.over.win ? maxWaveOf(g) : Math.max(0, g.wave - 1));
@@ -703,11 +738,11 @@ export function loadGame(o, meta = {}) {
   try {
     if (!o || o.v !== SAVE_V || o.over || !branchById(o.branchId)) return null;
     const mono = 'only' in o ? o.only : o.branchId;      // 군별을 고르던 시절의 저장(only 없음)은 그 군별만 나오는 판으로 이어 한다
-    const g = createGame({ branchId: mono, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0, mode: MODES.some(m => m.id === o.mode) ? o.mode : 'normal' });
+    const g = createGame({ branchId: mono, meta, seed: o.seed, diff: DIFFS[o.diff] ? o.diff : 0, mode: MODES.some(m => m.id === o.mode) ? o.mode : 'normal', stage: o.stage || 1 });
     g.rand = rng(o.seed);      // createGame이 특수 발판을 정하느라 난수를 썼으므로 저장한 상태로 되돌린다
-    for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff' && k !== 'mode' && k !== 'only') g[k] = o[k];
-    if (!Array.isArray(g.units) || g.units.length !== SLOT_COUNT || !MAPS[g.area] || !(g.wave >= 0)) return null;
-    g.map = MAPS[g.area]; g.hpMul = DIFFS[g.diff].hp;
+    for (const k in o) if (k !== 'v' && k !== 'branchId' && k !== 'seed' && k !== 'diff' && k !== 'mode' && k !== 'only' && k !== 'stage' && k !== 'rounds' && k !== 'depth' && k !== 'eco') g[k] = o[k];
+    if (!Array.isArray(g.units) || g.units.length !== SLOT_COUNT || !AREAS[g.area] || !(g.wave >= 0)) return null;
+    g.map = mapOf(g); g.hpMul = DIFFS[g.diff].hp;
     for (const u of g.units) if (u) { if (!(u.level >= 0 && u.level <= maxLevel(g.branch))) return null; if (!BR[u.b]) u.b = o.branchId; u.stats = unitStats(BR[u.b], u.level, u.type, g.meta, g.up); u.flash = 0;
       if (u.hidden && !hiddenDef(BR[u.b], u.hidden)) u.hidden = null; }
     if (!Array.isArray(g.zones)) g.zones = [];
