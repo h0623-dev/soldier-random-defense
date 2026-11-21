@@ -279,7 +279,8 @@ export function unitArtName(branchId, type, grp = 0) {
 export const unitArtTier = (branchId, type, grp = 0) => { const m = /_t(\d)$/.exec(unitArtName(branchId, type, grp)); return m ? +m[1] : 0; };
 const unitArt = (branchId, type, grp = 0) => (V2 ? v2Unit(branchId, type) : fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp)] : null) || null;
 // 공격 자세 그림(<이름>_atk): 지금 쓰는 대기 그림과 짝이 맞는 것이 있을 때만
-export const unitAtkImage = (branchId, type, grp = 0) => (!V2 && fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
+// 새 그림체의 공격 자세: units/<군별>_<병과>_atk (384칸 = 대기 그림의 1.5배, 발 위치가 칸 가로 가운데 · 발바닥 높이는 대기 그림과 같다)
+export const unitAtkImage = (branchId, type, grp = 0) => (V2 ? v2Art(`units/${branchId}_${type[0] === type[1] ? type[0] : type.join('-')}_atk`) : fullBranch.has(branchId) ? art[unitArtName(branchId, type, grp) + '_atk'] : null) || null;
 export const enemyArt = kind => (V2 ? v2Art('enemy_' + kind) : art['enemy_' + kind]) || null;      // 지역 보스 그림(boss2 …)이 없으면 render.js의 bossImage가 기본 보스 그림을 쓴다
 export const hasArt = name => !!art[name];     // 그림 파일이 준비됐는지 (도감에서 <img> 주소를 고를 때 쓴다)
 

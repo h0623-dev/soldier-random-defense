@@ -42,6 +42,32 @@ cut('enemies', 3, 2, ['enemy_' + n for n in 'normal fast armor elite boss scrap'
 cut('bosses_a', 3, 2, ['enemy_boss%d' % n for n in range(2, 8)], 256); cut('bosses_b', 2, 2, ['enemy_boss8', 'enemy_boss9', 'enemy_boss10', 'enemy_dummy'], 256)
 for b in 'army navy marine sf air police'.split():
     cut('units_' + b, 2, 2, [f'{b}_{c}' for c in 'inf art med sig'.split()], 256, 'units/'); cut('mix_' + b, 3, 2, [f'{b}_{m}' for m in MIX], 256, 'units/')
+# 공격 자세(atk_<군별> 2×2 · atkmix_<군별> 3×2) → units/<이름>_atk.webp (384×384 = 대기 그림의 1.5배 칸).
+#  · 한 장 안의 캐릭터는 몸 크기가 같으므로, 그 장의 가운데 키(중앙값)가 대기 그림의 키와 같아지게 줄인다(섬광·연기로 칸이 커져도 몸 크기는 그대로).
+#  · 그림의 가로 무게중심을 칸의 가로 가운데에, 발바닥을 대기 그림과 같은 높이에 둔다 → 게임에서 대기 그림과 같은 자리에 겹쳐 찍으면 된다.
+def cut_atk(sheet, cols, rows, names, size=384, base=256, pad=0.04):
+    p = os.path.join(RAW, sheet + '.png')
+    if not os.path.exists(p): return
+    im = matte(Image.open(p).convert('RGB')); im = im[0] if isinstance(im, tuple) else im
+    W, H = im.size; cw, ch = W / cols, H / rows; cells = []
+    for i, n in enumerate(names):
+        c = im.crop((round(i % cols * cw), round(i // cols * ch), round((i % cols + 1) * cw), round((i // cols + 1) * ch)))
+        bb = c.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()
+        cells.append((n, c.crop(bb)) if bb else (n, None))
+    hs = sorted(c.height for _, c in cells if c); med = (hs[(len(hs) - 1) // 2] + hs[len(hs) // 2]) / 2
+    for n, c in cells:
+        if not c: print('빈 칸:', n); continue
+        idle = os.path.join(OUT, 'units', n + '.webp'); ih = base * (1 - pad * 2)
+        if os.path.exists(idle): bb = Image.open(idle).getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox(); ih = bb[3] - bb[1]
+        k = ih / med
+        col = (np.array(c.getchannel('A')) > 24).sum(0).cumsum(); fx = float(np.searchsorted(col, col[-1] / 2))      # 가로 기준점: 그림 넓이의 절반이 왼쪽에 오는 자리(몸 + 장비의 무게중심) — 옆에 놓인 포·섬광 때문에 몸이 칸 밖으로 밀리지 않게
+        k = min(k, (size - 8) / c.height, (size / 2 - 4) / max(1.0, fx), (size / 2 - 4) / max(1.0, c.width - fx))      # 칸을 넘으면 그만큼 더 줄인다
+        c2 = c.resize((max(1, round(c.width * k)), max(1, round(c.height * k))), Image.LANCZOS)
+        o = Image.new('RGBA', (size, size), (0, 0, 0, 0)); o.paste(c2, (round(size / 2 - fx * k), size - round(base * pad) - c2.height), c2)
+        o.save(os.path.join(OUT, 'units', n + '_atk.webp'), quality=88)
+    print(sheet, len(names))
+for b in 'army navy marine sf air police'.split():
+    cut_atk('atk_' + b, 2, 2, [f'{b}_{c}' for c in 'inf art med sig'.split()]); cut_atk('atkmix_' + b, 3, 2, [f'{b}_{m}' for m in MIX])
 p = os.path.join(RAW, 'title.png')
 if os.path.exists(p): Image.open(p).convert('RGB').resize((768, 1152), Image.LANCZOS).save(os.path.join(OUT, 'title.webp'), quality=84); print('title')
 names = sorted(os.path.relpath(os.path.join(d, f), OUT)[:-5].replace(os.sep, '/') for d, _, fs in os.walk(OUT) for f in fs if f.endswith('.webp'))      # 게임이 읽을 그림 목록

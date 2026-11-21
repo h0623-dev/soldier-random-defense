@@ -318,7 +318,6 @@ export function draw(ctx, g, ui, quality = 2) {
       ctx.strokeStyle = star ? '#ff5a4a' : keep ? '#ffd45e' : '#c9a3ff'; ctx.lineWidth = star ? 5 : 4; if (!keep) ctx.setLineDash([9, 7]); ctx.stroke(); ctx.setLineDash([]);
       if (star) starAt(ctx, s.x + 34, s.y - 42, 11 + 2 * Math.sin(now * 6), '#ffd45e'); }      // 용사·히든 조합이 되는 짝: 붉은 테두리와 별
     else if (sel && i === ui.sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.stroke(); }
-    else if (!sel && !g.units[i] && ui.hintT > now && mine(g, i)) { ctx.fillStyle = `rgba(255,255,255,${0.22 + 0.16 * Math.sin(now * 9)})`; rr(ctx, x, y, CELL.w - 8, CELL.h - 8, 12); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke(); }      // 신병 소집 건물을 눌렀을 때: 소집할 수 있는 빈 칸
     else if (!sel) { const u = g.units[i]; if (u && own(g, u) && pairN[branchOf(g, u).id + u.level] >= 2) {
       ctx.strokeStyle = `rgba(255,224,110,${0.55 + 0.25 * Math.sin(now * 4)})`; ctx.lineWidth = 3; ctx.setLineDash([7, 6]); rr(ctx, x + 2, y + 2, CELL.w - 12, CELL.h - 12, 11); ctx.stroke(); ctx.setLineDash([]); } }
   });
@@ -570,8 +569,9 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
   const atk = u.atkT > 0 && !stunned ? (heroIm ? unitAtkImage('hero', hk, 0) : skinIm ? unitAtkImage(skinArt, u.type, 0) : unitAtkImage(b.id, u.type, grp)) : null;
-  if (V2 && im.naturalWidth) { const f = fit(im, size, k, !!u.faceL, false, OUTLINE), br = stunned || quality === 0 ? 0 : Math.sin(now * 2.6 + u.id * 1.7) * 0.022, sx = (1 + br) * sc, sy = (1 - br) * sc + fire * 0.05;      // 숨쉬듯 통통: 발을 기준으로 가로세로가 번갈아 늘었다 준다. 쏠 때는 위로 튄다
-    ctx.drawImage(f.cv, p.x + (f.x - size / 2) * sx, p.y + FEET - fire * 5 + (f.y - size) * sy, f.w * sx, f.h * sy); }
+  if (V2 && im.naturalWidth) { const br = stunned || quality === 0 ? 0 : Math.sin(now * 2.6 + u.id * 1.7) * 0.022, sx = (1 + br) * sc, sy = (1 - br) * sc + fire * 0.05;      // 숨쉬듯 통통: 발을 기준으로 가로세로가 번갈아 늘었다 준다. 쏠 때는 위로 튄다
+    const am = u.atkT > 0 && !stunned ? unitAtkImage(b.id, u.type, grp) : null, S = am ? size * 1.5 : size, f = fit(am || im, S, k, !!u.faceL, false, OUTLINE);      // 공격 직후에는 공격 자세 그림(1.5배 칸, 발 위치가 같다)
+    ctx.drawImage(f.cv, p.x + (f.x - S / 2) * sx, p.y + FEET - fire * 5 + (f.y - S) * sy, f.w * sx, f.h * sy); }
   else if (atk) put(ctx, fit(atk, size * 2, k, u.faceL, skin, OUTLINE), p.x - size, p.y + FEET + dy - size * 2);
   else if (sc === 1 || !im.naturalWidth) put(ctx, fit(im, size, k, false, skin, OUTLINE), p.x - w / 2, p.y + FEET - w + (stunned ? 0 : dy));
   else { const f = fit(im, size, k, false, skin, OUTLINE); ctx.drawImage(f.cv, p.x - w / 2 + f.x * sc, p.y + FEET - w + (stunned ? 0 : dy) + f.y * sc, f.w * sc, f.h * sc); }      // 반동: 발을 기준으로 살짝 커진다
