@@ -20,7 +20,8 @@ const UPGRADES = [
   { key: 'bounty', name: '전리품', desc: '처치 보상 +3%', max: 20 },
 ];
 let slowT = 0, frameMs = 16, logAt = 0, hold = 0;
-let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 1, paused = true, last = 0, infoKey = '';
+const SPEEDS = [2, 4, 6], okSpeed = v => (SPEEDS.includes(v) ? v : SPEEDS[0]);      // 실제 배수(화면에는 ×1 · ×2 · ×3)
+let meta = loadMeta(), g = null, ui = { sel: null, target: null }, speed = 2, paused = true, last = 0, infoKey = '';
 const view = initLayout(() => { infoKey = ''; });
 
 // 기기에 저장되는 값(훈장·영구 강화·기록·숙련도·표창·출석·일일 임무·뽑기판). 칸의 뜻과 규칙은 meta.js
@@ -61,7 +62,7 @@ function coopMsg(m) {
   else if (m.t === 'hello') { coop.host = !!m.host; coop.peer = m.peer; if (m.peer) coop.conn.send({ t: 'me', p: myInfo() }); if (!g) ACT.cowait(); }
   else if (m.t === 'peer') { coop.peer = m.peer; coop.conn.send({ t: 'me', p: myInfo() }); if (!g) ACT.cowait(); }
   else if (m.t === 'me') { if (coop.host && !g && okPlayer(m.p)) { const seed = Math.floor(Math.random() * 2 ** 31), ps = [myInfo(), m.p]; coop.conn.send({ t: 'start', seed, speed: 2, p: ps }); coopBegin(ps, seed, 0, 2); } }
-  else if (m.t === 'start') { if (!coop.host && !g && Array.isArray(m.p) && m.p.length === 2) coopBegin(m.p, m.seed >>> 0, 1, [1, 2, 4].includes(m.speed) ? m.speed : 2); }
+  else if (m.t === 'start') { if (!coop.host && !g && Array.isArray(m.p) && m.p.length === 2) coopBegin(m.p, m.seed >>> 0, 1, okSpeed(m.speed)); }
   else if (m.t === 'left') coopLost();
   else if (!duoLive()) return;
   else if (m.t === 'emote') { if (EMOTES[m.i]) { toast(`${peerP().name}: ${EMOTES[m.i]}`, 2400); Sound.play('summon'); } }
@@ -73,7 +74,7 @@ function coopMsg(m) {
     else if (m.t === 'cmd') coop.q.push(m);
     else if (m.t === 'sum') { coop.sums[m.n] = m.h; checkSum(m.n); }
     else if (m.t === 'snap') { if (C.duoLoad(g, m.s)) { coop.tick = m.n | 0; coop.goal = Math.max(coop.goal, coop.tick); coop.q = coop.q.filter(x => x.seq > m.seq); coop.sums = {}; coop.mine = {}; infoKey = ''; ui.sel = ui.target = null; coop.resync = (coop.resync || 0) + 1; } coop.need = false; }
-    else if (m.t === 'speed') { if ([1, 2, 4].includes(m.v)) setSpeed(m.v); }
+    else if (m.t === 'speed') { setSpeed(okSpeed(m.v)); }
   }
 }
 // 손님: 방장의 값과 내 값이 다르면 방장의 상태를 통째로 받아 맞춘다
@@ -220,7 +221,7 @@ overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'
   else if (e.target === overlay && overlay.classList.contains('sheet')) hide(); });   // 시트 바깥(어두운 부분)을 누르면 닫힌다
 
 // 게임에 들어갈 때(새로 출격·이어하기) 화면 쪽 상태를 처음으로 돌린다
-function enter() { loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area } }; infoKey = ''; speed = 1; $('b-speed').textContent = '×1'; $('app').classList.remove('sel'); }
+function enter() { loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area } }; infoKey = ''; setSpeed(SPEEDS[0]); $('app').classList.remove('sel'); }
 
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {
@@ -291,7 +292,7 @@ const ACT = {
     show(`<h2>2인 협동</h2><p class="sub">한 전장을 둘이 나눠 맡아 100단계를 함께 막습니다 · 행동력 1</p>
       <div class="list"><p>· <b>발판을 위아래로 나눕니다</b> — 방장은 위쪽 ${C.CFG.duoSplit}칸, 손님은 아래쪽 ${C.SLOT_COUNT - C.CFG.duoSplit}칸. 자기 구역에만 소집·배치하고 자기 유닛만 조합합니다.</p>
         <p>· 적과 단계, 임무는 함께 씁니다. <b>누가 잡든 두 사람 모두 보상</b>을 받고, 군자금·훈련소·병과 강화는 각자입니다. 여섯 군별이 섞여 나오고 조합은 같은 군별끼리만 됩니다. 용사의 전체 효과와 주변 지원은 동료에게도 미칩니다.</p>
-        <p>· 군자금을 보내거나 한마디를 건넬 수 있습니다. 배속은 방장이 정합니다(기본 ×2). 훈장 ${M.COOP_MEDAL}배. 중간 저장은 되지 않습니다.</p></div>
+        <p>· 군자금을 보내거나 한마디를 건넬 수 있습니다. 배속은 방장이 정합니다. 훈장 ${M.COOP_MEDAL}배. 중간 저장은 되지 않습니다.</p></div>
       <h3>별명 (동료와 랭킹에 보입니다)</h3><div class="namerow"><input id="nm" maxlength="10" value="${esc(meta.name)}" autocomplete="off"><button class="btn" data-act="setname" data-arg="coop">저장</button></div>
       <p class="note cmmsg">${on ? msg || '빠른 매칭은 기다리는 사람과 바로 이어 줍니다' : '서버가 아직 연결되지 않아 협동을 할 수 없습니다 (서버 배포 대기)'}</p>
       <button class="wide" data-act="comatch" ${on && !busy ? '' : 'disabled'}>빠른 매칭</button>
@@ -686,9 +687,10 @@ $('b-up').onclick = () => g && ACT.upg();
 $('b-mission').onclick = () => g && ACT.missions();
 $('b-elite').onclick = () => g && cmd(['elite']);
 $('b-menu').onclick = () => g && ACT.menu();
-function setSpeed(v) { speed = v; $('b-speed').textContent = '×' + v; }
+// 배속: 예전의 2배속이 기본이고 화면에는 ×1로 보인다(2026-11-21 사용자). speed는 실제 배수 2 · 4 · 6, 화면 표시는 그 절반 ×1 · ×2 · ×3
+function setSpeed(v) { speed = okSpeed(v); $('b-speed').textContent = '×' + speed / SPEEDS[0]; }
 $('b-speed').onclick = () => { if (duoLive() && !coop.host) return toast('협동에서는 방장이 배속을 정합니다');
-  setSpeed(speed === 1 ? 2 : speed === 2 ? 4 : 1); if (duoLive()) coop.conn.send({ t: 'speed', v: speed }); };
+  setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]); if (duoLive()) coop.conn.send({ t: 'speed', v: speed }); };
 $('b-coop').onclick = () => g && g.duo && coop && ACT.cosheet();
 document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over && !duoLive()) { saveRun(); if (!paused) ACT.menu(); } });      // 협동 중에는 멈추지 않는다
 window.addEventListener('pagehide', () => { if (g && !g.over) saveRun(); });

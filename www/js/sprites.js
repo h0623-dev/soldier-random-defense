@@ -174,13 +174,13 @@ export function drawTag(c, o, part) {
   }
   // 이름표 (발 아래, 제 칸 안쪽): 병과 글자 + 계급 이름. 글자 길이에 맞춰 폭이 정해진다
   if (part === 'badge') return;
-  // 군별 이름(군별 색 칸) + 계급 이름. 병과 글자(보·포·의·통)는 쓰지 않는다 — 조합은 같은 군별끼리만 되므로 군별이 한눈에 보여야 한다(2026-11-21 사용자)
-  const bn = o.bname || '', long = bn.length + rank.length > 6, fb = long ? 10.5 : 11.5, fs = long ? 11 : 12.5;
+  // 군별 이름(군별 색 칸) + 캐릭터 이름(바둑이 · 첨벙이 …). 계급은 머리 위 계급장과 발밑 원판 색으로 본다. 병과 글자(보·포·의·통)는 쓰지 않는다 — 조합은 같은 군별끼리만 되므로 군별이 한눈에 보여야 한다(2026-11-21 사용자)
+  const bn = o.bname || '', label = o.nick || rank, long = bn.length + label.length > 6, fb = long ? 10.5 : 11.5, fs = long ? 11 : 12.5;
   c.font = `800 ${fb}px sans-serif`; const bw = bn ? Math.ceil(c.measureText(bn).width) + 7 : 0;
-  c.font = `800 ${fs}px sans-serif`; const tw = Math.ceil(c.measureText(rank).width), w = Math.min(99, bw + tw + 12), x0 = -w / 2;
+  c.font = `800 ${fs}px sans-serif`; const tw = Math.ceil(c.measureText(label).width), w = Math.min(99, bw + tw + 12), x0 = -w / 2;
   c.fillStyle = 'rgba(62,40,22,.9)'; rr(c, x0, 26, w, 15, 7.5); c.fill();      // 캐릭터 그림의 갈색 선과 맞춘 짙은 갈색 바탕
   c.strokeStyle = o.gcol || (hidden ? GOLD : ['#a98a5e', '#e6dcc6', GOLD][tier]); c.lineWidth = 2.2; c.stroke();      // 테두리는 계급(등급) 색
-  c.fillStyle = hidden ? GOLD : '#fff6e0'; c.fillText(rank, x0 + bw + 4.5 + tw / 2, 34);
+  c.fillStyle = hidden ? GOLD : '#fff6e0'; c.fillText(label, x0 + bw + 4.5 + tw / 2, 34);
   if (bn) { c.fillStyle = o.bcol; rr(c, x0 + 2.2, 27.8, bw, 11.4, 5.2); c.fill(); c.strokeStyle = 'rgba(255,246,224,.85)'; c.lineWidth = 1; c.stroke();
     c.font = `800 ${fb}px sans-serif`; c.fillStyle = '#fff'; c.fillText(bn, x0 + 2.2 + bw / 2, 34.1); }
 }
