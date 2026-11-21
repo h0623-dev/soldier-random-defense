@@ -221,7 +221,7 @@ overlay.addEventListener('click', e => { const b = e.target.closest('[data-act]'
   else if (e.target === overlay && overlay.classList.contains('sheet')) hide(); });   // 시트 바깥(어두운 부분)을 누르면 닫힌다
 
 // 게임에 들어갈 때(새로 출격·이어하기) 화면 쪽 상태를 처음으로 돌린다
-function enter() { loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area, ...(g.mode === 'stage' ? { top: `스테이지 ${g.stage} · 라운드 ${g.rounds}`, label: `보스 — ${C.AREAS[g.area].boss.name}` } : {}) } }; infoKey = ''; setSpeed(SPEEDS[0]); $('app').classList.remove('sel'); }
+function enter() { if (view.refit) { view.refit(); setTimeout(view.refit, 400); } loadBranchArt('hero'); applySkin(); logAt = g.log.length; ui = { sel: null, target: null, trans: { t: 2.2, total: 2.2, area: g.area, ...(g.mode === 'stage' ? { top: `스테이지 ${g.stage} · 라운드 ${g.rounds}`, label: `보스 — ${C.AREAS[g.area].boss.name}` } : {}) } }; infoKey = ''; setSpeed(SPEEDS[0]); $('app').classList.remove('sel'); }
 
 // ── 화면 ────────────────────────────────────────────────
 const ACT = {

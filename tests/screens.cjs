@@ -37,6 +37,8 @@ const DEV = [
     const fitCls = () => p.evaluate(() => document.getElementById('info').className || '-');
     const g1 = await gap(), c1 = await fitCls();
     // 조합 미리보기: 같은 등급 두 유닛을 만들어 차례로 누른다
+    // 주둔지(건물과 간판)가 화면 아래로 넘치지 않는가 — 유닛을 고르기 전(건물이 보이는 상태)에 잰다
+    const camp = await p.evaluate(() => { const vh = window.innerHeight, b = Math.max(...[...document.querySelectorAll('.bld .sign')].map(x => x.getBoundingClientRect().bottom)), a = document.getElementById('actions'); return Math.round(Math.max(b - vh, a.scrollHeight - a.clientHeight)); });
     const pair = await p.evaluate(() => { const g = window.__srd.game, C = window.__srd.C, us = g.units.filter(Boolean); us[1].level = us[0].level; us[1].b = us[0].b; us[1].stats = C.unitStats(C.branchOf(g, us[1]), us[1].level, us[1].type, g.meta, g.up);      // 조합은 같은 군별 · 같은 등급끼리만 되므로 둘을 맞춘다
       return [us[0], us[1]].map(u => { const s = g.map.slots[u.slot]; return { x: s.x / C.FIELD.w, y: s.y / C.FIELD.h }; }); });
     await p.mouse.click(fb.x + 2, fb.y + 2); await p.waitForTimeout(80);
@@ -45,7 +47,7 @@ const DEV = [
     m.cover1 = !land && g1 < -1; m.cover2 = !land && g2 < -1; m.noMerge = !hasMerge;
     const cover = Math.round(100 * m.field[2] * m.field[3] / (w * h));
     const slot = Math.round(m.field[2] * 100 / 720);
-    const flags = [m.cover1 && `유닛카드가 전장 덮음(${g1})`, m.cover2 && `조합카드가 전장 덮음(${g2})`, m.noMerge && '조합카드 안뜸', m.offscreen && '화면밖', m.hscroll && '가로스크롤', m.cardCut && '카드잘림', slot < 40 && '칸<40px', btnH < 44 && '버튼<44px', m.font < 11.5 && '글자<11.5', errs.length && '오류'].filter(Boolean);
+    const flags = [m.cover1 && `유닛카드가 전장 덮음(${g1})`, m.cover2 && `조합카드가 전장 덮음(${g2})`, m.noMerge && '조합카드 안뜸', camp > 1 && `주둔지 잘림(${camp}px)`, m.offscreen && '화면밖', m.hscroll && '가로스크롤', m.cardCut && '카드잘림', slot < 40 && '칸<40px', btnH < 44 && '버튼<44px', m.font < 11.5 && '글자<11.5', errs.length && '오류'].filter(Boolean);
     if (flags.length) bad++;
     console.log(`${name.padEnd(20)} ${w}x${h} 전장 ${m.field[2]}x${m.field[3]} (${cover}%) 칸 ${slot}px 버튼높이 ${btnH} 글자 ${m.font} 정보창 ${m.info[2]}x${m.info[3]} 카드 ${c1}/${c2} ${flags.join(',') || 'OK'}`);
     if (out) await p.screenshot({ path: `${out}/${tag}${w}x${h}.png` });      // 저장할 폴더를 주지 않으면 검사만 한다

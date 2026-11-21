@@ -1,5 +1,5 @@
-// 화면 자동 맞춤 — 앱 실행 시와 화면이 바뀔 때(회전·폴더블 접기/펴기·창 크기 변경) 기기 화면을 읽어
-// ① 글자·버튼 배율 ② 전장 크기 ③ 세로/가로 배치 ④ 캔버스 해상도를 정한다.
+// 화면 자동 맞춤 — 앱 실행 시와 화면이 바뀔 때(회전·폴더블 접기/펴기·창 크기 변경·시스템 바가 나타나고 사라질 때) 기기 화면을 읽어
+// ① 글자·버튼 배율 ② 전장 크기 ③ 세로/가로 배치 ④ 캔버스 해상도를 정한다. 그런 다음 실제로 그려진 높이를 재서 주둔지가 화면 밖으로 넘치면 건물·전장을 줄인다.
 import { FIELD } from './core.js';
 
 const BASE_W = 390;            // 설계 기준 폭 (배율 1)
@@ -16,7 +16,7 @@ const DPR_CAP = [1, 1.5, 2.5];
 
 export function initLayout(onChange) {
   const app = document.getElementById('app'), canvas = document.getElementById('field');
-  const hud = document.getElementById('hud');
+  const hud = document.getElementById('hud'), actions = document.getElementById('actions');
   const root = document.documentElement;
   function apply() {
     const cs = getComputedStyle(app);
@@ -42,9 +42,19 @@ export function initLayout(onChange) {
     // 건물 크기: 주둔지에 남는 높이와 폭에 맞춘다 (세로로 긴 화면에서는 건물이 커지고, 짧은 화면에서는 작아진다)
     const campH = land ? H - hud.offsetHeight : H - hud.offsetHeight - fh, campW = land ? W - fw : W;
     app.classList.toggle('tall', !land && campH / rem > 25.5);      // 주둔지가 넉넉하면 보스 안내를 함께 보여 준다
-    root.style.setProperty('--bs', clamp(Math.min((campH / rem - 8.2) / 8.4, campW / rem / 38), 0.72, 1.6).toFixed(2));
-    canvas.style.width = fw + 'px'; canvas.style.height = fh + 'px';
-    Object.assign(view, { scale: s, land, w: W, h: H, fieldW: fw, fieldH: fh });
+    let bs = clamp(Math.min((campH / rem - 8.2) / 8.4, campW / rem / 38), 0.72, 1.6), fW = fw, fH = fh;
+    const put = () => { root.style.setProperty('--bs', bs.toFixed(2)); canvas.style.width = fW + 'px'; canvas.style.height = fH + 'px'; };
+    put();
+    // 실제로 재서 맞춘다: 위 계산은 어림값이라(글꼴·간판 글자 수·기기마다 높이가 조금씩 다르다) 주둔지 내용이 화면 아래로 넘칠 수 있다.
+    // 넘치면 ① 건물을 조금씩 줄이고 ② 그래도 넘치면 전장을 그만큼 줄인다. 넘치지 않을 때까지 몇 번 되풀이한다.
+    const inner = app.getBoundingClientRect().bottom - parseFloat(cs.paddingBottom);      // 쓸 수 있는 맨 아래(안전 영역 안쪽)
+    const over = () => (actions.offsetParent === null ? 0 : Math.max(actions.scrollHeight - actions.clientHeight, actions.getBoundingClientRect().bottom - inner));
+    for (let i = 0; i < 10; i++) { const o = over(); if (o <= 0.5) break;
+      if (bs > 0.72) bs = Math.max(0.72, bs - Math.max(0.04, o / (8.4 * rem)));      // 건물은 누르기 좋은 크기(0.72) 아래로는 줄이지 않는다
+      else { fH = Math.max(120, Math.floor(fH - o - 1)); fW = Math.floor(fH / ratio); }
+      put(); }
+    view.fit = { over: Math.max(0, Math.round(over())), bs: +bs.toFixed(2) };      // 검사용: 맞춘 뒤에도 넘치는 높이(0이어야 한다)
+    Object.assign(view, { scale: s, land, w: W, h: H, fieldW: fW, fieldH: fH });
     resizeCanvas(); if (onChange) onChange(view);
   }
   function resizeCanvas() {
@@ -59,6 +69,10 @@ export function initLayout(onChange) {
   if (window.visualViewport) window.visualViewport.addEventListener('resize', later);
   if (window.ResizeObserver) new ResizeObserver(later).observe(app);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(later);
-  apply();
+  window.addEventListener('load', later); window.addEventListener('pageshow', later);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) later(); });
+  for (const im of document.querySelectorAll('#actions img')) if (!im.complete) im.addEventListener('load', later, { once: true });      // 건물 그림이 늦게 뜨면 높이가 달라진다
+  view.refit = later;      // 화면 쪽에서 다시 맞추라고 부를 때(전투 시작 · 주둔지 내용이 바뀔 때)
+  apply(); for (const ms of [300, 1200, 3000]) setTimeout(later, ms);      // 켜진 직후에는 시스템 바가 사라지며 화면 크기가 바뀌므로 몇 번 더 맞춘다
   return view;
 }
