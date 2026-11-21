@@ -18,7 +18,8 @@ async function dropLive(keep) {
 export const buildInfo = { bundled: 0, live: 0, version: '' };
 
 // onReady(remote): 새 버전을 다 받았을 때 호출된다 (다음 실행 또는 새로고침부터 적용)
-export async function checkUpdate(onReady) {
+// onProgress(받은 수, 전체 수): 받는 동안 호출된다 — 화면에 "새 버전 받는 중"을 보여 주는 데 쓴다 (전에는 아무 표시 없이 받아서, 받는 중에 보면 반영이 안 된 것처럼 보였다)
+export async function checkUpdate(onReady, onProgress) {
   // 개발용 서버(http://)에서는 받지 않는다 — 고치는 중인 파일 대신 배포된 버전이 실행되는 것을 막는다. 시험하려면 주소에 ?update=1
   if (location.protocol === 'http:' && !/[?&]update=1/.test(location.search)) return 'off';
   if (!('caches' in window) || !('serviceWorker' in navigator)) return 'unsupported';
@@ -41,13 +42,17 @@ export async function checkUpdate(onReady) {
   //  · 내려받은 버전이 있는데 서비스 워커가 이 화면을 맡고 있지 않으면 어느 파일이 나올지 알 수 없으므로 전부 받는다.
   const meta = await caches.open(META), mf = live ? await meta.match('/__manifest') : null;
   const have = live ? (mf && navigator.serviceWorker.controller ? await mf.json().catch(() => ({})) : {}) : (bundled.hashes || {});
-  const want = remote.hashes || {};
+  const want = remote.hashes || {}, inApp = bundled.hashes || {};
+  let done = 0; const total = remote.files.length, tick = () => { done++; if (onProgress && (done % 8 === 0 || done === total)) try { onProgress(done, total); } catch { /* 표시 실패는 무시 */ } };
+  if (onProgress) try { onProgress(0, total); } catch { /* 무시 */ }
   const wrap = async r => new Response(await r.blob(), { headers: { 'Content-Type': r.headers.get('Content-Type') || 'application/octet-stream' } });
   try {
     const queue = [...remote.files];
     await Promise.all(Array.from({ length: 6 }, async () => {
-      for (let f; (f = queue.shift());) {
-        if (want[f] && have[f] === want[f]) {
+      for (let f; (f = queue.shift()); tick()) {
+        // 앱(APK)에 든 파일과 내용이 같으면 받아 두지 않는다 — sw.js가 받아 둔 것에 없는 파일은 앱에 든 파일을 내준다. (전에는 같은 파일 수백 개도 매번 옮겨 담아 오래 걸렸다)
+        if (want[f] && inApp[f] === want[f]) continue;
+        if (live && want[f] && have[f] === want[f]) {      // 지금 쓰는 내려받은 버전과 같은 파일은 서버에서 받지 않고 옮긴다
           const local = await fetch(f, { cache: 'no-store' }).catch(() => null);
           if (local && local.ok) { await cache.put('/' + f, await wrap(local)); continue; }
         }

@@ -909,10 +909,14 @@ fillIcons(); ACT.title(); requestAnimationFrame(frame);
 try { localStorage.setItem('srd_boot_ok', localStorage.getItem('srd_live_build') || ''); } catch { /* 저장 불가 환경 */ }
 // 로딩 화면(index.html의 #boot): 일러스트를 다 읽으면(늦어도 3초) 걷는다. 너무 짧게 번쩍이지 않게 최소 0.7초는 보여 준다
 const boot = $('boot');
-function bootOff() { if (!boot || boot.classList.contains('off')) return; boot.classList.add('off'); setTimeout(() => { boot.hidden = true; }, 400); }
+let bootHold = false;      // 새 버전을 받는 동안에는 시작 화면을 걷지 않는다
+function bootOff() { if (!boot || bootHold || boot.classList.contains('off')) return; boot.classList.add('off'); setTimeout(() => { boot.hidden = true; }, 400); }
 function bootOn(msg) { if (!boot) return; $('boot-msg').textContent = msg; boot.hidden = false; boot.classList.remove('off'); }
 { const im = new Image(), done = () => setTimeout(bootOff, Math.max(0, 700 - performance.now()));
   im.onload = im.onerror = done; im.src = V2 ? 'img/v2/title.webp' : 'img/title.webp'; setTimeout(bootOff, 3000); }
 // 자동 업데이트: 새 버전을 다 받으면, 아직 게임을 시작하지 않았을 때는 바로 다시 열고 아니면 다음 실행부터 적용한다
-checkUpdate(() => { if (!g) { bootOn('새 버전 적용 중…'); location.reload(); } else toast('새 버전을 받았습니다 — 다음 실행부터 적용됩니다'); })
-  .then(() => { if (!g && overlay.classList.contains('on') && overlay.querySelector('h1')) ACT.title(); });
+// 받는 동안: 아직 게임을 시작하지 않았으면 시작 화면에 "새 버전 받는 중 n%"를 띄워 기다리게 한다(다 받으면 바로 새 버전으로 열린다). 게임 중이면 방해하지 않는다
+checkUpdate(() => { if (!g) { bootOn('새 버전 적용 중…'); location.reload(); } else toast('새 버전을 받았습니다 — 앱을 껐다 켜면 적용됩니다', 4000); },
+  (n, total) => { bootHold = !g && performance.now() < 30000;      // 너무 오래 걸리면(느린 인터넷) 30초 뒤에는 화면을 풀어 주고 뒤에서 마저 받는다
+    if (bootHold) bootOn(`새 버전 받는 중… ${Math.round(n / Math.max(1, total) * 100)}%`); else bootOff(); })
+  .then(r => { bootHold = false; if (r !== 'updated' || g) bootOff(); if (!g && overlay.classList.contains('on') && overlay.querySelector('h1')) ACT.title(); });      // 받다가 실패했으면(인터넷 끊김 등) 시작 화면을 걷고 가진 버전으로 계속한다
