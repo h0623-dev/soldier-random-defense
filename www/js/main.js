@@ -147,6 +147,7 @@ function unitPic(b, u) {
   const sk = M.skinOf(meta).art, sn = sk && !h && (!g || !g.duo || C.own(g, u)) && `units/${sk}_${C.typeKey(u.type).replace('+', '-')}`; if (sn && hasArt(sn)) return `img/${sn}.webp`;
   return unitSrc(b, u.type, C.rankGroup(b, u));
 }
+const iga = w => { const c = (w.charCodeAt(w.length - 1) - 0xac00) % 28; return c > 0 ? '이' : '가'; };      // 조사 이/가
 const mmss = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 // 훈장 · 티켓 · 보석 · 행동력을 한 줄로 (본부·상점 위쪽)
 const resBar = () => { const now = Date.now(), en = M.energyNow(meta, now), w = M.energyWait(meta, now);
@@ -186,20 +187,21 @@ function toast(msg, ms = 1400, hold = false) {
 }
 // 겹쳐 뜨는 화면. sheet=true면 아래에서 올라오는 시트로 뜨고 게임은 멈추지 않는다(전장이 계속 보인다)
 function show(html, sheet = false, cls = '') {
-  tabNow = 'title';
+  tabNow = 'title'; scr = '';
   overlay.innerHTML = `<div class="panel ${cls}">${sheet ? '<div class="grab"></div>' : ''}${html}</div>`;
   if (!sheet) $('toast').classList.remove('on');      // 전체 화면(처음 화면·결과 등)을 띄울 때는 전투 중 알림을 치운다
   overlay.classList.add('on'); overlay.classList.toggle('sheet', sheet); overlay.scrollTop = 0; if (!sheet) paused = true;
 }
 // 하단 탭 5개(대기실과 그 옆 화면들): 상점 · 부대 · 전투 · 표창 · 뽑기. 탭 화면은 위(프로필·재화) · 가운데(내용 — 여기만 스크롤) · 아래(탭)로 짜인다
-let tabNow = 'title', mBranch = '', cmSel = '';      // 지금 떠 있는 탭 화면(ACT 이름) · 부대 탭에서 보던 군별 · 표창 탭에서 고른 표창
+let tabNow = 'title', mBranch = '', cmSel = '', scr = '';      // scr: 지금 떠 있는 특별한 화면(menu 일시정지 · exit 종료 물음 · settings 설정) — 뒤로가기가 쓴다      // 지금 떠 있는 탭 화면(ACT 이름) · 부대 탭에서 보던 군별 · 표창 탭에서 고른 표창
 const TABS = [['shop', 'cart', '상점', 'nav_shop'], ['mastery', 'paw', '부대', 'nav_unit'], ['title', 'swords', '전투', 'nav_battle'], ['commend', 'star', '표창', 'nav_cm'], ['board', 'tkt', '뽑기', 'nav_draw']];
 const pic = (name, icon) => `<span class="pic"><img src="img/ic/${name}.webp" alt="" onerror="this.remove()">${ic(icon)}</span>`;      // 그림 아이콘(없으면 기호)
 const navBar = cur => { const day = today(), dots = { shop: M.adLeft(meta, day, 'gem') > 0, commend: meta.medals >= M.CM_BOX, board: meta.tickets > 0 };
   return `<nav class="nav5">${TABS.map(([act, icon, label, img]) => `<button class="${act === cur ? 'on' : ''}" data-act="${act}">${pic(img, icon)}<b>${label}</b>${dots[act] && act !== cur ? '<i class="dot"></i>' : ''}</button>`).join('')}</nav>`; };
 const topBar = self => { M.ensureId(meta); const top = M.topWave(meta);
   return `<div class="ltop"><button class="lprof" data-act="rank"><img src="img/icon-192.png" alt=""><span><b>${esc(meta.name)}</b><small>${top ? `최고 ${top}단계` : '첫 출격 전'}</small></span></button>
-    <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="${self}" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${pic(meta.mute ? 'mute' : 'sound', 'sound')}</button></div>${resBar()}`; };
+    <button class="hbtn${meta.mute ? ' off' : ''}" data-act="mute" data-arg="${self}" aria-label="소리 ${meta.mute ? '꺼짐' : '켜짐'}">${pic(meta.mute ? 'mute' : 'sound', 'sound')}</button>
+    <button class="hbtn" data-act="settings" aria-label="설정">${ic('menu')}</button></div>${resBar()}`; };
 // tab: 아래 탭에서 불이 켜질 자리, self: 이 화면을 다시 그리는 ACT 이름, sub: 내용과 탭 사이에 붙는 줄(하위 메뉴·실행 버튼), keep: 스크롤 자리 유지
 function tabPage(tab, self, html, sub = '', keep = false) {
   const old = overlay.querySelector('.tbody'), y = keep && old && tabNow === self ? old.scrollTop : 0;
@@ -530,13 +532,45 @@ const ACT = {
       <div class="list"><p>보스 격파 <b>+${C.CFG.bossSupply}</b> · 특수 임무 성공 <b>+${C.CFG.eliteSupply}</b> (횟수 제한 없음)</p></div>
       <div class="sfoot"><div class="pill sup">${ic('box')}<b>${g.supply}</b></div><button class="btn primary" data-act="resume">전장으로</button></div>`, true);
   },
-  menu() {
+  menu() {      // 일시정지 메뉴 (톱니 버튼 · 뒤로가기 버튼)
     show(`${sheetHead('일시정지', `${g.branch.name} · ${g.wave}단계 · ${C.AREAS[g.area].name}`)}
       <button class="wide" data-act="resume">${ic('play')}계속하기</button>
-      <button class="wide sec" data-act="missions">${ic('list')}임무</button><button class="wide sec" data-act="codex">${ic('book')}조합 도감</button><button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
-      <button class="wide sec" data-act="mute" data-arg="menu">${ic('sound')}소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
-      ${g.duo ? '' : `<button class="wide sec" data-act="leave">${ic('exit')}저장하고 나가기</button>`}
-      <button class="wide sec danger" data-act="giveup">${g.duo ? '협동에서 나가기 (결과 보기)' : '포기하고 결과 보기'}</button>`, true); paused = true; saveRun();
+      <div class="mgrid">
+        <button class="wide sec" data-act="missions">${ic('list')}임무</button><button class="wide sec" data-act="codex">${ic('book')}조합 도감</button>
+        <button class="wide sec" data-act="help">${ic('help')}게임 방법</button><button class="wide sec" data-act="settings">${ic('menu')}설정</button>
+        ${g.duo ? '' : `<button class="wide sec" data-act="restart">${ic('play')}재시작</button><button class="wide sec" data-act="leave">${ic('exit')}저장하고 나가기</button>`}
+        <button class="wide sec danger" data-act="giveup">${g.duo ? '협동에서 나가기' : '도전 포기'}</button><button class="wide sec danger" data-act="exitask">게임 종료</button>
+      </div>`, true); paused = true; scr = 'menu'; saveRun();
+  },
+  // 재시작: 이 판을 버리고 같은 군별 · 작전 · 난이도로 처음부터. 새 판이므로 행동력 1이 든다
+  restart() {
+    const en = M.energyNow(meta, Date.now());
+    show(`${sheetHead('재시작', `${g.branch.name} · ${g.wave}단계`)}
+      <p class="sub" style="margin:.4rem 0 1rem">이 판을 버리고 처음부터 다시 시작합니다. 행동력 1이 듭니다(지금 ${en}).${en < 1 ? '<br><b>행동력이 없어 재시작할 수 없습니다</b>' : ''}</p>
+      <button class="wide" data-act="restartgo" ${en < 1 ? 'disabled' : ''}>${ic('play')}재시작 <small>${ic('bolt')}1</small></button>
+      <button class="wide sec" data-act="menu">취소</button>`, true); paused = true; scr = 'sub';
+  },
+  restartgo() { if (!g || g.duo) return; const id = g.branch.id; meta.mode = g.mode; meta.diff = g.diff || 0; ACT.start(id); },
+  // 설정: 전투 중에는 시트로, 대기실에서는 화면으로
+  settings() {
+    const inGame = !!g && !g.over, body = `
+      <button class="wide sec" data-act="mute" data-arg="settings">${ic('sound')}소리: ${meta.mute ? '꺼짐' : '켜짐'}</button>
+      <button class="wide sec" data-act="help">${ic('help')}게임 방법</button>
+      ${inGame ? '' : `<button class="wide sec" data-act="rank">${ic('medal')}별명 바꾸기 · 랭킹</button>`}
+      <p class="sub ver" style="margin-top:1.2rem">털뭉치수비대 v${buildInfo.version || '0.1.0'}${buildInfo.live || buildInfo.bundled ? ` · ${buildLabel(buildInfo.live || buildInfo.bundled)}` : ''}</p>`;
+    if (inGame) { show(`${sheetHead('설정', '소리 · 도움말')}${body}<button class="wide sec" data-act="menu">뒤로</button>`, true); paused = true; scr = 'sub'; }
+    else { show(`<h2>설정</h2>${body}<button class="wide sec" data-act="title">뒤로</button>`); scr = 'settings'; }
+  },
+  // 게임 종료 물음: 전투 중이면 판을 저장하고 끈다
+  exitask() {
+    const inGame = !!g && !g.over, text = inGame ? (g.duo ? '협동 중에 끄면 연결이 끊어집니다.' : '진행 중인 판은 저장됩니다. 다음에 "이어하기"로 돌아올 수 있습니다.') : '게임을 끌까요?';
+    if (inGame) { show(`${sheetHead('게임 종료', text)}<button class="wide danger sec" data-act="exitgo">게임 종료</button><button class="wide" data-act="menu">취소</button>`, true); paused = true; scr = 'sub'; }
+    else { show(`<h2>게임 종료</h2><p class="sub">${text}</p><button class="wide sec" data-act="settings">${ic('menu')}설정</button><button class="wide sec danger" data-act="exitgo">게임 종료</button><button class="wide" data-act="title">계속하기</button>`); scr = 'exit'; }
+  },
+  exitgo() {
+    if (g && !g.over && !g.duo) saveRun();
+    const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (A && A.exitApp) A.exitApp(); else toast('여기서는 앱을 끌 수 없습니다 — 창을 닫아 주세요', 2600);
   },
   // 조합 도감: 그림으로 보는 조합 결과 · 병과와 병기 · 계급장 · 히든 계급 · 지역 보스
   codex() {
@@ -608,8 +642,7 @@ const ACT = {
         <p>${ic('medal')}훈장 <b>+${medals * (doubled ? 2 : 1)}</b>${doubled ? ' (광고 2배)' : g.duo ? ` (협동 ${M.COOP_MEDAL}배)` : d ? ` (${C.DIFFS[d].name} ${C.DIFFS[d].medal}배)` : ''} · ${ic('ticket')}뽑기 티켓 <b>+${tickets}</b></p>
         ${rank ? `<p>랭킹 · 이번 주 <b>${rank.week ? rank.week + '위' : '100위 밖'}</b> · 전체 <b>${rank.all ? rank.all + '위' : '100위 밖'}</b></p>` : ''}</div></div>
       ${medals > 0 && !doubled ? `<button class="wide sec adx" data-act="adx2">${ic('play')}광고 보고 훈장 한 번 더 <b>+${medals}</b></button>` : ''}
-      ${opened ? `<p class="note star" style="text-align:center;font-size:1.4rem">🔓 <b>${C.DIFFS[d + 1].name}</b> 난이도가 열렸습니다</p>` : ''}
-      ${modesOpened.map(m => `<p class="note star" style="text-align:center;font-size:1.4rem">🔓 <b>${m.name}</b>이(가) 열렸습니다</p>`).join('')}
+      ${opened || modesOpened.length ? `<div class="unlock">${opened ? `<p>🔓 <b>${C.DIFFS[d + 1].name}</b> 난이도가 열렸습니다</p>` : ''}${modesOpened.map(m => `<p>🔓 <b>${m.name}</b>${iga(m.name)} 열렸습니다</p>`).join('')}</div>` : ''}
       ${gains.length ? `<div class="card xpc"><small>병과 숙련 경험치 +${gains.reduce((a, x) => a + x.xp, 0)}</small><div class="xps">${gains.slice(0, 5).map(x => `<span>${b.types[x.key][0]} <b>+${x.xp}</b>${x.after > x.before ? `<em>▲${x.after}단계</em>` : ''}</span>`).join('')}</div></div>` : ''}
       ${mvp && mvp.dealt > 0 ? `<div class="card mvp"><img class="u" src="${unitPic(b, mvp)}" alt="">
         <div><small>최우수 유닛</small><b>${C.unitName(b, mvp)}</b><span>누적 피해 ${fmt(mvp.dealt)} · 전체의 ${Math.round(mvp.dealt / tot * 100)}%</span></div></div>
@@ -658,6 +691,25 @@ $('b-speed').onclick = () => { if (duoLive() && !coop.host) return toast('협동
 $('b-coop').onclick = () => g && g.duo && coop && ACT.cosheet();
 document.addEventListener('visibilitychange', () => { if (document.hidden && g && !g.over && !duoLive()) { saveRun(); if (!paused) ACT.menu(); } });      // 협동 중에는 멈추지 않는다
 window.addEventListener('pagehide', () => { if (g && !g.over) saveRun(); });
+// ── 뒤로가기 (Android 뒤로 버튼) ── 앱을 빠져나가지 않고: 전투 중이면 일시정지 메뉴, 대기실이면 종료 물음, 그 밖의 화면이면 한 단계 앞으로
+function onBack() {
+  if (document.getElementById('fakead')) return;                                   // 광고가 떠 있는 동안은 아무것도 하지 않는다
+  const on = overlay.classList.contains('on'), panel = overlay.querySelector('.panel');
+  if (g && !g.over) {                                                              // 전투 중
+    if (on) { if (scr === 'menu') hide(); else ACT.menu(); return; }               // 메뉴가 떠 있으면 닫고, 다른 시트·화면이면 메뉴로
+    if (ui.target != null) { ui.target = null; infoKey = ''; return; }             // 조합 미리보기 → 취소
+    if (ui.sel != null) { ui.sel = null; infoKey = ''; $('app').classList.remove('sel'); return; }      // 유닛 선택 → 해제
+    return ACT.menu();
+  }
+  if (!on || !panel) return;
+  if (g && g.over) return ACT.quit();                                              // 결과 화면 → 대기실
+  if (panel.classList.contains('title')) return ACT.exitask();                     // 대기실 → 종료 물음
+  ACT.title();                                                                     // 그 밖의 화면(탭 · 설정 · 종료 물음 · 랭킹 …) → 대기실
+}
+{ const cap = window.Capacitor, capApp = cap && cap.Plugins && cap.Plugins.App, native = cap && cap.isNativePlatform && cap.isNativePlatform();
+  if (native && capApp && capApp.addListener) capApp.addListener('backButton', onBack);       // 새 앱(@capacitor/app 포함): 뒤로 버튼을 직접 받는다
+  else if (native) { history.pushState({ srd: 1 }, ''); window.addEventListener('popstate', () => { history.pushState({ srd: 1 }, ''); onBack(); }); }      // 옛 앱: 방문 기록으로 뒤로 버튼을 받는다
+}
 
 // ── 표시 갱신 ───────────────────────────────────────────
 // 능력치를 작은 칩으로. prev가 있으면 공격력이 얼마나 오르는지 함께 보여준다
@@ -799,7 +851,7 @@ function frame(now) {
 }
 Sound.setMuted(meta.mute); applySkin();
 document.addEventListener('pointerdown', () => Sound.unlock(), { passive: true });
-window.__srd = { get game() { return g; }, C, view, duo: () => coop };   // 자동 검사용
+window.__srd = { get game() { return g; }, C, view, duo: () => coop, back: onBack };   // 자동 검사용
 fillIcons(); ACT.title(); requestAnimationFrame(frame);
 try { localStorage.setItem('srd_boot_ok', localStorage.getItem('srd_live_build') || ''); } catch { /* 저장 불가 환경 */ }
 // 로딩 화면(index.html의 #boot): 일러스트를 다 읽으면(늦어도 3초) 걷는다. 너무 짧게 번쩍이지 않게 최소 0.7초는 보여 준다

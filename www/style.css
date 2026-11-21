@@ -377,3 +377,9 @@ img.u { filter: var(--skin, none); }
 /* 전투 화면의 그림 기호: 단계 깃발 · 메뉴 · 임무 버튼은 조금 크게 */
 .area > .ic { font-size: 2.8rem; } #b-menu .ic { font-size: 2.5rem; } #actions .board .ic { font-size: 2rem; } .wide .ic { font-size: 2.4rem; }
 
+/* ── 결과 화면의 "열렸습니다" 알림 · 일시정지 메뉴 2칸 · 설정 ── */
+.unlock { margin: 1.2rem 0; padding: 0.9rem 1rem; border-radius: 1.4rem; border: var(--ln); background: #5b3fa8; box-shadow: 0 0.3rem 0 var(--ink); text-align: center; }
+.unlock p { margin: 0.2rem 0; font-size: 1.5rem; font-weight: 800; color: #fff; line-height: 1.4; } .unlock b { color: var(--yellow); font-weight: 900; }
+.mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 0.8rem; } .mgrid .wide { margin-top: 0.8rem; height: 4.8rem; font-size: 1.4rem; }
+.ltop .hbtn .ic { font-size: 2.6rem; }
+
