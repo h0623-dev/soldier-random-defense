@@ -577,10 +577,10 @@ function unit(ctx, b, u, p, k, now, quality, T, skin = true) {      // skin: 내
   const deco = (name, cx, by, w, flip = false) => { const im2 = v2Art(name); if (!im2) return; const f2 = fit(im2, w, k, flip); put(ctx, f2, cx - w / 2, by - w); };      // (cx, by): 그림 칸의 가로 가운데 · 아랫변
   const awake = hero && u.level > hero.level;
   if (V2) {
-    if (awake) deco('rank_wings', p.x, p.y + FEET - size * 0.22, size * 1.5);
+    if (awake) deco('rank_wings', p.x, p.y + FEET - size * 0.26, size * 1.22);
     else if (!hero && grp === 2) deco('rank_pennant', p.x + size * 0.36, p.y + FEET - size * 0.3, size * 0.62);
     else if (!hero && grp === 3) { deco('rank_banner_r', p.x - size * 0.36, p.y + FEET - size * 0.28, size * 0.7, true); deco('rank_banner_b', p.x + size * 0.36, p.y + FEET - size * 0.28, size * 0.7); }
-    else if (!hero && grp === 4) { deco('rank_sun', p.x, p.y + FEET - size * 0.12, size * 1.3); deco('rank_cape', p.x, p.y + FEET + 2, size * 1.05); }
+    else if (!hero && grp === 4) { deco('rank_sun', p.x, p.y + FEET - size * 0.3, size * 1.02); deco('rank_cape', p.x, p.y + FEET + 2, size * 0.98); }      // 햇살은 머리 뒤에만(윗줄 유닛을 덮지 않게)
   }
   if (stunned) ctx.globalAlpha = 0.55;
   // 공격 직후에는 공격 자세 그림(_atk)으로 바꾼다. 그 그림은 가로세로 2배 크기이고 대기 그림 자리가 아래 가운데에 온다. 오른쪽을 보는 그림이라 표적이 왼쪽이면 뒤집는다
